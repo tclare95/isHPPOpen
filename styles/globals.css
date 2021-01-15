@@ -11,3 +11,10 @@ a {
 * {
   box-sizing: border-box;
 }
+
+
+.circle {
+  width: 20px;
+  height: 20px;
+  line-height: 50px;
+}

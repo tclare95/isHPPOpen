@@ -45,7 +45,7 @@ export default function TopContent () {
                 Check below the graph for details about the availability of slots during sessions, and events that may affect the status of the course.
             </p>
         </Row>
-        <Row className="justify-content-center text-white mt-2">
+        <Row className="justify-content-center text-white mt-2" id="chart">
             <Col className="justify-content-center text-center">
                 {isPending ? 'Loading' :<ChartRender lowerBound = {lowerBound} upperBound = {upperBound}  graphData = {levelData.level_data} graphForeCastData = {levelData.forecast_data}/>}
                 <Button className=" mt-2" data-lowerbound="1.01" data-upperbound="2.2" onClick={updateBounds}>Reset graph to HPP guidelines</Button>

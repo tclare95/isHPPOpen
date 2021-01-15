@@ -3,7 +3,7 @@ import Table from "react-bootstrap/Table";
 
 export default function WaterQuality () {
     return (
-        <div className="mt-4 text-white text-center justify-content-center">
+        <div className="mt-4 text-white text-center justify-content-center" id="waterquality">
             <Row className="justify-content-center">
                 <h2>Water Quality</h2>
             </Row>

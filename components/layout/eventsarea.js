@@ -2,6 +2,7 @@ import Button from "react-bootstrap/Button";
 import Row from "react-bootstrap/Row";
 import Collapse from "react-bootstrap/Collapse";
 import {useState} from "react";
+import Events from "../functional/events";
 
 export default function EventsArea () {
     const [open, setOpen] = useState(false);
@@ -16,7 +17,7 @@ export default function EventsArea () {
             <Row className="justify-content-center">
                 <Collapse in={open}>
                     <div in={open}>
-                        <p>Events will go here</p>
+                       <Events />
                     </div>
                 </Collapse>
             </Row>

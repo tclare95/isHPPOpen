@@ -10,7 +10,7 @@ export default function WeirInfo () {
 
     return (
         <div className="mt-4 text-white text-center justify-content-center" id="weirs">
-            <Row className="justify-content-center">
+            <Row className="justify-content-center mb-3">
                 <h2>Trent Weirs</h2>
                 <h6>When the Trent is at the correct level for a weir to work, it will be displayed below the level at the top of the page. Check out info about parking, levels etc below.</h6>
                 <h6>Weirs can be dangerous! Always check them yourself before committing!</h6>

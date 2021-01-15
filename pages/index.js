@@ -1,4 +1,3 @@
-import Head from 'next/head'
 import Container from 'react-bootstrap/Container'
 import TopContent from '../components/layout/topcontent'
 import Header from '../components/layout/header'
@@ -9,6 +8,7 @@ import WeirInfo from '../components/layout/weirinfo'
 import Footer from '../components/layout/footer'
 import GraphContext from '../libs/context/graphcontrol'
 import {useState} from 'react'
+import Meta from '../components/meta'
 
 export default function Home() {
   const [upperBound, setUpperBound] = useState(2.2);
@@ -22,6 +22,7 @@ export default function Home() {
   }
   return (
     <Container fluid className="bg-dark">
+      <Meta />
       <Header />
       <GraphContext.Provider
         value={{

@@ -7,11 +7,29 @@ import EventsArea from '../components/layout/eventsarea'
 import WaterQuality from '../components/layout/waterquality'
 import WeirInfo from '../components/layout/weirinfo'
 import Footer from '../components/layout/footer'
+import GraphContext from '../libs/context/graphcontrol'
+import {useState} from 'react'
 
 export default function Home() {
+  const [upperBound, setUpperBound] = useState(2.2);
+  const [lowerBound, setLowerBound] = useState(1.0);
+  const updateBounds = (event) => {
+    const newLowerBound = parseFloat(event.target.getAttribute("data-lowerbound"));
+    const newUpperBound = parseFloat(event.target.getAttribute("data-upperbound"));
+    setUpperBound(newUpperBound);
+    setLowerBound(newLowerBound);
+    console.log('Bounds updated')
+  }
   return (
     <Container fluid className="bg-dark">
       <Header />
+      <GraphContext.Provider
+        value={{
+          upperBound,
+          lowerBound,
+          updateBounds
+        }}
+      >
       <Container>
         <TopContent />
         <SessionBooking />
@@ -19,6 +37,7 @@ export default function Home() {
         <WaterQuality /> 
         <WeirInfo />
       </Container>
+      </GraphContext.Provider>
       <Footer />
     </Container>
       )

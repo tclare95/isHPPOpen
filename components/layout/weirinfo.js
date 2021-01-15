@@ -14,11 +14,10 @@ export default function WeirInfo () {
             </Row>
             <Accordion className="bg-secondary">
                 <Card className="bg-dark">
-                    <Card.Header className="bg-secondary">
-                        <Accordion.Toggle as={Button} variant="link" eventKey="0" className="text-left">
-                           Newark Weir
-                        </Accordion.Toggle>
-                    </Card.Header>
+                    <Accordion.Toggle as={Card.Header} eventKey="0" className="bg-secondary ">
+                      <span className="text-info">Newark Weir</span> 
+                    </Accordion.Toggle>
+                    
                     <Accordion.Collapse eventKey="0">
                     <Card.Body>
                         <Card.Title>Newark Weir</Card.Title>
@@ -27,6 +26,46 @@ export default function WeirInfo () {
                     <ListGroup className="bg-dark">
                         <ListGroup.Item className="bg-dark"><span className="font-weight-bold">Water Levels</span> 1.9m - 2.4m</ListGroup.Item>
                         <ListGroup.Item className="bg-dark"><span className="font-weight-bold">Location: </span>Parking on a small area of rough ground after a bridge over the river. Get in after crossing the bridges on river left. <a href="https://www.google.co.uk/maps/place/53%C2%B004'29.6%22N+0%C2%B049'03.1%22W/" target="_blank" rel="noopener noreferrer">Google Maps Link</a></ListGroup.Item>
+                        <a href = "#chart" role="button" className="btn btn-sm btn-primary m-1" data-lowerbound="1.9" data-upperbound="2.4" >Show level guides on graph</a>
+                    </ListGroup>
+                    </Card.Body>
+                    </Accordion.Collapse>
+                </Card>
+            </Accordion>
+            <Accordion className="bg-secondary">
+                <Card className="bg-dark">
+                    <Accordion.Toggle as={Card.Header} eventKey="0" className="bg-secondary ">
+                      <span className="text-info">Trent Lock</span> 
+                    </Accordion.Toggle>
+                    
+                    <Accordion.Collapse eventKey="0">
+                    <Card.Body>
+                        <Card.Title>Trent Lock</Card.Title>
+                        <Card.Text>A big green fast wave that you can front surf and carve around on to your hearts content. As the river rises it gets more of a pile, but is a bit finicky in shorter boats. As it only comes in when the Trent is in flood, watch out for debris.</Card.Text>
+                    
+                    <ListGroup className="bg-dark">
+                        <ListGroup.Item className="bg-dark"><span className="font-weight-bold">Water Levels</span> 2.85m - 3.5m Towards the lower end of the range, long boats are better. If the river is falling, it can change.</ListGroup.Item>
+                        <ListGroup.Item className="bg-dark"><span className="font-weight-bold">Location: </span>Parking at the Trent Lock inn. Get on, and paddle down the main Trent, go past the bouys (on the left) and under the bridges. You should see the wave. <a href="https://www.google.co.uk/maps/place/53%C2%B004'29.6%22N+0%C2%B049'03.1%22W/" target="_blank" rel="noopener noreferrer">Google Maps Link</a></ListGroup.Item>
+                        <a href = "#chart" role="button" className="btn btn-sm btn-primary m-1" data-lowerbound="1.9" data-upperbound="2.4" >Show level guides on graph</a>
+                    </ListGroup>
+                    </Card.Body>
+                    </Accordion.Collapse>
+                </Card>
+            </Accordion>
+            <Accordion className="bg-secondary">
+                <Card className="bg-dark">
+                    <Accordion.Toggle as={Card.Header} eventKey="0" className="bg-secondary ">
+                      <span className="text-info">Sawley Weir</span> 
+                    </Accordion.Toggle>
+                    
+                    <Accordion.Collapse eventKey="0">
+                    <Card.Body>
+                        <Card.Title>Sawley Weir</Card.Title>
+                        <Card.Text>A big wave that comes in when Trent Lock is too high. As it only comes in when the Trent is in flood, watch out for debris.</Card.Text>
+                    
+                    <ListGroup className="bg-dark">
+                        <ListGroup.Item className="bg-dark"><span className="font-weight-bold">Water Levels</span>  3.5m+ Towards the lower end of the range, long boats are better.</ListGroup.Item>
+                        <ListGroup.Item className="bg-dark"><span className="font-weight-bold">Location: </span>To be added <a href="https://www.google.co.uk/maps/place/52%C2%B052'35.6%22N+1%C2%B016'25.9%22W/" target="_blank" rel="noopener noreferrer">Google Maps Link</a></ListGroup.Item>
                         <a href = "#chart" role="button" className="btn btn-sm btn-primary m-1" data-lowerbound="1.9" data-upperbound="2.4" >Show level guides on graph</a>
                     </ListGroup>
                     </Card.Body>

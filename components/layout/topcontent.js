@@ -1,7 +1,20 @@
-import Row from 'react-bootstrap/Row'
-import Col from 'react-bootstrap/Col'
+import Row from 'react-bootstrap/Row';
+import Col from 'react-bootstrap/Col';
+import Button from "react-bootstrap/Button";
+import { fetcher } from "../../libs/fetcher";
+import useSWR from "swr";
 
 export default function TopContent () {
+    const { data, error } = useSWR(
+        "https://api.ishppopen.co.uk/levels",
+        fetcher
+      );
+    
+
+    
+    if (error) return "An error has occurred.";
+    if (!data) return "Loading...";
+    console.log(data)  
     return (
         <div className="text-white text-center">
         <Row className="justify-content-center">
@@ -23,6 +36,12 @@ export default function TopContent () {
             <p>
                 Check below the graph for details about the availability of slots during sessions, and events that may affect the status of the course.
             </p>
+        </Row>
+        <Row className="justify-content-center text-white">
+            <Col className="justify-content-center text-center">
+                <h1>Graph Will go here</h1>
+                <Button>Reset graph to HPP guidelines</Button>
+            </Col>
         </Row>
         </div>
     )

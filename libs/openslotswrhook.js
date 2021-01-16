@@ -2,7 +2,7 @@ import useSWR from "swr";
 import {fetcher} from "./fetcher";
 
 export const useFetchedOpenSlots = () => {
-    const { data, error, mutate } = useSWR("https://api.ishppopen.co.uk/openslot?limit=28", fetcher); 
+    const { data, error, mutate } = useSWR("/api/openslot", fetcher); 
   
     const slotArray = data
     const isPending = !data

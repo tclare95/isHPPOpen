@@ -18,7 +18,7 @@ export default function Events () {
     if (eventData) {
     return (
         <div>
-             {eventData.data.map((event, index) => (
+             {eventData.map((event, index) => (
                <div>
                <Event key={event.id} name={event.event_name} startDate={event.event_start_date} endDate={event.event_end_date} eventDetails={event.event_details}/>
                </div>

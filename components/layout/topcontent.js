@@ -20,6 +20,7 @@ export default function TopContent () {
     }
 
     const {upperBound, lowerBound, updateBounds} = useContext(GraphContext)
+    console.log(levelData)
     return (
         <div className="text-white text-center">
         <Row className="justify-content-center">

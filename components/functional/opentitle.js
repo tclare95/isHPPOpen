@@ -25,7 +25,7 @@ export default function OpenTitle () {
 
     //pull the event array, check if the current date falls between two events
     let checkvalue = false
-    eventData.data.forEach(element => {
+    eventData.forEach(element => {
         let endDate
         endDate = new Date(element.event_end_date);
         let startDate
@@ -39,7 +39,7 @@ export default function OpenTitle () {
         <h2 className="font-weight-bold m-3">HPP is <span className="text-danger">Closed</span> for an event</h2>
         )
     }
-
+    console.log(levelData)
     //check if the most recent recorded river level is >2.2m
     if(levelData.level_data[0].reading_level > 2.2) {
         return (

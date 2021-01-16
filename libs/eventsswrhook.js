@@ -2,7 +2,7 @@ import useSWR from "swr";
 import {fetcher} from "./fetcher";
 
 export const useFetchedEvents = () => {
-    const { data, error, mutate } = useSWR("https://api.ishppopen.co.uk/events", fetcher); 
+    const { data, error, mutate } = useSWR("/api/events", fetcher); 
   
     const eventData = data
     const isPending = !data

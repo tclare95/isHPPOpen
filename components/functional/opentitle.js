@@ -15,7 +15,7 @@ export default function OpenTitle () {
         )
     }
     
-    if (isPending || eventIsPending) {
+    if (isPending || eventIsPending || !eventData) {
         return (
             <div>
                 Loading

@@ -3,7 +3,7 @@ import Accordion from "react-bootstrap/Accordion"
 import Card from "react-bootstrap/Card"
 import ListGroup from "react-bootstrap/ListGroup"
 import { useContext } from "react";
-import GraphContext from '../../libs/context/graphcontrol'
+import GraphContext from '../../../libs/context/graphcontrol'
 
 export default function WeirInfo () {
     const {upperBound, lowerBound, updateBounds} = useContext(GraphContext)

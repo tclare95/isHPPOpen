@@ -2,7 +2,7 @@ import Button from "react-bootstrap/Button";
 import Row from "react-bootstrap/Row";
 import Collapse from "react-bootstrap/Collapse";
 import {useState} from "react";
-import Events from "../functional/events";
+import Events from "../../functional/events";
 
 export default function EventsArea () {
     const [open, setOpen] = useState(false);

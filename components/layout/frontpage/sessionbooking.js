@@ -2,8 +2,8 @@ import Button from "react-bootstrap/Button";
 import Row from "react-bootstrap/Row";
 import Collapse from "react-bootstrap/Collapse";
 import {useState} from "react";
-import Slots from "../functional/slots";
-import { useFetchedOpenSlots } from "../../libs/openslotswrhook"
+import Slots from "../../functional/slots";
+import { useFetchedOpenSlots } from "../../../libs/openslotswrhook"
 
 
 export default function SessionBooking () {

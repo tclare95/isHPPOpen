@@ -15,12 +15,14 @@ const currentTime = new Date();
 export default function TopContent () {
     const { levelData, error, isPending } = useFetchedLevels();
     let readingTime = new Date()
+    // fixes a weird bug with the time since last reading jumping to large negative values
+    let recentLevel
     if (!isPending) {
         readingTime = new Date(levelData.level_data[0].reading_date)
+        recentLevel = levelData.level_data[0].reading_level
+        
     }
-
     const {upperBound, lowerBound, updateBounds} = useContext(GraphContext)
-    console.log(levelData)
     return (
         <div className="text-white text-center">
         <Row className="justify-content-center">
@@ -30,10 +32,10 @@ export default function TopContent () {
           </Col>
         </Row>
         <Row className="justify-content-center">
-            <h3>The River Level is {isPending ? 'Loading' : (Math.round((levelData.level_data[0].reading_level + Number.EPSILON)*100) / 100).toFixed(2)}M</h3><a href="#waterquality"><VomitFactor currentLevel = {isPending ? 'Loading' : levelData.level_data[0].reading_level}/></a>
+            <h3>The River Level is {isPending ? 'Loading' : (Math.round((recentLevel + Number.EPSILON)*100) / 100).toFixed(2)}M</h3><a href="#waterquality"><VomitFactor currentLevel = {isPending ? 'Loading' : levelData.level_data[0].reading_level}/></a>
         </Row>
         <Row className="justify-content-center">
-            {isPending ? <div className="d-none"></div> : <WeirLevels currentLevel={levelData.level_data[0].reading_level}/>}
+            {isPending ? <div className="d-none"></div> : <WeirLevels currentLevel={recentLevel}/>}
         </Row>
         <Row className="justify-content-center ">
             <p> 

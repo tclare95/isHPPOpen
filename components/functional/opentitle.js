@@ -39,7 +39,6 @@ export default function OpenTitle () {
         <h2 className="font-weight-bold m-3">HPP is <span className="text-danger">Closed</span> for an event</h2>
         )
     }
-    console.log(levelData)
     //check if the most recent recorded river level is >2.2m
     if(levelData.level_data[0].reading_level > 2.2) {
         return (

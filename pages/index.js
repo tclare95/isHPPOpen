@@ -18,7 +18,6 @@ export default function Home() {
     const newUpperBound = parseFloat(event.target.getAttribute("data-upperbound"));
     setUpperBound(newUpperBound);
     setLowerBound(newLowerBound);
-    console.log('Bounds updated')
   }
   return (
     <Container fluid className="bg-dark">

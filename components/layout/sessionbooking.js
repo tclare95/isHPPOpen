@@ -13,7 +13,6 @@ export default function SessionBooking () {
     const handleClick = (event) => {
         setOpen(true);
         slotArrayMod = slotArray.slice(event.target.value-1)
-        console.log(`sliced ${event.target.value-1} from the array`)
     } 
     return (
         <div className="text-white text-center justify-content-center">

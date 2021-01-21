@@ -1,14 +1,14 @@
 import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
 import Button from "react-bootstrap/Button";
-import OpenTitle from '../functional/opentitle';
-import {useFetchedLevels} from '../../libs/levelsswrhook'
-import VomitFactor from '../functional/vomitfactor';
-import WeirLevels from '../functional/weirlevels';
-import ChartRender from '../functional/chart';
+import OpenTitle from '../../functional/opentitle';
+import {useFetchedLevels} from '../../../libs/levelsswrhook'
+import VomitFactor from '../../functional/vomitfactor';
+import WeirLevels from '../../functional/weirlevels';
+import ChartRender from '../../functional/chart';
 
 import { useContext } from 'react';
-import GraphContext from '../../libs/context/graphcontrol';
+import GraphContext from '../../../libs/context/graphcontrol';
 
 const currentTime = new Date();
 

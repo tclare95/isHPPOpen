@@ -1,6 +1,5 @@
-html,
 body {
-  background-color: #282c34;
+  background-color: #343a40 !important;
 }
 
 a {
@@ -17,4 +16,14 @@ a {
   width: 20px;
   height: 20px;
   line-height: 50px;
+}
+
+.textarea {
+  resize: none;
+}
+
+.border-form {
+  padding: 1rem;
+  border: .2rem solid #ececec;
+  border-radius: 8px;
 }

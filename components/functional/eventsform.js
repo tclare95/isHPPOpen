@@ -8,7 +8,7 @@ import axios from 'axios'
 export default function EventsForm (props) {
       
     const handleDeleteClick = (id) => {
-        axios.delete(`http://localhost:3000/api/events/?${id}`,{withCredentials: true}).then((response) => {
+        axios.delete(`/api/events/?${id}`,{withCredentials: true}).then((response) => {
             try {
                 console.log('success')
                 
@@ -35,7 +35,7 @@ export default function EventsForm (props) {
             }
             const json = JSON.stringify(dataArray)
             console.log(json)
-            axios.post("http://localhost:3000/api/events", json, {withCredentials: true}).then((response => {
+            axios.post("/api/events", json, {withCredentials: true}).then((response => {
            if (response.status === 200) {
             console.log('event successfully added')
 

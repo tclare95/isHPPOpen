@@ -10,6 +10,8 @@ export default function Admin () {
             <AdminBar />
             <AdminBody>
                 <h2 className="text-light">Is HPP Open Admin panel - home</h2>
+                <h5>Current Features:</h5>
+                <p>Add, Update and Delete Events</p>
             </AdminBody>
        </Container>
        

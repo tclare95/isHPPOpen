@@ -1,7 +1,5 @@
 import Row from "react-bootstrap/Row";
-import Table from "react-bootstrap/Table";
 import { useFetchedEvents } from "../../libs/eventsswrhook"
-import Button from "react-bootstrap/Button"
 import EventsForm from './eventsform'
 export default function EventsTable () {
     const { eventData, eventError, eventIsPending } = useFetchedEvents();
@@ -34,7 +32,7 @@ export default function EventsTable () {
 
     ) }
     return (
-        <div>Unknown Error</div>
+        <p>Events Loading</p>
     )
 }
 

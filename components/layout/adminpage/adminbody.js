@@ -30,7 +30,7 @@ export default function AdminBody (props) {
 
     if(session) {
         return (
-            <Container>
+            <Container fluid="sm">
                 {props.children}
             </Container>
         )

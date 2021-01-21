@@ -17,3 +17,13 @@ a {
   height: 20px;
   line-height: 50px;
 }
+
+.textarea {
+  resize: none;
+}
+
+.border-form {
+  padding: 1rem;
+  border: .2rem solid #ececec;
+  border-radius: 8px;
+}

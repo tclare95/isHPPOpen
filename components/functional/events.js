@@ -20,7 +20,7 @@ export default function Events () {
         <div>
              {eventData.map((event, index) => (
                <div>
-               <Event key={event.id} name={event.event_name} startDate={event.event_start_date} endDate={event.event_end_date} eventDetails={event.event_details}/>
+               <Event key={event._id} name={event.event_name} startDate={event.event_start_date} endDate={event.event_end_date} eventDetails={event.event_details}/>
                </div>
            ))}
         </div>

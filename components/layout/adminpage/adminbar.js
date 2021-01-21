@@ -10,15 +10,15 @@ export default function AdminBar () {
 
         if(session) {
             return (
-                <Navbar bg="dark" expand="lg" className="text-light">
-                    <Link href="/admin" passHref><Navbar.Brand className="text-light">Is HPP Open Admin</Navbar.Brand></Link>
+                <Navbar bg="light" expand="lg" className="text-dark mb-3">
+                    <Link href="/admin" passHref><Navbar.Brand className="text-dark">Is HPP Open Admin</Navbar.Brand></Link>
                     <Nav className="mr-auto">
-                    <Link href="/admin/events" passHref><Nav.Link className="text-light">Edit Events</Nav.Link></Link>
-                    <Link href="/admin/message" passHref><Nav.Link className="text-light">Edit Site Message</Nav.Link></Link>
+                    <Link href="/admin/events" passHref><Nav.Link className="text-dark">Edit Events</Nav.Link></Link>
+                    <Link href="/admin/message" passHref><Nav.Link className="text-dark">Edit Site Message</Nav.Link></Link>
                     </Nav>
                     <Navbar.Toggle />
                     <Navbar.Collapse className="justify-content-end">
-                        <Navbar.Text className="mr-2 text-light">
+                        <Navbar.Text className="mr-2 text-dark">
                             Signed in As {session.user.name}
                         </Navbar.Text>
                         
@@ -30,11 +30,11 @@ export default function AdminBar () {
         }
 
         return (
-            <Navbar bg="dark" expand="lg" className="text-light">
-                    <Link href="/admin" passHref><Navbar.Brand className="text-light">Is HPP Open Admin</Navbar.Brand></Link>
+            <Navbar bg="dark" expand="lg" className="text-dark mb-3">
+                    <Link href="/admin" passHref><Navbar.Brand className="text-dark">Is HPP Open Admin</Navbar.Brand></Link>
                     <Navbar.Toggle />
                     <Navbar.Collapse className="justify-content-end">
-                        <Navbar.Text className="mr-2 text-light">
+                        <Navbar.Text className="mr-2 text-dark">
                             You are not signed in
                         </Navbar.Text>
                         

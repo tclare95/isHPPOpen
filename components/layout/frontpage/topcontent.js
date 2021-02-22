@@ -12,7 +12,7 @@ import GraphContext from '../../../libs/context/graphcontrol';
 
 const currentTime = new Date();
 
-export default function TopContent () {
+export default function TopContent (props) {
     const { levelData, error, isPending } = useFetchedLevels();
     let readingTime = new Date()
     // fixes a weird bug with the time since last reading jumping to large negative values
@@ -28,7 +28,7 @@ export default function TopContent () {
         <Row className="justify-content-center">
           <Col className="text-center">
             <h1>Is HPP Open?</h1>
-            <OpenTitle />
+            <OpenTitle cachedEvents = {props.cachedEvents}/>
           </Col>
         </Row>
         <Row className="justify-content-center">

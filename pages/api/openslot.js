@@ -31,5 +31,6 @@ export default (req, res) => {
   })
   .catch(function (error) {
     console.log(error);
+    res.status(404).end()
   });
 }

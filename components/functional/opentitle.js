@@ -1,13 +1,11 @@
 const currentTime = new Date();
 import {useFetchedLevels} from '../../libs/levelsswrhook'
-import {useFetchedEvents} from '../../libs/eventsswrhook'
 
 
-export default function OpenTitle () {
+export default function OpenTitle (props) {
     const { levelData, error, isPending } = useFetchedLevels();
-    const { eventData, eventError, eventIsPending } = useFetchedEvents();
-
-    if (error || eventError) {
+    const cachedEvents = props.cachedEvents
+    if (error ) {
         return (
             <div>
                 Error Loading
@@ -15,7 +13,7 @@ export default function OpenTitle () {
         )
     }
     
-    if (isPending || eventIsPending || !eventData) {
+    if (isPending || !cachedEvents) {
         return (
             <div>
                 Loading
@@ -25,15 +23,18 @@ export default function OpenTitle () {
 
     //pull the event array, check if the current date falls between two events
     let checkvalue = false
-    eventData.forEach(element => {
-        let endDate
-        endDate = new Date(element.event_end_date);
-        let startDate
-        startDate = new Date(element.event_start_date)
-        if(currentTime <= endDate && currentTime >= startDate) {
-            checkvalue = true
-        } 
-    });
+    if (cachedEvents.length != 0) {
+        cachedEvents.forEach(element => {
+            let endDate
+            endDate = new Date(element.event_end_date);
+            let startDate
+            startDate = new Date(element.event_start_date)
+            if(currentTime <= endDate && currentTime >= startDate) {
+                checkvalue = true
+            } 
+        });
+    }
+    
     if (checkvalue) {
         return(
         <h2 className="font-weight-bold m-3">HPP is <span className="text-danger">Closed</span> for an event</h2>

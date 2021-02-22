@@ -9,8 +9,9 @@ import Footer from '../components/layout/frontpage/footer'
 import GraphContext from '../libs/context/graphcontrol'
 import {useState} from 'react'
 import Meta from '../components/meta'
+import { connectToDatabase } from '../libs/database'
 
-export default function Home() {
+export default function Home(props) {
   const [upperBound, setUpperBound] = useState(2.2);
   const [lowerBound, setLowerBound] = useState(1.0);
   const updateBounds = (event) => {
@@ -31,7 +32,8 @@ export default function Home() {
         }}
       >
       <Container>
-        <TopContent />
+        
+        <TopContent cachedEvents={props.data}/>
         <SessionBooking />
         <EventsArea />
         <WaterQuality /> 
@@ -41,4 +43,13 @@ export default function Home() {
       <Footer />
     </Container>
       )
+}
+
+export async function getStaticProps() {
+    const { db } = await connectToDatabase();
+    const now = new Date
+    const collection = await db.collection('eventschemas');
+    const data = await collection.find({"event_end_date":{$gte : now}}).limit(5).toArray();
+    const cleanedData = JSON.parse(JSON.stringify(data))
+  return  { props: {data: cleanedData}, revalidate: 60 }
 }

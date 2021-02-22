@@ -51,5 +51,5 @@ export async function getStaticProps() {
     const collection = await db.collection('eventschemas');
     const data = await collection.find({"event_end_date":{$gte : now}}).limit(5).toArray();
     const cleanedData = JSON.parse(JSON.stringify(data))
-  return  { props: {data: cleanedData}, revalidate: 60 }
+  return  { props: {data: cleanedData}, revalidate: 1800 }
 }

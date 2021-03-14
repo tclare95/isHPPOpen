@@ -4,7 +4,7 @@ import Row from 'react-bootstrap/Row'
 export default function Header () {
     return (
         <Row className="justify-content-center">
-            <Alert variant="danger">HPP is closed until further notice. New Site Features: Trent Weirs + Water Quality</Alert>
+            <Alert variant="danger">HPP is closed until further notice. EA forecast data has an issue and is not lining up.</Alert>
         </Row>
     )
 }

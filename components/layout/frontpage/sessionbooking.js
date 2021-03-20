@@ -3,24 +3,29 @@ import Row from "react-bootstrap/Row";
 import Collapse from "react-bootstrap/Collapse";
 import {useState} from "react";
 import Slots from "../../functional/slots";
-import { useFetchedOpenSlots } from "../../../libs/openslotswrhook"
-
+import useSWR from "swr";
+import {fetcher} from "../../../libs/fetcher";
 
 export default function SessionBooking () {
     const [open, setOpen] = useState(false);
-    const { slotArray, error, isPending } = useFetchedOpenSlots();
-    let slotArrayMod = slotArray
+    const [queryLength, setQueryLength] = useState("14");
+    let isPending = true;
+    const {data, error, mutate } = useSWR("/api/allslots?length="+queryLength, fetcher);
+    if (data) isPending = false
+    let slotArrayMod = data;
     const handleClick = (event) => {
+        console.log(event.target.value);
+        setQueryLength(event.target.value);
+
         setOpen(true);
-        slotArrayMod = slotArray.slice(event.target.value-1)
+         
+
     } 
     return (
         <div className="text-white text-center justify-content-center">
             <Row className="mt-4 justify-content-center">
                 <h2>Session Booking Info</h2>
-            </Row>
-            <Row className="justify-content-center">
-            { slotArray === undefined || slotArray.length == 0 ? <h6 className ="text-center">No Sessions Available</h6> : <a href = {"https://www.nwscnotts.com/nwsc/onlineticketing/browse/82/91/"+slotArray[0].StartDate.slice(0,10)} target="_blank" rel="noopener noreferrer"><h6 className ="text-center"> Click to go to the next session with open slots ({ new Date(slotArray[0].StartDate).toDateString()}, at {slotArray[0].StartTime})</h6></a>}
+                <p className="font-italic">HPP has changed their booking system. At the current time I am unable to link directly to book slots on their site. You can only book slots within the 7 days before it is due to start, and you need to be logged into your account on the site.</p>
             </Row>
             <Row className="mt-2 justify-content-center">
                 <h6>Find Sessions with open Slots</h6>

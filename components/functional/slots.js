@@ -12,7 +12,7 @@ export default function Slots (props) {
             <Row className="justify-content-center">
                 {props.slotArray.map((slot, index) => (
                
-               <Slot key={slot.StartDate} startDate={slot.StartDatetime} startTime={slot.StartDatetime} endTime={slot.Duration} remaining={slot.AvailibleSlots}/>
+               <Slot key={slot.StartDate} startDate={slot.StartDatetime} startTime={slot.StartDatetime} endTime={slot.Duration} remaining={slot.AvailibleSlots} showFull={props.showFull}/>
                
            ))}
             </Row>

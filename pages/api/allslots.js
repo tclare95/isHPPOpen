@@ -12,8 +12,7 @@ let now = new Date();
 
 export default (req, res) => {
     let daysToAdd;
-    req.query.length ? daysToAdd = parseInt(req.query.length) : daysToAdd = 28;
-    console.log(daysToAdd)
+    req.query.length ? daysToAdd = parseInt(req.query.length) + 1 : daysToAdd = 28;
     const futureDate = date.addDays(daysToAdd);
     axios.post('https://www.nwscnotts.com/nwsc/Timetable/GetClassTimeTable', {
     BehaviourIdList: 2339,

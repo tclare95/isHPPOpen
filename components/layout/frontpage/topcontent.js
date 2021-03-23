@@ -35,7 +35,7 @@ export default function TopContent(props) {
         <h3>
           The River Level is{" "}
           {isPending
-            ? null
+            ? "0.00"
             : (Math.round((recentLevel + Number.EPSILON) * 100) / 100).toFixed(
                 2
               )}

@@ -13,7 +13,7 @@ export default function OpenTitle (props) {
         )
     }
     
-    if (isPending || !cachedEvents) {
+    if (isPending && !cachedEvents) {
         return (
             <div>
                 Loading

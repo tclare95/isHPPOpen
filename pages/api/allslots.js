@@ -3,6 +3,7 @@ const axios = require("axios");
 Date.prototype.addDays = function(days) {
     let date = new Date(this.valueOf());
     date.setDate(date.getDate() + days);
+    date.setUTCHours(23);
     return date;
   }
   
@@ -12,7 +13,7 @@ let now = new Date();
 
 export default (req, res) => {
     let daysToAdd;
-    req.query.length ? daysToAdd = parseInt(req.query.length) + 1 : daysToAdd = 28;
+    req.query.length ? daysToAdd = parseInt(req.query.length) : daysToAdd = 28;
     const futureDate = date.addDays(daysToAdd);
     axios.post('https://www.nwscnotts.com/nwsc/Timetable/GetClassTimeTable', {
     BehaviourIdList: 2339,

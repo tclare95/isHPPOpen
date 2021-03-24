@@ -25,7 +25,7 @@ export default function SessionBooking() {
   };
   const handleSwitchClick = (event) => {
     setShowFull(!showFull);
-  }
+  };
   return (
     <div className="text-white text-center justify-content-center">
       <Row className="mt-4 justify-content-center">
@@ -34,7 +34,15 @@ export default function SessionBooking() {
           HPP has changed their booking system. At the current time I am unable
           to link directly to book slots on their site. You can only book slots
           within the 7 days before it is due to start, and you need to be logged
-          into your account on the site.
+          into your account on the site.{" "}
+          <a
+            href="https://www.youtube.com/watch?v=mxh6djzInY4"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {" "}
+            Click here for an explanation video on the booking system.
+          </a>
         </p>
       </Row>
       <Row className="mt-2 justify-content-center">

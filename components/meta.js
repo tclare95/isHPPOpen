@@ -7,7 +7,6 @@ export default function Meta () {
             <title>Is HPP Open?</title>
             <meta charSet="utf-8" />
             <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
-            <script data-ad-client="ca-pub-3944736333183086" async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
             <meta
             name="description"
             content="A web app that shows current HPP water level, quality, slots and other paddling opportunities such as Trent Lock"

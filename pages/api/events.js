@@ -35,7 +35,7 @@ module.exports = async (req, res) => {
                         id: request.new_event_id
                     })
                 } catch (error) {
-                    console.log(error)
+                    console.log('Error modifying event ' + error)
                 }
             } else {
                 res.status(403).json({
@@ -52,7 +52,7 @@ module.exports = async (req, res) => {
                     const collection = await db.collection('eventschemas');
                     const result = await collection.deleteOne({'_id': new ObjectID(id)})
                     if(result.deletedCount === 1) {
-                        res.status(204).send();
+                        res.status(204).send({success: true});
                     } else {
                         res.status(404);
                         res.send({error: "Event Not Found"})

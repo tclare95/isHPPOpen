@@ -1,41 +1,46 @@
 import Row from "react-bootstrap/Row";
-import { useFetchedEvents } from "../../libs/eventsswrhook"
-import EventsForm from './eventsform'
-export default function EventsTable () {
-    const { eventData, eventError, eventIsPending } = useFetchedEvents();
-    if(eventIsPending) {
-        return (
-            <p>Events Loading</p>
-        )
-    }
+import Col from "react-bootstrap/Col";
+import { useFetchedEvents } from "../../libs/eventsswrhook";
+import EventsForm from "./eventsform";
+import useSWR from "swr";
+import { fetcher } from "../../libs/fetcher";
 
-    if(eventError) {
-        return (
-        <p>Error Fetching events</p>
-        )
-    }
-    if (eventData) {
-    return (
-       <div>
-           
-               <Row>
-                   {eventData.map((event, index) => (
-                        <EventsForm key={event._id} id={event._id} name={event.event_name} startDate={new Date(event.event_start_date)} endDate={new Date(event.event_end_date)} eventDetails={event.event_details}/>
-            
-                    ))}
-               </Row>
-                <div className="m-2">
-                    <h2 className="text-light">Add new event:</h2> 
-                    <EventsForm />
-                </div>
-       </div>
+export default function EventsTable() {
+  const { data, error, mutate } = useSWR("/api/events", fetcher);
 
-    ) }
+  if (!data) {
+    return <p>Events Loading</p>;
+  }
+
+  if (error) {
+    return <p>Error Fetching events</p>;
+  }
+  if (data) {
     return (
-        <p>Events Loading</p>
-    )
+      <div>
+        <Row>
+          {data &&
+            data.map((event, index) => (
+              <Col md={4} className="m-2">
+                <EventsForm
+                  key={event._id}
+                  id={event._id}
+                  name={event.event_name}
+                  startDate={new Date(event.event_start_date)}
+                  endDate={new Date(event.event_end_date)}
+                  eventDetails={event.event_details}
+                />
+              </Col>
+            ))}
+        </Row>
+        <Row>
+          <h2 className="text-light mx-auto my-4">Add new event:</h2>
+        </Row>
+        <Row className="pb-4">
+          <EventsForm />
+        </Row>
+      </div>
+    );
+  }
+  return <p>Events Loading</p>;
 }
-
-
-
-                    

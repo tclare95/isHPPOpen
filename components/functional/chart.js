@@ -218,7 +218,6 @@ class ChartRender extends React.Component {
       const nowArray = [now, "Now", null, null, null, null, null, ];
       chartArray.push(nowArray);
       chartArray.unshift(chartArrayHeader);
-      console.log(chartArray)
       this.setState({
         chartData: chartArray,
       });

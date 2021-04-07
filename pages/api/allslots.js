@@ -28,9 +28,7 @@ export default (req, res) => {
     })
     arrayToSend.sort((a, b) => {
       const aDate =  new Date(a.StartDatetime);
-      // console.log(aDate)
       const bDate =  new Date(b.StartDatetime);
-      // console.log(bDate)
 
       if (aDate < bDate) {
         return -1;
@@ -44,7 +42,6 @@ export default (req, res) => {
     res.json(arrayToSend);
   })
   .catch(function (error) {
-    console.log(error);
     res.status(404).send()
   });
 }

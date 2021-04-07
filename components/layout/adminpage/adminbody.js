@@ -6,7 +6,6 @@ import Container from 'react-bootstrap/Container'
 
 export default function AdminBody (props) {
     const [session, loading] = useSession()
-    console.log(session)
     if (loading) {
         return (
             <Spinner animation="border" role="status">

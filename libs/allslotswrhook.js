@@ -6,6 +6,5 @@ export const useFetchedOpenSlots = (queryString) => {
   
     const slotArray = data;
     const isPending = !data;
-    console.log(queryString);
     return { slotArray, error, isPending, mutate};
   };

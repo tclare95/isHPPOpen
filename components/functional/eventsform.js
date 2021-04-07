@@ -16,13 +16,10 @@ export default function EventsForm(props) {
       .delete(`/api/events/?${id}`, { withCredentials: true })
       .then((response) => {
         try {
-          console.log("success");
           setSuccess(true);
           mutate("/api/events")
           // window.location.reload();
         } catch {
-          console.log("error from the server");
-          console.log(response);
           setError(true);
         }
       });
@@ -55,17 +52,14 @@ export default function EventsForm(props) {
             new_event_details: values.eventDetails,
           };
           const json = JSON.stringify(dataArray);
-          console.log(json);
           axios
             .post("/api/events", json, { withCredentials: true })
             .then((response) => {
               if (response.status === 200) {
-                console.log("event successfully added");
                 setSuccess(true);
                 mutate("/api/events")
                 // window.location.reload();
               } else {
-                console.log("error from the server");
                 setError(true);
               }
             });

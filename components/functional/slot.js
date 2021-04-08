@@ -1,4 +1,5 @@
 import Col from "react-bootstrap/Col";
+import SlotButton from "./slotbutton";
 
 export default function Slot(props) {
   let colClass;
@@ -26,18 +27,7 @@ export default function Slot(props) {
           {day.toLocaleTimeString()} <br /> Remaining slots: {props.remaining}{" "}
         </p>
       </div>
-      {props.remaining ? (
-        <a
-          className="btn btn-sm btn-primary m-1"
-          target="_blank"
-          rel="noopener noreferrer"
-          href="https://www.nwscnotts.com/nwsc/bookingscentre/index"
-        >
-          Click Here to Book
-        </a>
-      ) : (
-        <div></div>
-      )}
+      <SlotButton remaining = {props.remaining} day = {day}/>
     </Col>
   );
 }

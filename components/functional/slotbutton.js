@@ -15,7 +15,7 @@ export default function SlotButton(props) {
         <a
         className="btn btn-sm btn-primary m-1"
       >
-        Booking will be available on {props.day.addDays(-7).toLocaleDateString()}
+        Booking will be available on {props.day.addDays(-8).toLocaleDateString()}
       </a>
     )
   }

@@ -8,8 +8,7 @@ Date.prototype.addDays = function (days) {
 const now = new Date();
 
 export default function SlotButton(props) {
-  console.log(props.day);
-  console.log(now.addDays(7));
+
   if (props.day > now.addDays(7)) {
     return (
         <a

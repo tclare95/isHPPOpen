@@ -31,18 +31,10 @@ export default function SessionBooking() {
       <Row className="mt-4 justify-content-center">
         <h2>Session Booking Info</h2>
         <p className="font-italic">
-          HPP has changed their booking system. At the current time I am unable
-          to link directly to book slots on their site. You can only book slots
-          within the 7 days before it is due to start, and you need to be logged
-          into your account on the site.{" "}
-          <a
-            href="https://www.youtube.com/watch?v=mxh6djzInY4"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            {" "}
-            Click here for an explanation video on the booking system.
-          </a>
+          HPP has changed their booking system. If you are logged in to their
+          site the link will directly add your chosen session to your basket,
+          making the process much more simple. You can only book sessions 7 days
+          in advance.
         </p>
       </Row>
       <Row className="mt-2 justify-content-center">

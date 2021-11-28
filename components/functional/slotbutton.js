@@ -24,7 +24,7 @@ export default function SlotButton(props) {
         className="btn btn-sm btn-primary m-1"
         target="_blank"
         rel="noopener noreferrer"
-        href="https://www.nwscnotts.com/nwsc/bookingscentre/index"
+        href={`https://www.nwscnotts.com/nwsc/Basket/AddPublicClassBooking?bookingId=${props.instanceID}`}
       >
         Click Here to Book
       </a>

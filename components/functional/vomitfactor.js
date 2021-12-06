@@ -3,9 +3,9 @@ export default function VomitFactor (props) {
     const changeRate = props.levelData[0].reading_level - props.levelData[8].reading_level;
 
     let circleClass = 'align-middle rounded-circle d-inline-block circle ml-2 mt-2'
-    if (currentLevel >= 1.8 || changeRate > 0.5) {
+    if (currentLevel >= 1.5 || changeRate > 0.3) {
         circleClass += ' bg-danger';
-    } else if (currentLevel >= 1.5 || changeRate > 0){
+    } else if (currentLevel >= 1.3 || changeRate > 0){
         circleClass += ' bg-warning';
     } else {
         circleClass += ' bg-success';

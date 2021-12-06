@@ -121,7 +121,7 @@ export default function EventsForm(props) {
               </Form.Row>
               <Form.Row className="my-2 mx-auto">
                 <Button type="submit">
-                  {formik.values.id ? "Edit Event" : "Add Event"}
+                  {formik.values.id ? "Save Edit" : "Add Event"}
                 </Button>
               </Form.Row>
               <Form.Row className="my-2 mx-auto">

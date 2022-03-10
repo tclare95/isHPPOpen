@@ -27,7 +27,11 @@ export default function Slot(props) {
           {day.toLocaleTimeString()} <br /> Remaining slots: {props.remaining}{" "}
         </p>
       </div>
-      <SlotButton remaining = {props.remaining} instanceID={props.instanceID} day = {day}/>
+      <SlotButton
+        remaining={props.remaining}
+        instanceID={props.instanceID}
+        day={day}
+      />
     </Col>
   );
 }

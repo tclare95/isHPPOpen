@@ -21,7 +21,6 @@ export default function SessionBooking() {
 
   let slotArrayMod = data;
 
-
   const handleClick = (event) => {
     setQueryLength(event.target.value);
 
@@ -31,7 +30,6 @@ export default function SessionBooking() {
     setShowFull(!showFull);
   };
 
-  
   return (
     <div className="text-white text-center justify-content-center">
       <Row className="mt-4 justify-content-center">
@@ -39,9 +37,10 @@ export default function SessionBooking() {
       </Row>
       <Row className="mt-0 justify-content-center">
         <p className="font-italic">
-          You need to be Signed up to the HPP Website to sign up using the links below. They should just take you to the booking page once you log in.
+          You need to be Signed up to the HPP Website to sign up using the links
+          below. They should just take you to the booking page once you log in.
         </p>
-        </Row>
+      </Row>
       <Row className="mt-2 justify-content-center">
         <h5>Find Sessions</h5>
       </Row>

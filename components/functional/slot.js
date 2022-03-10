@@ -16,6 +16,7 @@ export default function Slot(props) {
       "col-md-2 border border-light m-1 bg-light text-dark rounded justify-content-center";
   }
   const day = new Date(Date.parse(props.startDate));
+  console.log(props)
   return (
     <Col className={colClass}>
       <div className="text-center">

@@ -9,11 +9,11 @@ import Form from "react-bootstrap/Form";
 
 export default function SessionBooking() {
   const [open, setOpen] = useState(false);
-  const [queryLength, setQueryLength] = useState("14");
+  const [queryLength, setQueryLength] = useState("0");
   const [showFull, setShowFull] = useState(false);
   let isPending = true;
   const { data, error, mutate } = useSWR(
-    "/api/allslots?length=" + queryLength,
+    "/api/newslot?offset=" + queryLength,
     fetcher
   );
   if (data) isPending = false;
@@ -30,13 +30,12 @@ export default function SessionBooking() {
     <div className="text-white text-center justify-content-center">
       <Row className="mt-4 justify-content-center">
         <h2>Session Booking Info</h2>
-        <p className="font-italic">
-          HPP has changed their booking system. If you are logged in to their
-          site the link will directly add your chosen session to your basket,
-          making the process much more simple. You can only book sessions 7 days
-          in advance.
-        </p>
       </Row>
+      <Row className="mt-0 justify-content-center">
+        <p className="font-italic">
+          You need to be Signed up to the HPP Website to sign up using the links below. They should just take you to the booking page once you log in.
+        </p>
+        </Row>
       <Row className="mt-2 justify-content-center">
         <h5>Find Sessions</h5>
       </Row>
@@ -49,17 +48,11 @@ export default function SessionBooking() {
         />
       </Row>
       <Row className="justify-content-center">
-        <Button value="3" className="m-1" onClick={handleClick}>
-          Next 3 Days
+        <Button value="0" className="m-1" onClick={handleClick}>
+          Slots Today
         </Button>
-        <Button value="7" className="m-1" onClick={handleClick}>
-          Next 7 Days
-        </Button>
-        <Button value="14" className="m-1" onClick={handleClick}>
-          Next 14 Days
-        </Button>
-        <Button value="28" className="m-1" onClick={handleClick}>
-          Next 28 Days
+        <Button value="1" className="m-1" onClick={handleClick}>
+          Slots Tomorrow
         </Button>
       </Row>
       <Row className="justify-content-center">

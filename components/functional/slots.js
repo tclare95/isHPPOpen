@@ -8,7 +8,6 @@ export default function Slots (props) {
         return ('Loading')
     }
     if(props.slotArray[0]) {
-        console.log(props.slotArray)
         return (
             <Row className="justify-content-center">
                 {props.slotArray.map((slot, index) => (

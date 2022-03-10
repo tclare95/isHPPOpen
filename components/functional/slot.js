@@ -7,16 +7,15 @@ export default function Slot(props) {
     return null;
   } else if (props.remaining === 0) {
     colClass =
-      "col-md-2 border  border-danger  m-1 bg-danger text-white rounded justify-content-center";
+      " border  border-danger  m-1 bg-danger text-white rounded justify-content-center";
   } else if (props.remaining > 0 && props.remaining <= 8) {
     colClass =
-      "col-md-2 border  border-warning m-1 bg-warning text-white rounded justify-content-center";
+      " border  border-warning m-1 bg-warning text-white rounded justify-content-center";
   } else {
     colClass =
-      "col-md-2 border border-light m-1 bg-light text-dark rounded justify-content-center";
+      " border border-light m-1 bg-light text-dark rounded justify-content-center";
   }
   const day = new Date(Date.parse(props.startDate));
-  console.log(props)
   return (
     <Col className={colClass}>
       <div className="text-center">

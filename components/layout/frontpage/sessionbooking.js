@@ -16,8 +16,12 @@ export default function SessionBooking() {
     "/api/newslot?offset=" + queryLength,
     fetcher
   );
+
   if (data) isPending = false;
+
   let slotArrayMod = data;
+
+
   const handleClick = (event) => {
     setQueryLength(event.target.value);
 
@@ -26,6 +30,8 @@ export default function SessionBooking() {
   const handleSwitchClick = (event) => {
     setShowFull(!showFull);
   };
+
+  
   return (
     <div className="text-white text-center justify-content-center">
       <Row className="mt-4 justify-content-center">

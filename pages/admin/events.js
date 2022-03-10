@@ -8,7 +8,7 @@ export default function AdminEvents () {
              <AdminBar />
              <AdminBody>
                  <h2>Is HPP Open Events Admin</h2>
-                 <h6 className="mb-3">Add, edit and delete events. You currently will not get a notification on changing an event. WARNING: clicking the delete event button is final!!</h6>
+                 <h6 className="mb-3">Add, edit and delete events. Deleting events is final, so be careful.</h6>
                 <EventsTable />
              </AdminBody>
         </Container>

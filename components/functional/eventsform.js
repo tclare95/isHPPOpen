@@ -5,24 +5,34 @@ import Col from "react-bootstrap/Col";
 import Button from "react-bootstrap/Button";
 import axios from "axios";
 import { useState } from "react";
-import {mutate} from "swr";
+import { mutate } from "swr";
 
 export default function EventsForm(props) {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState(false);
 
+  // Set the default state for the delete button confirmation.
+  const [deleteState, setDeleteState] = useState(false);
+
   const handleDeleteClick = (id) => {
-    axios
+
+    if (deleteState) {
+      axios
       .delete(`/api/events/?${id}`, { withCredentials: true })
       .then((response) => {
         try {
           setSuccess(true);
-          mutate("/api/events")
+          mutate("/api/events");
           // window.location.reload();
         } catch {
           setError(true);
         }
       });
+      setDeleteState(false);
+    } else {
+      setDeleteState(true);
+    }
+    
   };
 
   const {
@@ -43,7 +53,7 @@ export default function EventsForm(props) {
           endDate: endDate.toISOString().split("T")[0],
           eventDetails: eventDetails,
         }}
-        onSubmit={(values, { setSubmitting }) => {
+        onSubmit={(values, { setSubmitting, resetForm }) => {
           const dataArray = {
             new_event_id: values.id,
             new_event_name: values.name,
@@ -57,12 +67,13 @@ export default function EventsForm(props) {
             .then((response) => {
               if (response.status === 200) {
                 setSuccess(true);
-                mutate("/api/events")
+                mutate("/api/events");
                 // window.location.reload();
               } else {
                 setError(true);
               }
             });
+            resetForm();
         }}
       >
         {(formik) => (
@@ -116,7 +127,7 @@ export default function EventsForm(props) {
                   onChange={formik.handleChange}
                   value={formik.values.eventDetails}
                   rows={8}
-                  style={{resize: "none"}}
+                  style={{ resize: "none" }}
                 />
               </Form.Row>
               <Form.Row className="my-2 mx-auto">
@@ -128,17 +139,18 @@ export default function EventsForm(props) {
                 <Button
                   variant="danger"
                   onClick={() => handleDeleteClick(props.id)}
+                  disabled={!props.isNew}
                 >
-                  Delete Event
+                  {props.isNew ? "Delete Event" : "N/A"}
+                  {deleteState ? " - Click again to confirm" : ""}
                 </Button>
               </Form.Row>
             </Form>
-           {success && <div>Event successfully modified!</div>}
-           {error && <div>Error modifying event!</div>}
+            {success && <div><h5>Event successfully modified!</h5></div>}
+            {error && <div>Error modifying event!</div>}
           </Row>
         )}
       </Formik>
-     
     </>
   );
 }

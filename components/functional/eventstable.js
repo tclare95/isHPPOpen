@@ -19,6 +19,9 @@ export default function EventsTable() {
     return (
       <div>
         <Row>
+          <h2 className="text-light mx-auto my-4">Current events:</h2>
+        </Row>
+        <Row>
           {data &&
             data.map((event, index) => (
               <Col md={4} className="m-2">
@@ -29,15 +32,19 @@ export default function EventsTable() {
                   startDate={new Date(event.event_start_date)}
                   endDate={new Date(event.event_end_date)}
                   eventDetails={event.event_details}
+                  isNew={true}
                 />
               </Col>
             ))}
+            {data[0] ? null :  <h4 className="text-light mx-auto my-0">No events</h4>}
         </Row>
         <Row>
           <h2 className="text-light mx-auto my-4">Add new event:</h2>
         </Row>
         <Row className="pb-4">
-          <EventsForm />
+          <EventsForm
+          isNew={false}
+          />
         </Row>
       </div>
     );

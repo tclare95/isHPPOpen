@@ -31,7 +31,7 @@ export default function SessionBooking() {
   };
 
   return (
-    <div className="text-white text-center justify-content-center">
+    <div id="booking" className="text-white text-center justify-content-center">
       <Row className="mt-4 justify-content-center">
         <h2>Session Booking Info</h2>
       </Row>

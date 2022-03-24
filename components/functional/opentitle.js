@@ -48,9 +48,12 @@ export default function OpenTitle(props) {
     <h2 className="font-weight-bold m-3">
       HPP is (probably) <span className="text-success">Open</span>
       <br />{" "}
-      <small className="font-weight-light font-italic text-muted">
-        For prebooked sessions only
-      </small>
+      <a 
+      className="font-weight-light font-italic text-muted text-decoration-none"
+      href="#booking"
+      >
+        Prebook your session!
+      </a>
     </h2>
   );
 }

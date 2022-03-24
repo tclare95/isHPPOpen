@@ -1,37 +1,34 @@
 const axios = require("axios");
 const qs = require("qs");
 
-export default (req, res) => {
-  // Get the day offset from the query params, default to zero
-  let dayOffset;
-  req.query.offset ? (dayOffset = req.query.offset) : (dayOffset = 0);
-  // Add required information to formData
-
+const fetchTimetableSlots = async (offset = 0) => {
   const data = {
     CurrentUmbracoPageId: "2396",
-    SelectedDayOffset: dayOffset,
+    SelectedDayOffset: offset,
     TimetableLocation: "82",
   };
+
+  const fetchedData = await axios.post(
+    "https://www.nwscnotts.com/umbraco/LegendTimetable/LegendTimetable/Fetch",
+    qs.stringify(data)
+  );
+  // console.log(fetchedData)
+  // Set up an array to add responses to
+  let sessionArray = [];
+  fetchedData.data.ClassActivities.ClassActivitiesByDay.forEach((element) => {
+    if (element.SessionName === "White Water Course") {
+      sessionArray.push(element);
+    }
+  });
+  return sessionArray;
+};
+
+export default async (req, res) => {
   // send post to hpp api
-  axios
-    .post(
-      "https://www.nwscnotts.com/umbraco/LegendTimetable/LegendTimetable/Fetch",
-      qs.stringify(data)
-    )
-    .then(function (response) {
-      // Set up an array to add responses to
-      let arrayToSend = [];
-      // From the Response array of activities filter out the whitewater ones, and add them to an array
-      response.data.ClassActivities.ClassActivitiesByDay.forEach((element) => {
-        if (element.SessionName === "White Water Course") {
-          arrayToSend.push(element);
-        }
-      });
-      // Send the array back
-      console.log(req.query.offset);
-      res.json(arrayToSend);
-    })
-    .catch(function (error) {
-      res.status(404).send();
-    });
+  try {
+    const arrayToSend = await fetchTimetableSlots(req.query.offset);
+    res.json(arrayToSend);
+  } catch (error) {
+    res.status(404).send();
+  }
 };

@@ -52,7 +52,7 @@ export default function OpenTitle(props) {
       className="font-weight-light font-italic text-muted text-decoration-none"
       href="#booking"
       >
-        Prebook your session!
+        Pre booking recommended!
       </a>
     </h2>
   );

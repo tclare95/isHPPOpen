@@ -27,9 +27,9 @@ export default function Home(props) {
     setLowerBound(newLowerBound);
   };
   return (
-    <Container fluid className="bg-dark">
-      <Meta />
-      <Header />
+    <Container fluid >
+      <Meta title="Is HPP Open" />
+      <Header message="Session booking is working again - more days to come."/>
       <GraphContext.Provider
         value={{
           upperBound,

@@ -79,7 +79,7 @@ export default function EventsForm(props) {
         {(formik) => (
           <Row className="justify-content-center text-light border-form my-1 p-4 ">
             <Form onSubmit={formik.handleSubmit} className="my-auto">
-              <Form.Row>
+              <Row>
                 <Form.Label htmlFor="id">ID</Form.Label>
                 <Form.Control
                   id="id"
@@ -88,8 +88,8 @@ export default function EventsForm(props) {
                   value={formik.values.id}
                   disabled
                 />
-              </Form.Row>
-              <Form.Row>
+              </Row>
+              <Row>
                 <Form.Label htmlFor="name">Event Name</Form.Label>
                 <Form.Control
                   id="name"
@@ -97,8 +97,8 @@ export default function EventsForm(props) {
                   onChange={formik.handleChange}
                   value={formik.values.name}
                 />
-              </Form.Row>
-              <Form.Row>
+              </Row>
+              <Row>
                 <Form.Label htmlFor="startDate">Event Start Date</Form.Label>
                 <Form.Control
                   id="startDate"
@@ -107,8 +107,8 @@ export default function EventsForm(props) {
                   onChange={formik.handleChange}
                   value={formik.values.startDate}
                 />
-              </Form.Row>
-              <Form.Row>
+              </Row>
+              <Row>
                 <Form.Label htmlFor="endDate">Event End Date</Form.Label>
                 <Form.Control
                   id="endDate"
@@ -117,8 +117,8 @@ export default function EventsForm(props) {
                   onChange={formik.handleChange}
                   value={formik.values.endDate}
                 />
-              </Form.Row>
-              <Form.Row className>
+              </Row>
+              <Row className>
                 <Form.Label htmlFor="eventDetails">Event Details</Form.Label>
                 <Form.Control
                   id="eventDetails"
@@ -129,13 +129,13 @@ export default function EventsForm(props) {
                   rows={8}
                   style={{ resize: "none" }}
                 />
-              </Form.Row>
-              <Form.Row className="my-2 mx-auto">
+              </Row>
+              <Row className="my-2 mx-auto">
                 <Button type="submit">
                   {formik.values.id ? "Save Edit" : "Add Event"}
                 </Button>
-              </Form.Row>
-              <Form.Row className="my-2 mx-auto">
+              </Row>
+              <Row className="my-2 mx-auto">
                 <Button
                   variant="danger"
                   onClick={() => handleDeleteClick(props.id)}
@@ -144,7 +144,7 @@ export default function EventsForm(props) {
                   {props.isNew ? "Delete Event" : "N/A"}
                   {deleteState ? " - Click again to confirm" : ""}
                 </Button>
-              </Form.Row>
+              </Row>
             </Form>
             {success && <div><h5>Event successfully modified!</h5></div>}
             {error && <div>Error modifying event!</div>}

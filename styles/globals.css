@@ -11,7 +11,6 @@ a {
   box-sizing: border-box;
 }
 
-
 .circle {
   width: 20px;
   height: 20px;
@@ -24,6 +23,16 @@ a {
 
 .border-form {
   padding: 1rem;
-  border: .2rem solid #ececec;
+  border: 0.2rem solid #ececec;
   border-radius: 8px;
 }
+
+.accordion-item {
+  background-color: #343a40 !important;
+}
+
+.accordion-button {
+  background-color: rgb(248, 249, 250) !important;
+  color: #212529 !important;
+}
+

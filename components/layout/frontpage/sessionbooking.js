@@ -1,5 +1,6 @@
 import Button from "react-bootstrap/Button";
 import Row from "react-bootstrap/Row";
+import Col from "react-bootstrap/Col"
 import Collapse from "react-bootstrap/Collapse";
 import { useState } from "react";
 import Slots from "../../functional/slots";
@@ -41,24 +42,27 @@ export default function SessionBooking() {
           below. They should just take you to the booking page once you log in.
         </p>
       </Row>
-      <Row className="mt-2 justify-content-center">
+      <Row className="mt-2 justify-content-center mb-0">
         <h5>Find Sessions</h5>
+        <p>Show Full sessions</p>
       </Row>
-      <Row className="justify-content-center">
-        <Form.Check
-          type="switch"
-          id="custom-switch"
-          label="Show Full Sessions"
+      <Row className="mt-0">
+        <Col>
+        <Form.Switch
+          // label="Show Full Sessions"
           onClick={handleSwitchClick}
         />
+        </Col>
       </Row>
       <Row className="justify-content-center">
+        <Col>
         <Button value="0" className="m-1" onClick={handleClick}>
           Slots Today
         </Button>
         <Button value="1" className="m-1" onClick={handleClick}>
           Slots Tomorrow
         </Button>
+        </Col>
       </Row>
       <Row className="justify-content-center">
         <Collapse in={open}>

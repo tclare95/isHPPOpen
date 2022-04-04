@@ -31,7 +31,8 @@ export default function TopContent(props) {
           <OpenTitle cachedEvents={props.cachedEvents} />
         </Col>
       </Row>
-      <Row className="justify-content-center">
+      <Row >
+        <Col>
         <h3>
           The River Level is{" "}
           {isPending
@@ -48,6 +49,7 @@ export default function TopContent(props) {
             <VomitFactor levelData={levelData.level_data.slice(0, 9)} />
           )}
         </a>
+        </Col>
       </Row>
       <Row className="justify-content-center">
         {isPending ? (

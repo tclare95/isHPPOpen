@@ -83,7 +83,7 @@ export default function TopContent(props) {
         <Col className="justify-content-center text-center">
           {isPending ? (
             <Spinner animation="border" role="status">
-            <span className="sr-only">Loading...</span>
+            
           </Spinner>
           ) : (
             <ChartRender

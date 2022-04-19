@@ -5,6 +5,8 @@ import Header from "../components/layout/frontpage/header";
 import Meta from "../components/meta";
 import Link from "next/link";
 import Accordion from 'react-bootstrap/Accordion';
+import Footer from "../components/layout/frontpage/footer";
+
 
 export default function WorldChamps() {
   return (
@@ -33,20 +35,23 @@ export default function WorldChamps() {
                   Wednesday 22nd June - Sunday 26th June 2022
                 </span>
               </h5>
+              <p>
+                The course will likely be closed during the above dates
+              </p>
               <Link href="#schedule">
                 <h6>
-                  <a>Click Here for more details on dates</a>
+                  <a>Click Here for more details on dates/schedule</a>
                 </h6>
               </Link>
             </Col>
           </Row>
-          <Row>
+          <Row id ="schedule"className="mt-5">
             <Col>
               <h2>Full Schedule Info</h2>
               <Accordion defaultActiveKey="0">
                 <Accordion.Item eventKey="0">
-                  <Accordion.Header>Competition Dates</Accordion.Header>
-                  <Accordion.Body>1234</Accordion.Body>
+                  <Accordion.Header>Training Dates</Accordion.Header>
+                  <Accordion.Body>Team Training Dates will be added when they are announced</Accordion.Body>
                 </Accordion.Item>
                 <Accordion.Item eventKey="1">
                   <Accordion.Header>Competition Dates</Accordion.Header>
@@ -57,6 +62,7 @@ export default function WorldChamps() {
             </Col>
           </Row>
         </Container>
+        <Footer />
       </Container>
     </>
   );

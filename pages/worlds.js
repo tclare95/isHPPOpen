@@ -4,6 +4,7 @@ import Row from "react-bootstrap/Row";
 import Header from "../components/layout/frontpage/header";
 import Meta from "../components/meta";
 import Link from "next/link";
+import Table from "react-bootstrap/Table"
 import Accordion from 'react-bootstrap/Accordion';
 import Footer from "../components/layout/frontpage/footer";
 
@@ -18,31 +19,31 @@ export default function WorldChamps() {
           <Row className="mb-5">
             <Col>
               <h1>Nottingham Worlds 2022</h1>
+              <Link href="/"><h2 className="navHeader">← Back to Main Page</h2></Link>
             </Col>
           </Row>
           <Row>
             <Col>
               <h2>Key Dates</h2>
               <h5>
-                <span className="text-bold">Official Training:</span>{" "}
-                <span className="font-weight-light font-italic">
-                  Wednesday 22nd June - Sunday 26th June 2022
+                <span >Official Training Week:</span>{"   "}
+                <span className="fw-light fst-italic">
+                  Wednesday <span className="fw-bold">22nd</span> June - Sunday <span className="fw-bold">26th</span> June 2022
                 </span>
               </h5>
               <h5>
-                <span className="text-bold">Competition:</span>{" "}
-                <span className="font-weight-light font-italic">
-                  Wednesday 22nd June - Sunday 26th June 2022
+                <span className="text-bold">Competition Week:</span>{"   "}
+                <span className="fw-light fst-italic">
+                  Monday <span className="fw-bold">27nd</span> June - Saturday <span className="fw-bold">2nd</span> July 2022
                 </span>
               </h5>
               <p>
-                The course will likely be closed during the above dates
+                The course is closed to the public during the competition week, and will have disruption during the training week. The event will be using the course for official team training during much of the day, with the course open to the public during the evening. Times when it will be open are below.
               </p>
-              <Link href="#schedule">
+              
                 <h6>
-                  <a>Click Here for more details on dates/schedule</a>
+                  <a>There are competitions as part of the festival of paddling that are open to be public - <Link href="https://britishcanoeingevents.org.uk/freestyle2022/festival-of-paddling/">Click Here</Link> for more information.</a>
                 </h6>
-              </Link>
             </Col>
           </Row>
           <Row id ="schedule"className="mt-5">
@@ -51,11 +52,52 @@ export default function WorldChamps() {
               <Accordion defaultActiveKey="0">
                 <Accordion.Item eventKey="0">
                   <Accordion.Header>Training Dates</Accordion.Header>
-                  <Accordion.Body>Team Training Dates will be added when they are announced</Accordion.Body>
+                  <Accordion.Body>
+                  <Table striped bordered hover size="sm" variant="dark">
+  <thead>
+    <tr>
+      <th>Date</th>
+      <th>Times course open for public paddling</th>
+      <th>Public Worlds events?</th>
+      
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Wednesday 22nd June</td>
+      <td>17:00 - 22:00</td>
+      <td><Link href="https://britishcanoeingevents.org.uk/freestyle2022/festival-of-paddling/">World Freestyle League</Link></td>
+    </tr>
+    <tr>
+      <td>Thursday 23rd June</td>
+      <td>17:00 - 22:00</td>
+      <td>-</td>
+    </tr>
+    <tr>
+      <td>Friday 24th June</td>
+      <td>17:00 - 22:00</td>
+      <td><Link href="https://britishcanoeingevents.org.uk/freestyle2022/festival-of-paddling/">World Freestyle League</Link></td>
+    </tr>
+    <tr>
+      <td>Saturday 25th June</td>
+      <td>17:00 - 22:00</td>
+      <td><Link href="https://britishcanoeingevents.org.uk/freestyle2022/festival-of-paddling/">Young Guns World Series</Link></td>
+    </tr>
+    <tr>
+      <td>Sunday 26th June</td>
+      <td>17:00 - ??:??</td>
+      <td><Link href="https://britishcanoeingevents.org.uk/freestyle2022/festival-of-paddling/">Young Guns World Series, Opening Ceremony</Link></td>
+    </tr>
+  </tbody>
+</Table>
+
+                  </Accordion.Body>
                 </Accordion.Item>
                 <Accordion.Item eventKey="1">
                   <Accordion.Header>Competition Dates</Accordion.Header>
-                  <Accordion.Body>1234</Accordion.Body>
+                  <Accordion.Body><Link href="https://britishcanoeingevents.org.uk/freestyle2022/schedule/">
+                  Please click here for the official competition schedule
+                  </Link></Accordion.Body>
                 </Accordion.Item>
               </Accordion>
               

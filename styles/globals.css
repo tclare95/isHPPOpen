@@ -36,3 +36,6 @@ a {
   color: #212529 !important;
 }
 
+.navHeader:hover {
+color: #8D918D;
+}

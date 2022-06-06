@@ -46,6 +46,22 @@ export default function WorldChamps() {
                 </h6>
             </Col>
           </Row>
+
+          <Row className="mt-5">
+            <Col>
+              <h2>HPP Bookings</h2>
+              <h5>HPP is using different bookings from the 18th of June!!!</h5>
+              <h5>
+                
+                <span className="fw-light fst-italic">
+                 1 Hr Slots - £7 - Different slots for competitors and non competitors
+                </span>
+              </h5>
+              <p>
+Booking for these slots is <span className="fw-bold"><Link href="https://www.nwscnotts.com/nwsc/bookingscentre/index">open now</Link></span>. Expect them to get booked up quickly, even with extended opening hours into the evenings.              </p>
+              
+            </Col>
+          </Row>
           <Row id ="schedule"className="mt-5">
             <Col>
               <h2>Full Schedule Info</h2>

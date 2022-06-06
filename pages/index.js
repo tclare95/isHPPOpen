@@ -29,7 +29,7 @@ export default function Home(props) {
   return (
     <Container fluid >
       <Meta title="Is HPP Open" />
-      <Header message="Worlds is this month. Tap the banner for more information"/>
+      <Header message="Worlds is this month. HPP ARE CHANGING SLOTS FROM 19/05! Tap the banner for more information"/>
       <GraphContext.Provider
         value={{
           upperBound,

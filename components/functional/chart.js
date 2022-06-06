@@ -95,7 +95,7 @@ class ChartRender extends React.Component {
           },
           chartArea: {
             top: 10,
-            right: 30,
+            right: 10,
             bottom: 50,
             left: 50,
             backgroundColor: {

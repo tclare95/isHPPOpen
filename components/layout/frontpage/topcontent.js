@@ -95,7 +95,7 @@ export default function TopContent(props) {
           )}
           <Button
             className=" mt-2"
-            data-lowerbound="1.01"
+            data-lowerbound="0.98"
             data-upperbound="2.2"
             onClick={updateBounds}
           >

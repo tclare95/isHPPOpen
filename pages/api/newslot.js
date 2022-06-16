@@ -18,6 +18,8 @@ const fetchTimetableSlots = async (offset = 0) => {
   fetchedData.data.ClassActivities.ClassActivitiesByDay.forEach((element) => {
     if (element.SessionName === "White Water Course") {
       sessionArray.push(element);
+    } else if (element.SessionName === "White Water Course - Non World Champs") {
+      sessionArray.push(element)
     }
   });
   return sessionArray;

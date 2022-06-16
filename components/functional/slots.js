@@ -7,7 +7,7 @@ export default function Slots(props) {
   }
   if (props.slotArray[0]) {
     return (
-      <Row className="justify-content-center">
+      <Row className="justify-content-center ">
         {props.slotArray.map((slot, index) => (
           <Slot
             key={slot.ActivityInstanceId}

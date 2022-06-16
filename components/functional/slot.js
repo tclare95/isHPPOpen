@@ -7,13 +7,13 @@ export default function Slot(props) {
     return null;
   } else if (props.remaining === 0) {
     colClass =
-      " border  border-danger  m-1 bg-danger text-white rounded justify-content-center";
+      " border  border-danger  m-1 bg-danger text-white rounded justify-content-center col-sm-4 col-lg-2";
   } else if (props.remaining > 0 && props.remaining <= 8) {
     colClass =
-      " border  border-warning m-1 bg-warning text-white rounded justify-content-center";
+      " border  border-warning m-1 bg-warning text-white rounded justify-content-center col-sm-4 col-lg-2";
   } else {
     colClass =
-      " border border-light m-1 bg-light text-dark rounded justify-content-center";
+      " border border-light m-1 bg-light text-dark rounded justify-content-center col-sm-4 col-lg-2";
   }
   const day = new Date(Date.parse(props.startDate));
   return (

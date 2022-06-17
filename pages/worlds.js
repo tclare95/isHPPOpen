@@ -58,7 +58,7 @@ export default function WorldChamps() {
                 </span>
               </h5>
               <p>
-Booking for these slots is <span className="fw-bold"><Link href="https://www.nwscnotts.com/nwsc/bookingscentre/index">open now</Link></span>. Expect them to get booked up quickly, even with extended opening hours into the evenings.              </p>
+Booking for these slots is <span className="fw-bold"><Link href="https://www.nwscnotts.com/nwsc/bookingscentre/index">open now</Link></span>. Expect them to get booked up quickly, even with extended opening hours into the evenings. The slot checker on the site shows NON world champs slots             </p>
               
             </Col>
           </Row>

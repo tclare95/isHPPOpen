@@ -12,9 +12,9 @@ const fetchTimetableSlots = async (offset = 0) => {
     "https://www.nwscnotts.com/umbraco/LegendTimetable/LegendTimetable/Fetch",
     qs.stringify(data)
   );
-  // console.log(fetchedData)
   // Set up an array to add responses to
   let sessionArray = [];
+  // iterate over fetched data and push to array if it is correct
   fetchedData.data.ClassActivities.ClassActivitiesByDay.forEach((element) => {
     if (element.SessionName === "White Water Course") {
       sessionArray.push(element);

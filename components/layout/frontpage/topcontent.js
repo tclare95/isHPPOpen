@@ -46,7 +46,7 @@ export default function TopContent(props) {
           {isPending ? (
             null
           ) : (
-            <VomitFactor levelData={levelData.level_data.slice(0, 9)} />
+            <VomitFactor levelData={levelData.level_data.slice(0, 19)} />
           )}
         </a>
         </Col>

@@ -3,7 +3,7 @@ export default function VomitFactor(props) {
   console.log(props.levelData)
 
   const changeRate =
-    (((props.levelData[0].reading_level - props.levelData[4].reading_level)+(props.levelData[0].reading_level - props.levelData[4].reading_level)/2));
+    (((props.levelData[0].reading_level - props.levelData[4].reading_level)+(props.levelData[4].reading_level - props.levelData[8].reading_level)+(props.levelData[8].reading_level - props.levelData[12].reading_level)+(props.levelData[12].reading_level - props.levelData[16].reading_level)/4));
   let circleClass =
     "align-middle rounded-circle d-inline-block circle ml-2 mt-2";
   if (currentLevel >= 1.5 || changeRate > 0.3) {

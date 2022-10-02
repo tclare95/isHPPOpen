@@ -8,7 +8,7 @@ export default function VomitFactor(props) {
       console.log("24/48 danger")
       // return "danger"
     } 
-    else if (props.levelData[0].reading_level - props.levelData[96].reading_level > 0.15 || props.levelData[0].reading_level - props.levelData[192].reading_level > 0.1) {
+    else if (props.levelData[0].reading_level - props.levelData[96].reading_level > 0.1 || props.levelData[0].reading_level - props.levelData[192].reading_level > 0.1) {
       console.log("24/48 warning")
       // return "warning"
     } else {

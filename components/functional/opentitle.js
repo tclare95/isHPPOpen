@@ -1,4 +1,5 @@
 const currentTime = new Date();
+const tomorrowTime = currentTime.setDate(1);
 import { useFetchedLevels } from "../../libs/levelsswrhook";
 
 export default function OpenTitle(props) {
@@ -22,8 +23,9 @@ export default function OpenTitle(props) {
       let endDate;
       endDate = new Date(element.event_end_date);
       let startDate;
+      console.log(endDate)
       startDate = new Date(element.event_start_date);
-      if (currentTime <= endDate && currentTime >= startDate) {
+      if (tomorrowTime < endDate && currentTime >= startDate) {
         checkvalue = true;
       }
     });

@@ -29,7 +29,7 @@ export default function Home(props) {
   return (
     <Container fluid >
       <Meta title="Is HPP Open" />
-      <Header message="Exclusive booking this weekend (Aug 13th/14th) - course closed"/>
+      <Header message="EA forecast is less accurate than normal - course is likely to be lower than predicted"/>
       <GraphContext.Provider
         value={{
           upperBound,
@@ -54,13 +54,19 @@ export async function getStaticProps() {
 
   // Static caching of events
   const { db } = await connectToDatabase();
-  const now = new Date();
+  let now = null
+  now = new Date();
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() - 1);
   const collection = await db.collection("eventschemas");
   const data = await collection
-    .find({ event_end_date: { $gte: now } })
+    .find({ event_end_date: { $gte: tomorrow } })
     .limit(5)
     .toArray();
   const cleanedData = JSON.parse(JSON.stringify(data));
+  console.log(now);
+  console.log(tomorrow)
+  console.log(cleanedData)
   // Revalidate = time before next re-renders the page in seconds = 30 minutes
-  return { props: { data: cleanedData }, revalidate: 1800 };
+  return { props: { data: cleanedData }, revalidate: 5 };
 }

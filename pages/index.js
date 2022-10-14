@@ -29,7 +29,7 @@ export default function Home(props) {
   return (
     <Container fluid >
       <Meta title="Is HPP Open" />
-      <Header message="EA forecast is less accurate than normal - course is likely to be lower than predicted"/>
+      <Header message="HPP Online booking system is broken - will update if any changes"/>
       <GraphContext.Provider
         value={{
           upperBound,

@@ -29,7 +29,7 @@ export default function Home(props) {
   return (
     <Container fluid >
       <Meta title="Is HPP Open" />
-      <Header message="HPP Online booking system is broken - will update if any changes"/>
+      <Header message="Course floodlights are not working correctly - no sessions after 3:30PM"/>
       <GraphContext.Provider
         value={{
           upperBound,

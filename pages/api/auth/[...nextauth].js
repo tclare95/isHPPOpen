@@ -8,6 +8,7 @@ const options = {
       clientSecret: process.env.AUTH0_CLIENT_SECRET,
       issuer: process.env.AUTH0_DOMAIN,
     })],
+    secret: process.env.SECRET,
   
 }
 

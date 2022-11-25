@@ -64,7 +64,7 @@ module.exports = async (req, res) => {
   };
   let levelData = {};
   let rainfallData = {};
-
+  const { db } = await connectToDatabase();
   try {
     const request = JSON.parse(Object.keys(body)[0]);
     Object.keys(levelStations).forEach((station) => {
@@ -88,7 +88,7 @@ module.exports = async (req, res) => {
         recordedLevels: levels
     }
 
-    const { db } = await connectToDatabase();
+    
     const collection = db.collection("trentlockdata");
     const result = await collection.insertOne(documentToInsert);
     db.close();

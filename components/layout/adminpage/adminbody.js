@@ -1,12 +1,12 @@
-import { signIn, signOut, useSession } from 'next-auth/client'
+import { signIn, signOut, useSession } from 'next-auth/react'
 import Spinner from 'react-bootstrap/Spinner'
 import Row from 'react-bootstrap/Row'
 import Button from 'react-bootstrap/Button'
 import Container from 'react-bootstrap/Container'
 
 export default function AdminBody (props) {
-    const [session, loading] = useSession()
-    if (loading) {
+    const { data: session, status } = useSession()
+    if (status === 'loading') {
         return (
             <Spinner animation="border" role="status">
                 <span className="sr-only">Loading...</span>

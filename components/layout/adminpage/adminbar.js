@@ -1,50 +1,53 @@
-import { signIn, signOut, useSession } from 'next-auth/client'
-import Navbar from 'react-bootstrap/Navbar';
-import Nav from 'react-bootstrap/Nav'
-import Link from 'next/link'
-import Button from 'react-bootstrap/Button';
+import { signIn, signOut, useSession } from "next-auth/react";
+import Navbar from "react-bootstrap/Navbar";
+import Nav from "react-bootstrap/Nav";
+import Link from "next/link";
+import Button from "react-bootstrap/Button";
 
+export default function AdminBar() {
+  const { data: session, status } = useSession();
 
-export default function AdminBar () {
-    const [session, loading] = useSession()
+  if (session) {
+    return (
+      <Navbar bg="light" expand="lg" className="text-dark mb-3">
+        <Link href="/admin" passHref>
+          <Navbar.Brand className="text-dark">Is HPP Open Admin</Navbar.Brand>
+        </Link>
+        <Nav className="mr-auto">
+          <Nav.Link className="text-dark">
+            <Link href="/admin/events">Edit Events</Link>
+          </Nav.Link>
+          <Nav.Link className="text-dark">
+            <Link href="/admin/message">Edit Site Message</Link>
+          </Nav.Link>
+        </Nav>
+        <Navbar.Toggle />
+        <Navbar.Collapse className="justify-content-end">
+          <Navbar.Text className="mr-2 text-dark">
+            Signed in As {session.user.name}
+          </Navbar.Text>
 
-        if(session) {
-            return (
-                <Navbar bg="light" expand="lg" className="text-dark mb-3">
-                    <Link href="/admin" passHref><Navbar.Brand className="text-dark">Is HPP Open Admin</Navbar.Brand></Link>
-                    <Nav className="mr-auto">
-                    <Link href="/admin/events" passHref><Nav.Link className="text-dark">Edit Events</Nav.Link></Link>
-                    <Link href="/admin/message" passHref><Nav.Link className="text-dark">Edit Site Message</Nav.Link></Link>
-                    </Nav>
-                    <Navbar.Toggle />
-                    <Navbar.Collapse className="justify-content-end">
-                        <Navbar.Text className="mr-2 text-dark">
-                            Signed in As {session.user.name}
-                        </Navbar.Text>
-                        
-                        <Button onClick={signOut}>Sign Out</Button>
-                    </Navbar.Collapse>
-                    
-                </Navbar>
-            )
-        }
+          <Button onClick={signOut}>Sign Out</Button>
+        </Navbar.Collapse>
+      </Navbar>
+    );
+  }
 
-        return (
-            <Navbar bg="dark" expand="lg" className="text-dark mb-3">
-                    <Link href="/admin" passHref><Navbar.Brand className="text-dark">Is HPP Open Admin</Navbar.Brand></Link>
-                    <Navbar.Toggle />
-                    <Navbar.Collapse className="justify-content-end">
-                        <Navbar.Text className="mr-2 text-dark">
-                            You are not signed in
-                        </Navbar.Text>
-                        
-                        <Button onClick={signIn}>Sign In</Button>
-                    </Navbar.Collapse>
-                    
-                </Navbar>
-        )
-        
-    
+  return (
+    <Navbar bg="dark" expand="lg" className="text-dark mb-3">
+      <Link href="/admin" passHref>
+        <Navbar.Brand className="text-dark">Is HPP Open Admin</Navbar.Brand>
+      </Link>
+      <Navbar.Toggle />
+      <Navbar.Collapse className="justify-content-end">
+        <Navbar.Text className="mr-2 text-dark">
+          You are not signed in
+        </Navbar.Text>
+
+        <Button onClick={signIn}>Sign In</Button>
+      </Navbar.Collapse>
+    </Navbar>
+  );
 }
 
 /*

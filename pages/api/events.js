@@ -1,5 +1,5 @@
 import { connectToDatabase } from '../../libs/database'
-import { getSession } from 'next-auth/client'
+import { getSession } from 'next-auth/react'
 const ObjectID = require('mongodb').ObjectID;
 
 

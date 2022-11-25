@@ -6,6 +6,7 @@ import EventsArea from "../components/layout/frontpage/eventsarea";
 import WaterQuality from "../components/layout/frontpage/waterquality";
 import WeirInfo from "../components/layout/frontpage/weirinfo";
 import Footer from "../components/layout/frontpage/footer";
+import Link from "next/link";
 import GraphContext from "../libs/context/graphcontrol";
 import { useState } from "react";
 import Meta from "../components/meta";

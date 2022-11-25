@@ -2,7 +2,7 @@ import '../styles/globals.css'
 import 'bootstrap/dist/css/bootstrap.min.css';
 import TagManager from 'react-gtm-module'
 import {useEffect} from 'react'
-import { Provider } from 'next-auth/client'
+import { SessionProvider } from "next-auth/react"
 import { Analytics } from '@vercel/analytics/react';
 
 
@@ -15,10 +15,10 @@ function MyApp({ Component, pageProps }) {
   }, [])
 
   return (
-    <Provider session={pageProps.session}>
+    <SessionProvider session={pageProps.session} refetchInterval={5 * 60}>
         <Component {...pageProps} />
         <Analytics />
-    </Provider>
+    </SessionProvider>
   )
 }
 

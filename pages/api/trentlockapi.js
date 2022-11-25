@@ -91,7 +91,9 @@ module.exports = async (req, res) => {
     const { db } = await connectToDatabase();
     const collection = db.collection("trentlockdata");
     const result = await collection.insertOne(documentToInsert);
+    db.close();
   } catch (error) {
     console.log("error", error);
+    db.close();
   }
 };

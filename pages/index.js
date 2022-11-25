@@ -29,7 +29,7 @@ export default function Home(props) {
   return (
     <Container fluid >
       <Meta title="Is HPP Open" />
-      <Header message="Course floodlights are not working correctly - no sessions after 3:30PM"/>
+      <Link href="/trentlock"><Header message="Course floodlights are not working correctly - no sessions after 3:30PM. Click on banner for trent lock logging"/></Link>
       <GraphContext.Provider
         value={{
           upperBound,

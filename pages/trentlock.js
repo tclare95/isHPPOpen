@@ -30,7 +30,6 @@ export default function TrentLock() {
   return (
     <Container fluid className="bg-dark">
       <Meta title="Trent Lock Info Gathering - Is HPP Open" />
-      <Header message="This will gather information about trent lock levels to produce a better forecast model" />
       <Container className="text-white text-center">
         <Row className="mb-5">
           <Col>

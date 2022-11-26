@@ -63,9 +63,7 @@ module.exports = async (req, res) => {
     suttonColdfield: 12345678901,
     wanlip: 123456789012,
   };
-  let levelData = {};
-  let rainfallData = {};
-  const { db } = await connectToDatabase();
+  
   let levels
   const request = JSON.parse(Object.keys(body)[0]);
   try {
@@ -79,7 +77,22 @@ module.exports = async (req, res) => {
     levels = await Promise.all(Object.values(levelData));
 } catch (error) {
     console.log("error", error);
+    // as a backup, if the river level call fails write the user input to the database with blank river levels
+    const documentToInsert = {
+        date: request.dateTime,
+        dateCreated: new Date(),
+        userRange: request.range,
+        userComment: request.comment,
+        userBoat: request.boat,
+        recordedLevels: null
+    }
+    const { db } = await connectToDatabase();
+    const collection = db.collection("trentlockdata");
+    const result = await collection.insertOne(documentToInsert);
   }
+  let levelData = {};
+  let rainfallData = {};
+  const { db } = await connectToDatabase();
   try {
     console.log("length of returned river levels is", levels[0].length);
     // add everything to the database

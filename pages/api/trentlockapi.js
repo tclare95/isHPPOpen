@@ -6,23 +6,24 @@ const getLevelByStation = async (stationId, dateObject) => {
   // returns an array of objects with the date and level
   let arrayToReturn = [];
   const dayZero = dateObject.toISOString().split("T")[0];
-//   const dayOne = new Date(dateObject.setDate(dateObject.getDate() - 1))
-//     .toISOString()
-//     .split("T")[0];
+
 
   const levelZero = await axios.get(
     `https://environment.data.gov.uk/flood-monitoring/id/stations/${stationId}/readings?_sorted&date=${dayZero}`
-  );
-//   const levelOne = await axios.get(
-//     `https://environment.data.gov.uk/flood-monitoring/id/stations/${stationId}/readings?_sorted&date=${dayOne}`
-//   );
+  ).catch((error) => {
+    if (error.response) {
+        console.log(error.response.data);
+        console.log(error.response.status);
+        console.log(error.response.headers);
+    }
+    });
+
+
   levelZero.data.items.forEach((item) =>
     arrayToReturn.push({ date: item.dateTime, level: item.value })
   );
-//   levelOne.data.items.forEach((item) =>
-//     arrayToReturn.push({ date: item.dateTime, level: item.value })
-//   );
 
+    console.log(levelZero)
   return arrayToReturn;
 };
 
@@ -34,7 +35,6 @@ module.exports = async (req, res) => {
   // try parsing the body, if it fails, return an error
   try {
     const request = JSON.parse(Object.keys(body)[0]);
-    console.log(request);
     submissionDate = new Date(request.dateTime);
     res.status(200).json({
       message: "Update successful",
@@ -68,8 +68,6 @@ module.exports = async (req, res) => {
   try {
     const request = JSON.parse(Object.keys(body)[0]);
     Object.keys(levelStations).forEach((station) => {
-      console.log(station);
-      console.log(levelStations[station]);
       levelData[station] = getLevelByStation(
         levelStations[station],
         submissionDate
@@ -77,7 +75,7 @@ module.exports = async (req, res) => {
     });
 
     let levels = await Promise.all(Object.values(levelData));
-    console.log(levels);
+    console.log("length of returned river levels is", levels[0].length);
     // add everything to the database
     const documentToInsert = {
         date: request.dateTime,
@@ -91,9 +89,7 @@ module.exports = async (req, res) => {
     
     const collection = db.collection("trentlockdata");
     const result = await collection.insertOne(documentToInsert);
-    db.close();
   } catch (error) {
     console.log("error", error);
-    db.close();
   }
 };

@@ -17,10 +17,14 @@ const getLevelByStation = async (stationId, dateObject) => {
     }
     });
 
-
-  levelZero.data.items.forEach((item) =>
+try {
+    levelZero.data.items.forEach((item) =>
     arrayToReturn.push({ date: item.dateTime, level: item.value })
   );
+} catch (error) {
+    console.log("error getting level zero")
+    console.log(error)
+}
 
     console.log(levelZero)
   return arrayToReturn;

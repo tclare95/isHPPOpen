@@ -20,12 +20,16 @@ try {
     levelZero.data.items.forEach((item) =>
     arrayToReturn.push({ date: item.dateTime, level: item.value })
   );
+  return arrayToReturn;
 } catch (error) {
     console.log("error getting level zero")
     console.log(error)
+    throw error
+    return error
+    
 }
 
-  return arrayToReturn;
+  
 };
 
 module.exports = async (req, res) => {
@@ -63,9 +67,12 @@ module.exports = async (req, res) => {
     suttonColdfield: 12345678901,
     wanlip: 123456789012,
   };
-  
+  // some working variables for getting the river level data
+  let levelData = {};
+  let rainfallData = {};
   let levels
   const request = JSON.parse(Object.keys(body)[0]);
+  // try getting the levels, if it fails, return an error and save the basic data
   try {
     Object.keys(levelStations).forEach((station) => {
       levelData[station] = getLevelByStation(
@@ -77,6 +84,7 @@ module.exports = async (req, res) => {
     levels = await Promise.all(Object.values(levelData));
 } catch (error) {
     console.log("error", error);
+    console.log("error getting levels, saving basic data");
     // as a backup, if the river level call fails write the user input to the database with blank river levels
     const documentToInsert = {
         date: request.dateTime,
@@ -90,8 +98,9 @@ module.exports = async (req, res) => {
     const collection = db.collection("trentlockdata");
     const result = await collection.insertOne(documentToInsert);
   }
-  let levelData = {};
-  let rainfallData = {};
+
+  // if the above has worked, do the main datavase write
+
   const { db } = await connectToDatabase();
   try {
     console.log("length of returned river levels is", levels[0].length);

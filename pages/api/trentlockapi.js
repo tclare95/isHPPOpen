@@ -12,7 +12,6 @@ const getLevelByStation = async (stationId, dateObject) => {
     `https://environment.data.gov.uk/flood-monitoring/id/stations/${stationId}/readings?_sorted&date=${dayZero}`
   ).catch((error) => {
     if (error.response) {
-        console.log(error.response.data);
         console.log(error.response.status);
         console.log(error.response.headers);
     }

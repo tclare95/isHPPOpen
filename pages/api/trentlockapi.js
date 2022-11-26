@@ -13,7 +13,6 @@ const getLevelByStation = async (stationId, dateObject) => {
   ).catch((error) => {
     if (error.response) {
         console.log(error.response.status);
-        console.log(error.response.headers);
     }
     });
 
@@ -26,7 +25,6 @@ try {
     console.log(error)
 }
 
-    console.log(levelZero)
   return arrayToReturn;
 };
 
@@ -68,8 +66,9 @@ module.exports = async (req, res) => {
   let levelData = {};
   let rainfallData = {};
   const { db } = await connectToDatabase();
+  let levels
+  const request = JSON.parse(Object.keys(body)[0]);
   try {
-    const request = JSON.parse(Object.keys(body)[0]);
     Object.keys(levelStations).forEach((station) => {
       levelData[station] = getLevelByStation(
         levelStations[station],
@@ -77,7 +76,11 @@ module.exports = async (req, res) => {
       );
     });
 
-    let levels = await Promise.all(Object.values(levelData));
+    levels = await Promise.all(Object.values(levelData));
+} catch (error) {
+    console.log("error", error);
+  }
+  try {
     console.log("length of returned river levels is", levels[0].length);
     // add everything to the database
     const documentToInsert = {
@@ -92,7 +95,14 @@ module.exports = async (req, res) => {
     
     const collection = db.collection("trentlockdata");
     const result = await collection.insertOne(documentToInsert);
+    if (result) {
+      console.log("inserted document");
+    } else {
+        console.log("insert failed");
+        }
   } catch (error) {
     console.log("error", error);
   }
+    
+  
 };

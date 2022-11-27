@@ -24,7 +24,6 @@ const getLevelByStation = async (stationId, dateObject, delay) => {
     });
 
   try {
-    console.log("level zero", levelZero.data.items[10].value);
     levelZero.data.items.forEach((item) =>
       arrayToReturn.push({ date: item.dateTime, level: item.value })
     );
@@ -72,24 +71,11 @@ module.exports = async (req, res) => {
   // try getting the levels, if it fails, return an error and save the basic data
   try {
     levelStations.forEach((station) => {
-        console.log(station[0])
         levelData.push(getLevelByStation(station[1], submissionDate, station[2]));
     });
 
-    // Promise.all(levelStations.map((station) => {
-
-    //     return [station[0], getLevelByStation(, submissionDate, )];
-
-    // })).then((values) => {
-    //     console.log("promises resolved");
-    //   console.log(values);
-
-    // }
-    // );
- 
     // resolve promises and map into return object
     await Promise.all(levelData).then((values) => {
-        console.log("promises resolved");
         // push into return object (levels)
         values.forEach((value, index) => {
             levels[levelStations[index][0]] = value;
@@ -129,9 +115,8 @@ module.exports = async (req, res) => {
       const collection = db.collection("trentlockdata");
       const result = await collection.insertOne(documentToInsert);
       if (result) {
-        console.log("inserted document");
       } else {
-        console.log("insert failed");
+        console.log("insert failed error");
       }
     } catch (error) {
       console.log("error", error);

@@ -100,7 +100,7 @@ export default function TrentLock() {
                     ></Form.Control>
                     {formik.errors.dateTime ? (<p className="text-danger">please fill in the date / time - it doesn't need to be exact!</p>): null}
                     <Form.Label htmlFor="rating">
-                      Rating out of 6 (1 = not paddleable, 5 = amazing)
+                      Wave rating out of 5 (1 = not paddleable, 5 = amazing)
                     </Form.Label>
                     <Form.Range
                       min="1"
@@ -132,6 +132,7 @@ export default function TrentLock() {
                       <option>playboat</option>
                       <option>longer boat</option>
                       <option>surf boat</option>
+                      <option>sup</option>
                     </Form.Select>
 
                     <Button variant="primary" type="submit">

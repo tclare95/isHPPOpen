@@ -1,35 +1,40 @@
 import axios from "axios";
 import { connectToDatabase } from "../../libs/database";
 
-const getLevelByStation = async (stationId, dateObject) => {
+const getLevelByStation = async (stationId, dateObject, delay) => {
   //takes a station id and a date object and returns the level at the station for the preceding 2 days.
   // returns an array of objects with the date and level
   let arrayToReturn = [];
   const dayZero = dateObject.toISOString().split("T")[0];
+  let dayminusSeven = new Date(dateObject);
+  dayminusSeven.setDate(dayminusSeven.getDate() - 7);
+  const dayMinusSevenString = dayminusSeven.toISOString().split("T")[0];
 
+  // add 2s delay between each request to avoid overloading the EA API
+  await new Promise((resolve) => setTimeout(resolve, delay));
 
-  const levelZero = await axios.get(
-    `https://environment.data.gov.uk/flood-monitoring/id/stations/${stationId}/readings?_sorted&date=${dayZero}`
-  ).catch((error) => {
-    if (error.response) {
+  const levelZero = await axios
+    .get(
+      `https://environment.data.gov.uk/flood-monitoring/id/stations/${stationId}/readings?_sorted&startdate=${dayMinusSevenString}&enddate=${dayZero}&parameter=level`
+    )
+    .catch((error) => {
+      if (error.response) {
         console.log(error.response.status);
-    }
+      }
     });
 
-try {
+  try {
+    console.log("level zero", levelZero.data.items[10].value);
     levelZero.data.items.forEach((item) =>
-    arrayToReturn.push({ date: item.dateTime, level: item.value })
-  );
-  return arrayToReturn;
-} catch (error) {
-    console.log("error getting level zero")
-    console.log(error)
-    throw error
-    return error
-    
-}
-
-  
+      arrayToReturn.push({ date: item.dateTime, level: item.value })
+    );
+    return arrayToReturn;
+  } catch (error) {
+    console.log("error getting level data for station", stationId);
+    console.log(error);
+    throw error;
+    return error;
+  }
 };
 
 module.exports = async (req, res) => {
@@ -51,49 +56,57 @@ module.exports = async (req, res) => {
   }
   // this stuff is all done asynchronously, so we can't return a response here
   // access the EA API, pull data for colwick (#12345), clifton (#12346), shardlow(#123456), church wilne (#1234567), and kegworth (#12345678) for the previous 7 days.
-  // also pull the rainfall api data for ashford hall, cresswell, sutton coldfield and wanlip for the previous 7 days.
   // return the data as a JSON object
-  const levelStations = {
-    colwick: 4009,
-    clifton: 2217,
-    shardlow: 2100,
-    churchWilne: 2130,
-    kegworth: 2132,
-  };
+  const levelStations = [
+    ["colwick", 4009, 0],
+    ["clifton", 4126, 2000],
+    ["shardlow", 4007, 4000],
+    ["churchWilne", 4067, 6000],
+    ["kegworth", 4074, 8000],
+  ];
 
-  const rainfallStations = {
-    ashfordHall: 123456789,
-    cresswell: 1234567890,
-    suttonColdfield: 12345678901,
-    wanlip: 123456789012,
-  };
   // some working variables for getting the river level data
-  let levelData = {};
-  let rainfallData = {};
-  let levels
+  let levelData = [];
+  let levels = {};
   const request = JSON.parse(Object.keys(body)[0]);
   // try getting the levels, if it fails, return an error and save the basic data
   try {
-    Object.keys(levelStations).forEach((station) => {
-      levelData[station] = getLevelByStation(
-        levelStations[station],
-        submissionDate
-      );
+    levelStations.forEach((station) => {
+        console.log(station[0])
+        levelData.push(getLevelByStation(station[1], submissionDate, station[2]));
     });
 
-    levels = await Promise.all(Object.values(levelData));
-} catch (error) {
-    console.log("error", error);
+    // Promise.all(levelStations.map((station) => {
+
+    //     return [station[0], getLevelByStation(, submissionDate, )];
+
+    // })).then((values) => {
+    //     console.log("promises resolved");
+    //   console.log(values);
+
+    // }
+    // );
+ 
+    // resolve promises and map into return object
+    await Promise.all(levelData).then((values) => {
+        console.log("promises resolved");
+        // push into return object (levels)
+        values.forEach((value, index) => {
+            levels[levelStations[index][0]] = value;
+        }
+        );
+    });
+  } catch (error) {
     console.log("error getting levels, saving basic data");
     // as a backup, if the river level call fails write the user input to the database with blank river levels
     const documentToInsert = {
-        date: request.dateTime,
-        dateCreated: new Date(),
-        userRange: request.range,
-        userComment: request.comment,
-        userBoat: request.boat,
-        recordedLevels: null
-    }
+      date: request.dateTime,
+      dateCreated: new Date(),
+      userRange: request.range,
+      userComment: request.comment,
+      userBoat: request.boat,
+      recordedLevels: null,
+    };
     const { db } = await connectToDatabase();
     const collection = db.collection("trentlockdata");
     const result = await collection.insertOne(documentToInsert);
@@ -101,30 +114,26 @@ module.exports = async (req, res) => {
 
   // if the above has worked, do the main datavase write
 
-  const { db } = await connectToDatabase();
-  try {
-    console.log("length of returned river levels is", levels[0].length);
-    // add everything to the database
-    const documentToInsert = {
+    const { db } = await connectToDatabase();
+    try {
+
+      const documentToInsert = {
         date: request.dateTime,
         dateCreated: new Date(),
         userRange: request.range,
         userComment: request.comment,
         userBoat: request.boat,
-        recordedLevels: levels
-    }
+        recordedLevels: levels,
+      };
 
-    
-    const collection = db.collection("trentlockdata");
-    const result = await collection.insertOne(documentToInsert);
-    if (result) {
-      console.log("inserted document");
-    } else {
+      const collection = db.collection("trentlockdata");
+      const result = await collection.insertOne(documentToInsert);
+      if (result) {
+        console.log("inserted document");
+      } else {
         console.log("insert failed");
-        }
-  } catch (error) {
-    console.log("error", error);
-  }
-    
-  
+      }
+    } catch (error) {
+      console.log("error", error);
+    }
 };

@@ -107,8 +107,8 @@ module.exports = async (req, res) => {
         date: request.dateTime,
         dateCreated: new Date(),
         userRange: request.range,
-        userComment: request.comment,
-        userBoat: request.boat,
+        userComment: request.comments,
+        userBoat: request.boatType,
         recordedLevels: levels,
       };
 

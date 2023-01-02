@@ -49,7 +49,7 @@ export default function OpenTitle(props) {
         HPP is <span className="text-danger">Closed</span> because of water
         levels
       </h2>
-      <h6 className="font-weight-italic">
+      <h6 className="font-weight-lighter fst-italic">
        HPP has been closed for {statusData.daysSinceLastOpen} days due to high water levels.  <Link href="#stats">(tap to see more)</Link>
       </h6>
       </>

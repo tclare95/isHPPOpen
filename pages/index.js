@@ -11,6 +11,7 @@ import GraphContext from "../libs/context/graphcontrol";
 import { useState } from "react";
 import Meta from "../components/meta";
 import { connectToDatabase } from "../libs/database";
+import StatusArea from "../components/layout/frontpage/statusarea";
 
 export default function Home(props) {
   // Set state for bounds for river level graph
@@ -44,6 +45,7 @@ export default function Home(props) {
           <EventsArea />
           <WaterQuality />
           <WeirInfo />
+          <StatusArea />
         </Container>
       </GraphContext.Provider>
       <Footer />

@@ -1,18 +1,23 @@
 const currentTime = new Date();
 const tomorrowTime = currentTime.setDate(1);
+import Link from "next/link";
 import { useFetchedLevels } from "../../libs/levelsswrhook";
+import { useFetchedStatus } from "../../libs/statussswrhook";
+
 
 export default function OpenTitle(props) {
   const { levelData, error, isPending } = useFetchedLevels();
+  const { statusData, statusError, statusPending } = useFetchedStatus();
+
   const cachedEvents = props.cachedEvents;
-  if (error) {
+  if (error || statusError) {
     return <div>Error Loading</div>;
   }
 
-  if (isPending && !cachedEvents) {
+  if (( isPending || statusPending)  && !cachedEvents) {
     return <div>Loading</div>;
   }
-  if (!levelData) {
+  if (!levelData || !statusData) {
     return <div>Loading</div>;
   }
 
@@ -39,10 +44,15 @@ export default function OpenTitle(props) {
   //check if the most recent recorded river level is >2.2m
   if (levelData.level_data[0].reading_level > 2.2) {
     return (
+      <>
       <h2 className="font-weight-bold m-3">
         HPP is <span className="text-danger">Closed</span> because of water
         levels
       </h2>
+      <h6 className="font-weight-italic">
+       HPP has been closed for {statusData.daysSinceLastOpen} days due to high water levels.  <Link href="#stats">(tap to see more)</Link>
+      </h6>
+      </>
     );
   }
 

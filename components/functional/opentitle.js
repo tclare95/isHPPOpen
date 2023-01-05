@@ -28,7 +28,6 @@ export default function OpenTitle(props) {
       let endDate;
       endDate = new Date(element.event_end_date);
       let startDate;
-      console.log(endDate)
       startDate = new Date(element.event_start_date);
       if (tomorrowTime < endDate && currentTime >= startDate) {
         checkvalue = true;

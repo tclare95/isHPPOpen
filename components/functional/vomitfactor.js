@@ -5,11 +5,9 @@ export default function VomitFactor(props) {
   const longChangeRate = () => {
     // if the rate in the last 24hr/48 is out of bounds,  is positive
     if (props.levelData[0].reading_level - props.levelData[96].reading_level > 0.3 || props.levelData[0].reading_level - props.levelData[192].reading_level > 0.25) {
-      console.log("24/48 danger")
       // return "danger"
     } 
     else if (props.levelData[0].reading_level - props.levelData[96].reading_level > 0.1 || props.levelData[0].reading_level - props.levelData[192].reading_level > 0.1) {
-      console.log("24/48 warning")
       // return "warning"
     } else {
       return false

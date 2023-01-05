@@ -31,11 +31,15 @@ module.exports = async (req, res) => {
         const thirtyDaysAgoOpenIndicatorPercentage = Math.round((thirtyDaysAgoOpenIndicatorCount / 30) * 100);
 
         // calculate the percentage of days that HPP has been open since 01/01/2022
-        const startDate = new Date('2022-01-01');
+        const startDate = new Date('2023-01-01');
+        // count the amount of days since the start date
+        const daysSinceStartDate = Math.floor((new Date() - startDate) / (1000 * 60 * 60 * 24))+1;
+        console.log(daysSinceStartDate)
+        // find the amount of days that HPP has been open since the start date
         const startDateOpenIndicator = await collection.find({ 'readingDate': { $gte: startDate } }).toArray();
         const startDateOpenIndicatorCount = startDateOpenIndicator.filter((item) => item.openIndicatorField === true).length;
-        const startDateOpenIndicatorPercentage = Math.round((startDateOpenIndicatorCount / 30) * 100);
-
+        console.log(startDateOpenIndicatorCount)
+        const startDateOpenIndicatorPercentage = Math.round((startDateOpenIndicatorCount / daysSinceStartDate) * 100);
 
 
         res.status(200).json({

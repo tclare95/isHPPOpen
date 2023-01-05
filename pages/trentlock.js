@@ -64,7 +64,6 @@ export default function TrentLock() {
                 range: 3,
              }}
               onSubmit={(values, { setSubmitting, resetForm }) => {
-                console.log(values);
                 const dataArray = {
                   dateTime: values.dateTime,
                   range: values.range,
@@ -72,7 +71,6 @@ export default function TrentLock() {
                   boatType: values.boatType? values.boatType : "No boat type",
                 };
                 const json = JSON.stringify(dataArray);
-                console.log(json);
                 axios
                   .post("/api/trentlockapi", json)
                   .then((response) => {

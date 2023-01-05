@@ -5,6 +5,12 @@ import { useFetchedStatus } from "../../../libs/statussswrhook";
 export default function StatusArea() {
   const { statusData, statusError, statusPending } = useFetchedStatus();
 
+  //  calculate the number of days it has been closed due to the floodlights
+  const closureDate = new Date("2022-11-06");
+  const today = new Date();
+  const diffTime = Math.abs(today - closureDate);
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
   if (statusPending || !statusData) {
     return <div>Loading</div>;
   }
@@ -20,6 +26,7 @@ export default function StatusArea() {
       <Row className="justify-content-center">
         <p>HPP was last open on {statusData.effectiveLastOpenDate}</p>
         <p>More coming soon!</p>
+        <p>The partial closure for the floodlights started on 06/11/2022 - <span className="font-weight-bold">{diffDays} days ago</span></p>
       </Row>
     </div>
   );

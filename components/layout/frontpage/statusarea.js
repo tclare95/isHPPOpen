@@ -26,7 +26,7 @@ export default function StatusArea() {
       <Row className="justify-content-center">
         <p>HPP was last open on {statusData.effectiveLastOpenDate}</p>
         <p>More coming soon!</p>
-        <p>The partial closure for the floodlights started on 06/11/2022 - <span className="font-weight-bold">{diffDays} days ago</span></p>
+        <p>The partial closure for the floodlights started on 06/11/2022 and ended on 09/01/2023</p>
       </Row>
     </div>
   );

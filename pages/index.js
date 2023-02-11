@@ -31,7 +31,7 @@ export default function Home(props) {
   return (
     <Container fluid >
       <Meta title="Is HPP Open" />
-      <Link href="/trentlock"><Header message="Click on banner for trent lock logging - logging will help future predictions and make kayakers part of any changes."/></Link>
+      <Link href="/trentlock"><Header message="Click on banner for trent lock logging. HPP has increased prices to £12 / session."/></Link>
       <GraphContext.Provider
         value={{
           upperBound,

@@ -24,9 +24,7 @@ export default function StatusArea() {
         <h2>HPP Closure Stats</h2>
       </Row>
       <Row className="justify-content-center">
-        <p>HPP was last open on {statusData.effectiveLastOpenDate}</p>
-        <p>More coming soon!</p>
-        <p>The partial closure for the floodlights started on 06/11/2022 and ended on 09/01/2023</p>
+        <p>More coming soon!</p> 
       </Row>
     </div>
   );

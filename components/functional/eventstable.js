@@ -6,7 +6,7 @@ import useSWR from "swr";
 import { fetcher } from "../../libs/fetcher";
 
 export default function EventsTable() {
-  const { data, error, mutate } = useSWR("/api/events", fetcher);
+  const { data, error, mutate } = useSWR("/api/events?limit=99", fetcher);
 
   if (!data) {
     return <p>Events Loading</p>;
@@ -23,8 +23,8 @@ export default function EventsTable() {
         </Row>
         <Row>
           {data &&
-            data.map((event, index) => (
-              <Col md={4} className="m-2">
+            data.eventsArray.map((event, index) => (
+              <Col lg={3} className="m-2">
                 <EventsForm
                   key={event._id}
                   id={event._id}

@@ -9,12 +9,22 @@ module.exports = async (req, res) => {
     switch (method) {
         case 'GET':
             try {
+                // read the query param to get the number of events to return. If it is not set, return 5
+                let limit = 5
+                if (req.query) {
+                    limit = parseInt(req.query.limit)
+                }
                 const { db } = await connectToDatabase();
                 const now = new Date
                 const tomorrow = now.setDate(1);
                 const collection = await db.collection('eventschemas');
-                const data = await collection.find({"event_end_date":{$gte : now}}).limit(5).toArray();
-                res.status(200).json(data)
+                const count = await collection.find({"event_end_date":{$gte : now}}).count();
+                const data = await collection.find({"event_end_date":{$gte : now}}).limit(limit).toArray();
+                const returnBody = {
+                    count: count,
+                    eventsArray: data
+                }
+                res.status(200).json(returnBody)
             } catch (error) {
                 console.log(error)
             }

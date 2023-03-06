@@ -1,9 +1,10 @@
-import Button from "react-bootstrap/Button";
 import Row from "react-bootstrap/Row";
 import Collapse from "react-bootstrap/Collapse";
 import {useState} from "react";
 import Events from "../../functional/events";
 import Col from "react-bootstrap/Col";
+import Button from "react-bootstrap/Button";
+
 
 export default function EventsArea () {
     const [open, setOpen] = useState(false);

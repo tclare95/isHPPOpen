@@ -31,20 +31,26 @@ module.exports = async (req, res) => {
             break
         case 'POST':
             const request = JSON.parse(Object.keys(body)[0])
-            console.log(request)
             if (session) {
                 try {
-                    const query = {event_name: request.new_event_name};
+                    const oID = new ObjectID(request.new_event_id)
+                    const query = {_id: ObjectID(oID)};
                     const update = {$set: {event_name: request.new_event_name, event_start_date: new Date(request.new_event_start_date), event_end_date: new Date(request.new_event_end_date), event_details: request.new_event_details}};
                     const options = { upsert: true };
                     const { db } = await connectToDatabase();
                     const collection = await db.collection('eventschemas');
-                    collection.updateOne(query, update, options);
-                    console.log('success')
-                    res.status(200).json({
-                        message: 'Update successful',
-                        id: request.new_event_id
-                    })
+                    const result = await collection.updateOne(query, update, options);
+                    if (true) {
+                        res.status(200).json({
+                            message: 'Update successful',
+                            id: request.new_event_id
+                        })
+                    } else {
+                    // send an error message if the update fails
+                        res.status(500).json({
+                            message: 'Update failed',
+                            id: request.new_event_id
+                        })}
                 } catch (error) {
                     console.log('Error modifying event ' + error)
                 }
@@ -63,7 +69,7 @@ module.exports = async (req, res) => {
                     const collection = await db.collection('eventschemas');
                     const result = await collection.deleteOne({'_id': new ObjectID(id)})
                     if(result.deletedCount === 1) {
-                        res.status(204).send({success: true});
+                        res.status(202).send({success: true});
                     } else {
                         res.status(404);
                         res.send({error: "Event Not Found"})

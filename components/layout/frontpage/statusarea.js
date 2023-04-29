@@ -5,15 +5,13 @@ import { useFetchedStatus } from "../../../libs/statussswrhook";
 export default function StatusArea() {
   const { statusData, statusError, statusPending } = useFetchedStatus();
 
-  //  calculate the number of days it has been closed due to the floodlights
-  const closureDate = new Date("2022-11-06");
-  const today = new Date();
-  const diffTime = Math.abs(today - closureDate);
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
   if (statusPending || !statusData) {
     return <div>Loading</div>;
   }
+
+  // get the percentage of days that HPP has been open in the last 30 days
+  const last30DaysOpenPercentage =
+    statusData.thirtyDaysAgoOpenIndicatorPercentage;
 
   return (
     <div
@@ -24,7 +22,8 @@ export default function StatusArea() {
         <h2>HPP Closure Stats</h2>
       </Row>
       <Row className="justify-content-center">
-        <p>More coming soon!</p> 
+        <p> HPP has been closed for {last30DaysOpenPercentage}% of the last 30 days due to water levels</p>
+        <p>More coming soon!</p>
       </Row>
     </div>
   );

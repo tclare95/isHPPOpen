@@ -12,8 +12,10 @@ module.exports = async (req, res) => {
         // get the most recent document in the collection, sorting by readingDate
         const cursor = await collection.find().sort({ 'readingDate': -1 }).limit(1);
         const data = await cursor.next();
+        console.log(data)
         // parse the readingDate string into a date object, and calculate how many days since HPP was last open
-        const lastChangedDate = new Date(data.readingDate);
+        const lastChangedDate = new Date(data.timestamp);
+        console.log(lastChangedDate)
         const daysSinceLastOpen = Math.floor((new Date() - lastChangedDate) / (1000 * 60 * 60 * 24))+1;
 
         // the effective last open date takes into account the opening hours of hpp. If the last readingDate was after 3pm and before 10AM, 

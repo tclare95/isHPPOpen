@@ -69,5 +69,5 @@ export async function getStaticProps() {
   const cleanedData = JSON.parse(JSON.stringify(data));
 
   // Revalidate = time before next re-renders the page in seconds = 30 minutes
-  return { props: { data: cleanedData }, revalidate: 5 };
+  return { props: { data: cleanedData }, revalidate: 900 };
 }

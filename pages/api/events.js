@@ -1,7 +1,7 @@
 import { connectToDatabase } from '../../libs/database'
 import { getSession } from 'next-auth/react'
 const ObjectID = require('mongodb').ObjectID;
-
+let now
 
 module.exports = async (req, res) => {
     const {method, body} = req
@@ -15,9 +15,9 @@ module.exports = async (req, res) => {
                     limit = parseInt(req.query.limit)
                 }
                 const { db } = await connectToDatabase();
-                const now = new Date
-                const tomorrow = now.setDate(1);
+                now = new Date();
                 const collection = await db.collection('eventschemas');
+                console.log(now);
                 const count = await collection.find({"event_end_date":{$gte : now}}).count();
                 const data = await collection.find({"event_end_date":{$gte : now}}).limit(limit).toArray();
                 const returnBody = {

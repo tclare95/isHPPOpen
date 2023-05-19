@@ -41,7 +41,6 @@ module.exports = async (req, res) => {
                     const { db } = await connectToDatabase();
                     const collection = await db.collection('eventschemas');
                     const result = await collection.updateOne(query, update, options);
-                    console.log(result);
                     if (result.modifiedCount === 1) {
                         console.log( now.toISOString() +' Update successful')
                         res.status(200).json({
@@ -56,7 +55,7 @@ module.exports = async (req, res) => {
                             id: request.new_event_id
                         })}
                 } catch (error) {
-                    console.log('Error modifying event ' + error)
+                    console.log(now.toISOString() + ' Error modifying event ' + error)
                 }
             } else {
                 res.status(403).json({

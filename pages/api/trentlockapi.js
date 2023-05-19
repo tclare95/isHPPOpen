@@ -4,6 +4,7 @@ import { connectToDatabase } from "../../libs/database";
 const getLevelByStation = async (stationId, dateObject, delay) => {
   //takes a station id and a date object and returns the level at the station for the preceding 2 days.
   // returns an array of objects with the date and level
+  
   let arrayToReturn = [];
   const dayZero = dateObject.toISOString().split("T")[0];
   let dayminusSeven = new Date(dateObject);

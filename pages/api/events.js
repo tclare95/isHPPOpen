@@ -17,13 +17,13 @@ module.exports = async (req, res) => {
                 const { db } = await connectToDatabase();
                 now = new Date();
                 const collection = await db.collection('eventschemas');
-                console.log(now);
                 const count = await collection.find({"event_end_date":{$gte : now}}).count();
                 const data = await collection.find({"event_end_date":{$gte : now}}).limit(limit).toArray();
                 const returnBody = {
                     count: count,
                     eventsArray: data
                 }
+                console.log(now.toISOString() + ' GETEVENTS CALLED');
                 res.status(200).json(returnBody)
             } catch (error) {
                 console.log(error)

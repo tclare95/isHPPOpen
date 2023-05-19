@@ -4,7 +4,8 @@ import { connectToDatabase } from '../../libs/database'
 // a string for the date that this changed
 // the number of days since HPP was last open, and the percentage of days that HPP has been open in the last 30 days, 
 // and the percentage of days that HPP has been open since 01/01/2022.
-
+// timestamo for API logging
+const timestamp = new Date().toISOString();
 module.exports = async (req, res) => {
     try {
         const { db } = await connectToDatabase();
@@ -12,10 +13,8 @@ module.exports = async (req, res) => {
         // get the most recent document in the collection, sorting by readingDate
         const cursor = await collection.find().sort({ 'readingDate': -1 }).limit(1);
         const data = await cursor.next();
-        console.log(data)
         // parse the readingDate string into a date object, and calculate how many days since HPP was last open
         const lastChangedDate = new Date(data.timestamp);
-        console.log(lastChangedDate)
         const daysSinceLastOpen = Math.floor((new Date() - lastChangedDate) / (1000 * 60 * 60 * 24))+1;
 
         // the effective last open date takes into account the opening hours of hpp. If the last readingDate was after 3pm and before 10AM, 
@@ -36,12 +35,11 @@ module.exports = async (req, res) => {
         const startDate = new Date('2023-01-01');
         // count the amount of days since the start date
         const daysSinceStartDate = Math.floor((new Date() - startDate) / (1000 * 60 * 60 * 24))+1;
-        console.log(daysSinceStartDate)
         // find the amount of days that HPP has been open since the start date
         const startDateOpenIndicator = await collection.find({ 'readingDate': { $gte: startDate } }).toArray();
         const startDateOpenIndicatorCount = startDateOpenIndicator.filter((item) => item.openIndicatorField === true).length;
-        console.log(startDateOpenIndicatorCount)
         const startDateOpenIndicatorPercentage = Math.round((startDateOpenIndicatorCount / daysSinceStartDate) * 100);
+        console.log(timestamp + ' HPPSTATUS CALLED');
 
 
         res.status(200).json({

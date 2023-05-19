@@ -32,6 +32,7 @@ module.exports = async (req, res) => {
         case 'POST':
             const request = JSON.parse(Object.keys(body)[0])
             if (session) {
+                now = new Date();
                 try {
                     const oID = new ObjectID(request.new_event_id)
                     const query = {_id: ObjectID(oID)};
@@ -40,13 +41,16 @@ module.exports = async (req, res) => {
                     const { db } = await connectToDatabase();
                     const collection = await db.collection('eventschemas');
                     const result = await collection.updateOne(query, update, options);
-                    if (true) {
+                    console.log(result);
+                    if (result.modifiedCount === 1) {
+                        console.log( now.toISOString() +' Update successful')
                         res.status(200).json({
                             message: 'Update successful',
                             id: request.new_event_id
                         })
                     } else {
                     // send an error message if the update fails
+                    console.log( now.toISOString() +' Update unsuccessful' + request.new_event_id)
                         res.status(500).json({
                             message: 'Update failed',
                             id: request.new_event_id

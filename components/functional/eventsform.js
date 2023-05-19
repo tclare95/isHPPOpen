@@ -126,12 +126,14 @@ export default function EventsForm(props) {
                   as="textarea"
                   onChange={formik.handleChange}
                   value={formik.values.eventDetails}
+                  onBlur={formik.handleBlur}
                   rows={8}
                   style={{ resize: "none" }}
                 />
               </Row>
               <Row className="my-2 mx-auto">
-                <Button type="submit">
+                <Button type="submit"
+                disabled={!formik.touched.eventDetails}>
                   {formik.values.id ? "Save Edit" : "Add Event"}
                 </Button>
               </Row>

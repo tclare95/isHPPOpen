@@ -15,7 +15,9 @@ module.exports = async (req, res) => {
                     limit = parseInt(req.query.limit)
                 }
                 const { db } = await connectToDatabase();
+                // get the current date and take one day off to account for timezones
                 now = new Date();
+                now.setDate(now.getDate() - 1);
                 const collection = await db.collection('eventschemas');
                 const count = await collection.find({"event_end_date":{$gte : now}}).count();
                 const data = await collection.find({"event_end_date":{$gte : now}}).limit(limit).toArray();
@@ -34,8 +36,7 @@ module.exports = async (req, res) => {
             if (session) {
                 now = new Date();
                 try {
-                    const oID = new ObjectID(request.new_event_id)
-                    const query = {_id: ObjectID(oID)};
+                    const query = {event_name: request.new_event_name};
                     const update = {$set: {event_name: request.new_event_name, event_start_date: new Date(request.new_event_start_date), event_end_date: new Date(request.new_event_end_date), event_details: request.new_event_details}};
                     const options = { upsert: true };
                     const { db } = await connectToDatabase();

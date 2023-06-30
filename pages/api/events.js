@@ -19,8 +19,9 @@ module.exports = async (req, res) => {
                 now = new Date();
                 now.setDate(now.getDate() - 1);
                 const collection = await db.collection('eventschemas');
-                const count = await collection.find({"event_end_date":{$gte : now}}).count();
-                const data = await collection.find({"event_end_date":{$gte : now}}).limit(limit).toArray();
+                
+                const data = await collection.find({"event_end_date":{$gte : now}}).limit(limit).sort({event_start_date: 1}).toArray();
+                const count = await collection.countDocuments({"event_end_date":{$gte : now}});
                 const returnBody = {
                     count: count,
                     eventsArray: data

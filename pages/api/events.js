@@ -43,8 +43,9 @@ module.exports = async (req, res) => {
                     const { db } = await connectToDatabase();
                     const collection = await db.collection('eventschemas');
                     const result = await collection.updateOne(query, update, options);
-                    if (result.modifiedCount === 1) {
-                        console.log( now.toISOString() +' Update successful')
+                    if (result.modifiedCount === 1 || result.upsertedCount === 1) {
+                        // log userID, objectID and action
+                        console.log(now.toISOString() +' Event modified by ' + session.user.email + ' ' + request.new_event_id)
                         res.status(200).json({
                             message: 'Update successful',
                             id: request.new_event_id
@@ -75,6 +76,8 @@ module.exports = async (req, res) => {
                     const result = await collection.deleteOne({'_id': new ObjectID(id)})
                     if(result.deletedCount === 1) {
                         res.status(202).send({success: true});
+                        // log userID and action
+                        console.log(now.toISOString() + ' Event deleted by ' + session.user.email + ' ' + id)
                     } else {
                         res.status(404);
                         res.send({error: "Event Not Found"})

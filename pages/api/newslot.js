@@ -1,5 +1,5 @@
-const axios = require("axios");
-const qs = require("qs");
+import axios from "axios";
+import qs from "qs";
 
 const fetchTimetableSlots = async (offset = 0) => {
   const data = {
@@ -25,7 +25,7 @@ const fetchTimetableSlots = async (offset = 0) => {
   return sessionArray;
 };
 
-export default async (req, res) => {
+export default async function handler(req, res) {
   // send post to hpp api
   try {
     const arrayToSend = await fetchTimetableSlots(req.query.offset);

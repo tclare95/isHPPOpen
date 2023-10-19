@@ -23,6 +23,6 @@
     "react-dom": "^18.2.0",
     "react-google-charts": "^4.0.0",
     "react-gtm-module": "^2.0.11",
-    "swr": "^0.4.0"
+    "swr": "^1.1.1"
   }
 }

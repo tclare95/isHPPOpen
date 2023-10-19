@@ -1,6 +1,7 @@
 import { connectToDatabase } from '../../libs/database'
-const timestamp = new Date().toISOString();
-module.exports = async (req, res) => {
+
+export default async function handler(req, res) {
+    const timestamp = new Date().toISOString();
     try {
         const { db } = await connectToDatabase();
         const collection = await db.collection('riverschemas');

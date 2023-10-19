@@ -1,5 +1,6 @@
 import axios from "axios";
 import { connectToDatabase } from "../../libs/database";
+import { NextApiRequest, NextApiResponse } from "next";
 
 const getLevelByStation = async (stationId, dateObject, delay) => {
   //takes a station id and a date object and returns the level at the station for the preceding 2 days.
@@ -37,7 +38,7 @@ const getLevelByStation = async (stationId, dateObject, delay) => {
   }
 };
 
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
   const { method, body } = req;
   let submissionDate;
   // turn the request into a JSON object

@@ -21,6 +21,11 @@ export default function OpenTitle(props) {
     return <div>Loading</div>;
   }
 
+    // Calculate days since HPP was last open
+    const currentDate = new Date();
+    const lastChangedDate = new Date(statusData.lastChangedDate);
+    const daysSinceLastOpen = Math.floor((currentDate - lastChangedDate) / (1000 * 60 * 60 * 24));
+
   //pull the event array, check if the current date falls between two events
   let checkvalue = false;
   if (cachedEvents.length != 0) {
@@ -49,7 +54,7 @@ export default function OpenTitle(props) {
         levels
       </h2>
       <h6 className="font-weight-lighter fst-italic">
-       HPP has been closed for {statusData.daysSinceLastOpen} days due to high water levels.  <Link href="#stats">(tap to see more)</Link>
+       HPP has been closed for {daysSinceLastOpen} days due to high water levels.  <Link href="#stats">(tap to see more)</Link>
       </h6>
       </>
     );

@@ -9,7 +9,8 @@ export default function StatusArea() {
     }
 
     const currentStatus = statusData.currentStatus ? "Open" : "Closed";
-    const effectiveLastOpenDate = statusData.effectiveLastOpenDate;
+    // split just the date from the datetime string
+    const effectiveLastOpenDate = statusData.lastChangedDate.split('T')[0];
 
     return (
         <div className="mt-4 text-white text-center justify-content-center" id="stats">

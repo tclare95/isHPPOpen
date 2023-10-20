@@ -13,11 +13,11 @@ export default function WeirLevels (props) {
             )
         } else if (props.currentLevel >=3.1 && props.currentLevel < 3.5) {
             return(
-            <div><h6><a href = "#weirs">Trent Lock should be running (Playboats)</a></h6></div>
+            <div><h6><a href = "#weirs">Trent Lock might be running (Playboats)</a></h6></div>
             )
-        } else if (props.currentLevel >=3.5 && props.currentLevel < 4.5) {
+        } else if (props.currentLevel >=4.0 && props.currentLevel < 5.5) {
             return(
-                <div><h6><a href = "#weirs">Sawley Weir should be running</a></h6></div>
+                <div><h6><a href = "#weirs">Sawley Weir might be running</a></h6></div>
                 )
         } else {
             return(

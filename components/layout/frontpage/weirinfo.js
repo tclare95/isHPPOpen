@@ -40,7 +40,7 @@ export default function WeirInfo() {
             location:
               "Parking at the Trent Lock inn. Get on, and paddle down the main Trent, go past the bouys (on the left) and under the bridges. You should see the wave.",
             mapLink:
-              "https://www.google.co.uk/maps/place/53%C2%B004'29.6%22N+0%C2%B049'03.1%22W/",
+              "https://www.google.com/maps/place/52%C2%B052'35.9%22N+1%C2%B016'25.6%22W/",
             lowerBound: "2.85",
             upperBound: "3.6",
           },
@@ -49,11 +49,11 @@ export default function WeirInfo() {
             header: "Sawley Weir",
             description:
               "A big wave that comes in when Trent Lock is too high. As it only comes in when the Trent is in flood, watch out for debris.",
-            levels: "3.5m+",
+            levels: "4m+",
             location: "To be added",
             mapLink:
-              "https://www.google.co.uk/maps/place/52%C2%B052'35.6%22N+1%C2%B016'25.9%22W/",
-            lowerBound: "3.5",
+              "https://www.google.co.uk/maps/place/52%C2%B052'29.8%22N+1%C2%B018'26.2%22W/",
+            lowerBound: "4",
             upperBound: "5",
           },
         ].map((weir) => (

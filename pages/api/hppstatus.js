@@ -25,37 +25,49 @@ export default async function handler(req, res) {
         const oldestDate = new Date();
         oldestDate.setDate(currentDate.getDate() - 365);
 
-        const records = await collection.find({ 'timestamp': { $gte: oldestDate } }).sort({ 'timestamp': 1 }).toArray();
+        const records = await collection.find({ 'timestamp': { $gte: oldestDate } }).toArray();
+        const sortedRecords = records.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
 
-        if (records.length === 0) {
+        if (sortedRecords.length === 0) {
             return res.status(500).json({ error: "No records found in the database for the specified date range." });
         }
 
-        if (!records[0].hasOwnProperty('value')) {
+        if (!sortedRecords[0].hasOwnProperty('value')) {
             return res.status(500).json({ error: "The first record doesn't contain a 'value' property." });
         }
 
-        let previousDate = currentDate;
-        let previousStatus = records[0].value;
-        const mostRecentRecord = records[records.length - 1];  // Capture the most recent record here
+        let closureStart = null;
+        const mostRecentRecord = sortedRecords[sortedRecords.length - 1];
 
-        for (let record of records) {
+        for (let record of sortedRecords) {
             const recordDate = new Date(record.timestamp);
-            const diffDays = Math.round((recordDate - previousDate) / (1000 * 60 * 60 * 24));
 
-            for (let interval in intervals) {
-                if ((currentDate - recordDate) <= (intervals[interval] * (1000 * 60 * 60 * 24))) {
-                    if (!previousStatus) {
+            if (record.value === false && closureStart === null) {
+                // Store the start of a closure period
+                closureStart = recordDate;
+            } else if (record.value === true && closureStart !== null) {
+                // End of a closure period, calculate the closed days
+                const diffDays = Math.round((recordDate - closureStart) / (1000 * 60 * 60 * 24));
+                for (let interval in intervals) {
+                    if ((currentDate - closureStart) <= (intervals[interval] * (1000 * 60 * 60 * 24))) {
                         closures[interval] += diffDays;
                     }
                 }
+                closureStart = null;  // Reset closureStart for the next closure period
             }
-
-            previousDate = recordDate;
-            previousStatus = record.value;
         }
 
-        const lastOpenRecord = records.reverse().find(record => record.value === true);
+        if (closureStart !== null) {
+            // Handle ongoing closure
+            const ongoingClosureDays = Math.round((currentDate - closureStart) / (1000 * 60 * 60 * 24));
+            for (let interval in intervals) {
+                if ((currentDate - closureStart) <= (intervals[interval] * (1000 * 60 * 60 * 24))) {
+                    closures[interval] += ongoingClosureDays;
+                }
+            }
+        }
+
+        const lastOpenRecord = sortedRecords.reverse().find(record => record.value === true);
         let effectiveLastOpenDate = new Date(lastOpenRecord.timestamp);
         if (effectiveLastOpenDate.getHours() >= 15) {
             effectiveLastOpenDate.setDate(effectiveLastOpenDate.getDate() + 1);
@@ -73,7 +85,7 @@ export default async function handler(req, res) {
             closuresInLast365Days: closures["365"]
         });
     } catch (error) {
-        console.log(error);
+        console.log('Error: ', error.message);
         res.status(500).json({ error: "Internal Server Error" });
     }
 }

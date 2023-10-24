@@ -20,7 +20,7 @@ export default function TrentWeirs() {
         <Row className="mb-5">
           <TrentWeirBlock gaugeId={4009} gaugeName="Colwick" />
           <TrentWeirBlock gaugeId={4126} gaugeName="Clifton Bridge" />
-          <TrentWeirBlock gaugeId={4067} gaugeName="Shardlow" />
+          <TrentWeirBlock gaugeId={4007} gaugeName="Shardlow" />
           <TrentWeirBlock gaugeId={4067} gaugeName="Church Wilne" />
         </Row>
       </Container>

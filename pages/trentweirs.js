@@ -22,6 +22,11 @@ export default function TrentWeirs() {
           <TrentWeirBlock gaugeId={4126} gaugeName="Clifton Bridge" />
           <TrentWeirBlock gaugeId={4007} gaugeName="Shardlow" />
           <TrentWeirBlock gaugeId={4067} gaugeName="Church Wilne" />
+          <TrentWeirBlock
+            gaugeId={4007}
+            gaugeName="Shardlow (Flow)"
+            measureType="flow"
+          />
         </Row>
       </Container>
     </Container>

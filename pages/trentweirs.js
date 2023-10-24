@@ -8,7 +8,6 @@ export default function TrentWeirs() {
   return (
     <Container fluid className="bg-dark">
       <Meta title="Trent Weir Dashboard" />
-      <Header message="This page will have specific information about the Trent Weirs" />
       <Container className="text-white text-center">
         <Row className="mb-5">
           <Col>

@@ -3,6 +3,8 @@ import { Col, Container, Row } from "react-bootstrap";
 import Header from "../components/layout/frontpage/header";
 import Meta from "../components/meta";
 import TrentWeirBlock from "../components/functional/trentWeir";
+import MultiMeasureChart from "../components/functional/multimeasurechart";
+import { Button } from "react-bootstrap";
 
 export default function TrentWeirs() {
   return (
@@ -28,6 +30,9 @@ export default function TrentWeirs() {
             measureType="flow"
           />
         </Row>
+        <Button variant="primary" size="lg" className="mb-5" href="/trentcharts">
+          All in one charts
+        </Button>
       </Container>
     </Container>
   );

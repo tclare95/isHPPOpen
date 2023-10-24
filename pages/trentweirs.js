@@ -11,7 +11,7 @@ export default function TrentWeirs() {
       <Container className="text-white text-center">
         <Row className="mb-5">
           <Col>
-            <h1>Trent Weir Dashboard</h1>
+            <h1>Trent Gauge Dashboard</h1>
             <Link href="/">
               <h2 className="navHeader">← Back to Main Page</h2>
             </Link>

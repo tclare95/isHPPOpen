@@ -9,13 +9,13 @@ import { Analytics } from '@vercel/analytics/react';
 const tagManagerArgs = {
   gtmId: 'GTM-P4M975K'
 }
-function MyApp({ Component, pageProps }) {
+function MyApp({ Component, pageProps: { session, ...pageProps } }) {
   useEffect(() => {
     TagManager.initialize(tagManagerArgs)
   }, [])
 
   return (
-    <SessionProvider session={pageProps.session} refetchInterval={5 * 60}>
+    <SessionProvider session={session}>
         <Component {...pageProps} />
         <Analytics />
     </SessionProvider>

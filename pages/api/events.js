@@ -1,11 +1,13 @@
-import { getSession } from 'next-auth/react'
+import { getServerSession  } from 'next-auth/react'
 import { connectToDatabase } from '../../libs/database'
+import { authOptions } from "./auth/[...nextauth]"
+
 
 const ObjectID = require('mongodb').ObjectID;
 
 export default async function handler(req, res) {
     const { method, body } = req;
-    const session = await getSession({ req });
+    const session = await getServerSession(req, res, authOptions)
 
     switch (method) {
         case 'GET':
@@ -41,6 +43,7 @@ export default async function handler(req, res) {
             break;
         case 'POST':
             const request = JSON.parse(Object.keys(body)[0]);
+            console.log(request);
             if (session) {
                 const now = new Date();
                 try {

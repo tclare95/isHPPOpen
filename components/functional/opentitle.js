@@ -10,6 +10,7 @@ export default function OpenTitle(props) {
   const { statusData, statusError, statusPending } = useFetchedStatus();
 
   const cachedEvents = props.cachedEvents;
+
   if (error || statusError) {
     return <div>Error Loading</div>;
   }
@@ -27,23 +28,19 @@ export default function OpenTitle(props) {
     const daysSinceLastOpen = Math.floor((currentDate - lastChangedDate) / (1000 * 60 * 60 * 24));
 
   //pull the event array, check if the current date falls between two events
-  let checkvalue = false;
-  if (cachedEvents.length != 0) {
-    cachedEvents.forEach((element) => {
-      let endDate;
-      endDate = new Date(element.event_end_date);
-      let startDate;
-      startDate = new Date(element.event_start_date);
-      if (tomorrowTime < endDate && currentTime >= startDate) {
-        checkvalue = true;
-      }
-    });
-  }
+  const isClosedForEvent = cachedEvents.some(event => {
+    const startDate = new Date(event.event_start_date);
+    const endDate = new Date(event.event_end_date);
+    console.log(startDate, endDate, currentDate);
+    return startDate <= currentDate && endDate >= currentDate
+  });
 
-  if (checkvalue) {
-      return(
-      <h2 className="font-weight-bold m-3">HPP is <span className="text-danger">Closed</span> for an event</h2>
-      )
+  if (isClosedForEvent) {
+    return (
+      <h2 className="font-weight-bold m-3">
+        HPP is <span className="text-danger">Closed</span> for an event
+      </h2>
+    );
   }
   //check if the most recent recorded river level is >2.2m
   if (levelData.level_data[0].reading_level > 2.2) {

@@ -31,7 +31,6 @@ export default function OpenTitle(props) {
   const isClosedForEvent = cachedEvents.some(event => {
     const startDate = new Date(event.event_start_date);
     const endDate = new Date(event.event_end_date);
-    console.log(startDate, endDate, currentDate);
     return startDate <= currentDate && endDate >= currentDate
   });
 

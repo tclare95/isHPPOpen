@@ -77,7 +77,7 @@ export default function StatusArea() {
           {[
             { days: 7, closures: statusData.closuresInLast7Days },
             { days: 28, closures: statusData.closuresInLast28Days },
-            // { days: 182, closures: statusData.closuresInLast182Days },
+            { days: 182, closures: statusData.closuresInLast182Days },
             // { days: 365, closures: statusData.closuresInLast365Days },
           ].map(({ days, closures }) => (
             <Row className="justify-content-center mb-3" key={days}>

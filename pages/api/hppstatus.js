@@ -43,26 +43,30 @@ export default async function handler(req, res) {
             const recordDate = new Date(record.timestamp);
 
             if (record.value === false && closureStart === null) {
-                // Store the start of a closure period
                 closureStart = recordDate;
             } else if (record.value === true && closureStart !== null) {
-                // End of a closure period, calculate the closed days
-                const diffDays = Math.round((recordDate - closureStart) / (1000 * 60 * 60 * 24));
+                // Calculate overlapping days for each interval
                 for (let interval in intervals) {
-                    if ((currentDate - closureStart) <= (intervals[interval] * (1000 * 60 * 60 * 24))) {
-                        closures[interval] += diffDays;
+                    let intervalStart = new Date(currentDate.getTime() - intervals[interval] * (1000 * 60 * 60 * 24));
+                    if (closureStart < currentDate && intervalStart < recordDate) {
+                        let overlapStart = closureStart > intervalStart ? closureStart : intervalStart;
+                        let overlapEnd = recordDate < currentDate ? recordDate : currentDate;
+                        let overlapDays = Math.round((overlapEnd - overlapStart) / (1000 * 60 * 60 * 24));
+
+                        closures[interval] += overlapDays;
                     }
                 }
-                closureStart = null;  // Reset closureStart for the next closure period
+                closureStart = null;
             }
         }
 
+        // Handle ongoing closure
         if (closureStart !== null) {
-            // Handle ongoing closure
-            const ongoingClosureDays = Math.round((currentDate - closureStart) / (1000 * 60 * 60 * 24));
             for (let interval in intervals) {
-                if ((currentDate - closureStart) <= (intervals[interval] * (1000 * 60 * 60 * 24))) {
-                    closures[interval] += ongoingClosureDays;
+                let intervalStart = new Date(currentDate.getTime() - intervals[interval] * (1000 * 60 * 60 * 24));
+                if (closureStart < intervalStart) {
+                    let overlapDays = Math.round((currentDate - intervalStart) / (1000 * 60 * 60 * 24));
+                    closures[interval] += overlapDays;
                 }
             }
         }

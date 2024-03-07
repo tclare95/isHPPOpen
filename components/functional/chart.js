@@ -1,94 +1,67 @@
-import React from "react";
-import Chart from "react-google-charts";
+import React, { useState, useEffect } from 'react';
+import Chart from 'react-google-charts';
 
 const chartArrayHeader = [
-  { type: "datetime", label: "Date" },
-  { type: "string", role: "annotation" },
-  { type: "string", role: "annotationText" },
-  { type: "number", label: "River Level" },
-  { type: "number", label: "Normal Low" },
-  { type: "number", label: "Cut Off" },
-  { type: "number", label: "Forecast" },
+  { type: 'datetime', label: 'Date' },
+  { type: 'string', role: 'annotation' },
+  { type: 'string', role: 'annotationText' },
+  { type: 'number', label: 'River Level' },
+  { type: 'number', label: 'Normal Low' },
+  { type: 'number', label: 'Cut Off' },
+  { type: 'number', label: 'Forecast' },
 ];
-let chartArray = [];
 
-class ChartRender extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = {
-      dataLoadingStatus: "loading",
-      chartData: chartArray,
-    };
-  }
+const ChartRender = ({ graphData, graphForeCastData, lowerBound, upperBound }) => {
+  const [chartData, setChartData] = useState([chartArrayHeader]);
 
-  addRecordedData() {
-    this.props.graphData.forEach((element) => {
-      const newDate = element.reading_date;
-      const newLevel = element.reading_level;
-      const dateConvert = new Date(Date.parse(newDate));
-      chartArray.push([
+  useEffect(() => {
+    const data = [];
+
+    graphData.forEach((element) => {
+      const dateConvert = new Date(Date.parse(element.reading_date));
+      data.push([
         dateConvert,
         null,
         null,
-        newLevel,
-        this.props.lowerBound,
-        this.props.upperBound,
+        element.reading_level,
+        lowerBound,
+        upperBound,
         null,
       ]);
     });
-  }
 
-  addForecastData() {
-    this.props.graphForeCastData.forEach((element) => {
-      const newDate = element.forecast_date;
-      const newLevel = element.forecast_reading;
-      const dateConvert = new Date(Date.parse(newDate));
-      chartArray.push([
+    graphForeCastData.forEach((element) => {
+      const dateConvert = new Date(Date.parse(element.forecast_date));
+      data.push([
         dateConvert,
         null,
         null,
         null,
-        this.props.lowerBound,
-        this.props.upperBound,
-        newLevel,
-        
+        lowerBound,
+        upperBound,
+        element.forecast_reading,
       ]);
     });
-  }
 
-  componentDidMount() {
-    //recorded data graph entry
-    this.addRecordedData();
-    
-
-    //forecast data graph entry
-    this.addForecastData();
-    
-    //add headers, and add 'now' line
+    // Add 'now' line
     const now = new Date();
-    const nowArray = [now, "Now", null, null, null, null, null, ];
-    chartArray.push(nowArray);
+    data.push([now, 'Now', null, null, null, null, null]);
 
-    // sort array to get the now line in the right place
+    // Sort the data array
+    data.sort((a, b) => a[0] - b[0]);
 
-    chartArray.sort((a, b) => b[0] - a[0])
+    // Set chart data with header
+    setChartData([chartArrayHeader, ...data]);
+  }, [graphData, graphForeCastData, lowerBound, upperBound]); // Dependency array to trigger update
 
-    chartArray.unshift(chartArrayHeader);
-  }
-
-  render() {
-    return (
-      <Chart
-        width={"100%"}
-        height={350}
-        chartType="ComboChart"
-        loader={
-          <div className="spinner-border" role="status">
-            <span className="sr-only">Loading...</span>
-          </div>
-        }
-        data={this.state.chartData}
-        options={{
+  return (
+    <Chart
+      width={'100%'}
+      height={350}
+      chartType="ComboChart"
+      loader={<div>Loading Chart...</div>}
+      data={chartData}
+      options={{
           intervals: { style: "sticks" },
           legend: {
             position: "bottom",
@@ -153,77 +126,8 @@ class ChartRender extends React.Component {
           // crosshair: { trigger: 'both', orientation: 'horizontal', opacity: 0.3, },
           
         }}
-      />
-    );
-  }
-
-  componentDidUpdate(prevProps) {
-    // Typical usage (don't forget to compare props):
-    if (
-      this.props.upperBound !== prevProps.upperBound ||
-      this.props.lowerBound !== prevProps.lowerBound
-    ) {
-      const chartArrayHeader = [
-        { type: "datetime", label: "Date" },
-        { type: "string", role: "annotation" },
-        { type: "string", role: "annotationText" },
-        { type: "number", label: "River Level" },
-        { type: "number", label: "Too Low" },
-        { type: "number", label: "Too High" },
-        { type: "number", label: "Forecast" },
-
-      ];
-      let chartArray = [];
-      
-      
-
-      //rerun the chart draw
-
-      //recorded data graph entry
-      // this.addRecordedData();
-      this.props.graphData.forEach((element) => {
-        const newDate = element.reading_date;
-        const newLevel = element.reading_level;
-        const dateConvert = new Date(Date.parse(newDate));
-        chartArray.push([
-          dateConvert,
-          null,
-          null,
-          newLevel,
-          this.props.lowerBound,
-          this.props.upperBound,
-          null,
-        ]);
-      });
-      //forecast data graph entry
-      // this.addForecastData();
-      this.props.graphForeCastData.forEach((element) => {
-        const newDate = element.forecast_date;
-        const newLevel = element.forecast_reading;
-        const dateConvert = new Date(Date.parse(newDate));
-        chartArray.push([
-          dateConvert,
-          null,
-          null,
-          null,
-          this.props.lowerBound,
-          this.props.upperBound,
-          newLevel,
-          
-        ]);
-      });
-      //add headers, and add 'now' line
-      chartArray.sort((a, b) => b[0] - a[0])
-      const now = new Date();
-      const nowArray = [now, "Now", null, null, null, null, null, ];
-      chartArray.push(nowArray);
-      chartArray.unshift(chartArrayHeader);
-      this.setState({
-        chartData: chartArray,
-      });
-    }
-  }
-  componentWillUnmount() {}
-}
+    />
+  );
+};
 
 export default ChartRender;

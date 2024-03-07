@@ -65,6 +65,7 @@ export default function StatusArea() {
     >
       <Row className="justify-content-center">
         <h2>HPP Closure Stats</h2>
+        <p>Note: this only accounts for river level - not any other closures</p>
       </Row>
       <Row className="justify-content-center">
         {statusData.currentStatus ? null : (

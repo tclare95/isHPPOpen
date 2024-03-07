@@ -1,6 +1,7 @@
 import Row from "react-bootstrap/Row";
 import Collapse from "react-bootstrap/Collapse";
 import {useState} from "react";
+import Link from "next/link";
 
 export default function Footer () {
     const [open, setOpen] = useState(false);
@@ -9,6 +10,7 @@ export default function Footer () {
         <div className="mt-4 text-light text-center justify-content-center">
             <Row className="justify-content-center bg-secondary">
                 <a onClick={() => setOpen(!open)} aria-controls="footer-collapse-text" aria-expanded={open} className="text-info"><p>About</p></a>
+                <Link href="/trentlock">Trent Lock Logging</Link>
             </Row>
             <Row className="justify-content-center bg-secondary">
                 <Collapse in={open}>

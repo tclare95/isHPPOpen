@@ -1,9 +1,8 @@
 import { getServerSession } from "next-auth/next"
 import { connectToDatabase } from '../../libs/database'
 import { authOptions } from "./auth/[...nextauth]"
+import { ObjectID } from 'mongodb';
 
-
-const ObjectID = require('mongodb').ObjectID;
 
 export default async function handler(req, res) {
     const { method, body } = req;
@@ -28,9 +27,7 @@ export default async function handler(req, res) {
                     .limit(limit)
                     .sort({ event_start_date: 1 })
                     .toArray();
-                const count = await collection.countDocuments({
-                    event_end_date: { $gte: now },
-                });
+                const count = data.length;
                 const returnBody = {
                     count: count,
                     eventsArray: data,

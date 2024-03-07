@@ -31,7 +31,7 @@ export default function Home(props) {
   return (
     <Container fluid >
       <Meta title="Is HPP Open" />
-      <Link href="/trentlock"><Header message="Click on banner for trent lock logging. Stats about HPP closures at bottom of page."/></Link>
+      <Header message={props.message} />
       <GraphContext.Provider
         value={{
           upperBound,
@@ -68,6 +68,11 @@ export async function getStaticProps() {
     .toArray();
   const cleanedData = JSON.parse(JSON.stringify(data));
 
+  // get the site message for the banner
+  const collection2 = await db.collection("sitebannerschemas");
+  const data2 = await collection2.findOne();
+  const cleanedData2 = JSON.parse(JSON.stringify(data2));
+
   // Revalidate = time before next re-renders the page in seconds = 30 minutes
-  return { props: { data: cleanedData }, revalidate: 900 };
+  return { props: { data: cleanedData, message:  cleanedData2.banner_message}, revalidate: 900 };
 }

@@ -21,10 +21,10 @@ export default function MessageEditor() {
 
     return (
         <>
-            <div>
-                <h2>Current Message:</h2>
-                <p>{messageData[0].banner_message}</p>
-            </div>
+         <div className="message-editor">
+            <h2 className="message-editor-title">Current Message:</h2>
+            <p className="message-editor-current">{messageData[0].banner_message}</p>
+        </div>
             <Formik
                 initialValues={{
                     message: messageData[0].banner_message,
@@ -53,17 +53,17 @@ export default function MessageEditor() {
                 }}
             >
                 {({ isSubmitting }) => (
-                    <Form>
-                        <Field type="text" name="message" />
-                        <ErrorMessage name="message" component="div" />
-                        <button type="submit" disabled={isSubmitting}>
-                            Update Message
-                        </button>
-                    </Form>
+                    <Form className="message-editor-form">
+                    <Field type="text" name="message" className="message-editor-input" />
+                    <ErrorMessage name="message" component="div" className="message-editor-error" />
+                    <button type="submit" disabled={isSubmitting} className="message-editor-button">
+                        Update Message
+                    </button>
+                </Form>
                 )}
             </Formik>
-            {success && <p>Message updated successfully!</p>}
-            {error && <p>Error updating the message.</p>}
+            {success && <p className="message-editor-success">Message updated successfully!</p>}
+            {error && <p className="message-editor-error">Error updating the message.</p>}
         </>
     );
 }

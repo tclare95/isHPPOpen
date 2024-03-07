@@ -24,6 +24,8 @@ export default function MessageEditor() {
          <div className="message-editor">
             <h2 className="message-editor-title">Current Message:</h2>
             <p className="message-editor-current">{messageData[0].banner_message}</p>
+            <h2>Last Updated:</h2>
+            <p>{new Date(messageData[0].banner_update_date).toLocaleString()}</p>
         </div>
             <Formik
                 initialValues={{

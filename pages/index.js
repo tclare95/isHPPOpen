@@ -31,7 +31,7 @@ export default function Home(props) {
   return (
     <Container fluid >
       <Meta title="Is HPP Open" />
-      <Header message={props.message} />
+      <Header message={props.message.banner_message} />
       <GraphContext.Provider
         value={{
           upperBound,
@@ -74,5 +74,5 @@ export async function getStaticProps() {
   const cleanedData2 = JSON.parse(JSON.stringify(data2));
 
   // Revalidate = time before next re-renders the page in seconds = 30 minutes
-  return { props: { data: cleanedData, message:  cleanedData2.banner_message}, revalidate: 900 };
+  return { props: { data: cleanedData, message: cleanedData2}, revalidate: 900 };
 }

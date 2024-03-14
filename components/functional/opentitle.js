@@ -24,7 +24,7 @@ export default function OpenTitle(props) {
 
     // Calculate days since HPP was last open
     const currentDate = new Date();
-    const lastChangedDate = new Date(statusData.lastChangedDate);
+    const lastChangedDate = new Date(statusData.effectiveLastOpenDate);
     const daysSinceLastOpen = Math.floor((currentDate - lastChangedDate) / (1000 * 60 * 60 * 24));
 
   //pull the event array, check if the current date falls between two events

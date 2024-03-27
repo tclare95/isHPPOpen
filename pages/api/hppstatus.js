@@ -114,17 +114,13 @@ const processRecords = (sortedRecords, intervals) => {
 
 const adjustEffectiveLastOpenDate = (lastOpenDate, currentStatus) => {
   const now = new Date();
-  if (lastOpenDate.getHours() >= 15) {
-    lastOpenDate.setDate(lastOpenDate.getDate() + 1);
-  }
-  // If the last status is true and the last open date is yesterday, consider today as the effective last open date
-  if (
-    currentStatus === true &&
-    lastOpenDate.toDateString() === new Date().toDateString()
-  ) {
-    lastOpenDate = now;
-  }
-  return lastOpenDate;
+//   if currentStatus is true, then hpp is open and the effective last open date is today
+    if (currentStatus) {
+        return now;
+    } else {
+        // this must mean that the last open date is in the past. Get the last open date and return it
+        return lastOpenDate;
+    }
 };
 
 export default async function handler(req, res) {
@@ -165,7 +161,7 @@ export default async function handler(req, res) {
       .reverse()
       .find((record) => record.value === true);
     let effectiveLastOpenDate = adjustEffectiveLastOpenDate(
-      new Date(lastOpenRecord.timestamp)
+      new Date(lastOpenRecord.timestamp), lastOpenRecord.value
     );
 
     console.log(timestamp + " HPPSTATUS CALLED");

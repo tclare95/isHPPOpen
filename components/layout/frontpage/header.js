@@ -2,6 +2,10 @@ import Alert from 'react-bootstrap/Alert'
 import Row from 'react-bootstrap/Row'
 
 export default function Header ({message}) {
+    // if message.length === 0, don't display anything
+    if (message.length === 0) {
+        return null;
+    }
     return (
         
         

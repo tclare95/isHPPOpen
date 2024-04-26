@@ -9,6 +9,7 @@ import ChartRender from "../../functional/chart";
 import Spinner from "react-bootstrap/Spinner";
 import { useContext } from "react";
 import GraphContext from "../../../libs/context/graphcontrol";
+import Link from "next/link";
 
 const currentTime = new Date();
 
@@ -31,24 +32,20 @@ export default function TopContent(props) {
           <OpenTitle cachedEvents={props.cachedEvents} />
         </Col>
       </Row>
-      <Row >
+      <Row className="align-items-center">
         <Col>
-        <h3>
-          The River Level is{" "}
-          {isPending
-            ? "0.00"
-            : (Math.round((recentLevel + Number.EPSILON) * 100) / 100).toFixed(
-                2
-              )}
-          M
-        </h3>
-        <a href="#waterquality">
-          {isPending ? (
-            null
-          ) : (
-            <VomitFactor levelData={levelData.level_data} />
-          )}
-        </a>
+          <h3>
+            The River Level is{" "}
+            {isPending
+              ? "0.00"
+              : (Math.round((recentLevel + Number.EPSILON) * 100) / 100).toFixed(
+                  2
+                )}
+            M
+          </h3>
+          <a href="#waterquality">
+            {isPending ? null : <VomitFactor levelData={levelData.level_data} />}
+          </a>
         </Col>
       </Row>
       <Row className="justify-content-center">
@@ -71,8 +68,11 @@ export default function TopContent(props) {
           level forecast.
         </p>
         <p>
-          If the level is close to the cuttoff, or if you want to be doubly
-          sure, call the WWC on 0115 982 1212
+          Need some new paddling kit or forgotten something? Check out{" "}
+          <Link target="blank" href="https://www.flowkayaks.co.uk/">
+            Flow Kayaks
+          </Link>{" "}
+          who are just over the river.
         </p>
         <p>
           Check below the graph for details about the availability of slots

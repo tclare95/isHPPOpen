@@ -7,36 +7,19 @@ const intervals = {
   365: 365,
 };
 
-// Utility function to calculate days between dates
 const calculateDaysBetween = (startDate, endDate) =>
   Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
 
-// Determines if a date is before another date
-const isBefore = (date, comparisonDate) => date < comparisonDate;
+const updateClosures = (closures, interval, intervalStart, closureStart, recordDate) => {
+  const overlapStart = closureStart < intervalStart ? intervalStart : closureStart;
+  const overlapEnd = recordDate;
+  const overlapDays = calculateDaysBetween(overlapStart, overlapEnd);
 
-// Determines if a date is after another date
-const isAfter = (date, comparisonDate) => date > comparisonDate;
-
-// Updates closure counts
-const updateClosures = (
-  closures,
-  interval,
-  intervalStart,
-  closureStart,
-  recordDate
-) => {
-  let overlapStart =
-    closureStart < intervalStart ? intervalStart : closureStart;
-  let overlapEnd = recordDate;
-  let overlapDays = calculateDaysBetween(overlapStart, overlapEnd);
-
-  // Ensure we only add positive day counts
   if (overlapDays > 0) {
     closures[interval] += overlapDays;
   }
 };
 
-// Processes sorted records to calculate closures
 const processRecords = (sortedRecords, intervals) => {
   const closures = { 7: 0, 28: 0, 182: 0, 365: 0 };
   let closureStart = null;
@@ -51,26 +34,7 @@ const processRecords = (sortedRecords, intervals) => {
         const intervalStart = new Date(
           currentDate.getTime() - intervals[interval] * 24 * 60 * 60 * 1000
         );
-        if (
-          isBefore(closureStart, intervalStart) &&
-          isAfter(recordDate, intervalStart)
-        ) {
-          updateClosures(
-            closures,
-            interval,
-            intervalStart,
-            closureStart,
-            recordDate
-          );
-        } else if (isAfter(closureStart, intervalStart)) {
-          updateClosures(
-            closures,
-            interval,
-            intervalStart,
-            closureStart,
-            recordDate
-          );
-        }
+        updateClosures(closures, interval, intervalStart, closureStart, recordDate);
       });
       closureStart = null;
     }
@@ -82,45 +46,11 @@ const processRecords = (sortedRecords, intervals) => {
       const intervalStart = new Date(
         currentDate.getTime() - intervals[interval] * 24 * 60 * 60 * 1000
       );
-      updateClosures(
-        closures,
-        interval,
-        intervalStart,
-        closureStart,
-        currentDate
-      );
+      updateClosures(closures, interval, intervalStart, closureStart, currentDate);
     });
-  } else if (sortedRecords[sortedRecords.length - 1].value === true) {
-    // If the last record is true, consider the time since the last record to now as open, which may affect closure calculations
-    const lastRecordDate = new Date(
-      sortedRecords[sortedRecords.length - 1].timestamp
-    );
-    if (lastRecordDate.toDateString() === new Date().toDateString()) {
-      // This means the last open status was today, consider adjustments for counting today as open
-      Object.keys(intervals).forEach((interval) => {
-        const intervalStart = new Date(
-          currentDate.getTime() - intervals[interval] * 24 * 60 * 60 * 1000
-        );
-        if (isAfter(currentDate, intervalStart)) {
-          // Adjust closure calculations here if necessary
-          // Since today is considered open, you might want to adjust how this day is counted in closures
-        }
-      });
-    }
   }
 
   return closures;
-};
-
-const adjustEffectiveLastOpenDate = (lastOpenDate, currentStatus) => {
-  const now = new Date();
-//   if currentStatus is true, then hpp is open and the effective last open date is today
-    if (currentStatus) {
-        return now;
-    } else {
-        // this must mean that the last open date is in the past. Get the last open date and return it
-        return lastOpenDate;
-    }
 };
 
 export default async function handler(req, res) {
@@ -132,44 +62,31 @@ export default async function handler(req, res) {
 
     const currentDate = new Date();
     const oneYearAgo = new Date(new Date().setFullYear(currentDate.getFullYear() - 1));
-    
-    const records = await collection
-      .find({ timestamp: { $gte: oneYearAgo } })
-      .toArray();
-    const sortedRecords = records.sort(
-      (a, b) => new Date(a.timestamp) - new Date(b.timestamp)
-    );
-    if (sortedRecords.length === 0) {
-      return res
-        .status(500)
-        .json({
-          error:
-            "No records found in the database for the specified date range.",
-        });
-    }
 
-    if (!sortedRecords[0].hasOwnProperty("value")) {
-      return res
-        .status(500)
-        .json({
-          error: "The first record doesn't contain a 'value' property.",
-        });
+    const records = await collection.find({ timestamp: { $gte: oneYearAgo } }).toArray();
+    const sortedRecords = records.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+    if (sortedRecords.length === 0) {
+      return res.status(500).json({ error: "No records found in the database." });
     }
 
     const closures = processRecords(sortedRecords, intervals);
-    const lastOpenRecord = sortedRecords
-      .reverse()
-      .find((record) => record.value === true);
-    let effectiveLastOpenDate = adjustEffectiveLastOpenDate(
-      new Date(lastOpenRecord.timestamp), lastOpenRecord.value
-    );
 
+    // Find the last record where value is false (i.e., closed)
+    const lastClosureRecord = sortedRecords.reverse().find((record) => record.value === false);
+
+    if (!lastClosureRecord) {
+      return res.status(500).json({ error: "No closure records found." });
+    }
+
+    const lastChangedDate = new Date(lastClosureRecord.timestamp).toISOString();
+    
     console.log(timestamp + " HPPSTATUS CALLED");
 
     res.status(200).json({
-      currentStatus: sortedRecords[sortedRecords.length - 1].value,
-      lastChangedDate: sortedRecords[sortedRecords.length - 1].timestamp,
-      effectiveLastOpenDate: effectiveLastOpenDate.toISOString().slice(0, 10),
+      currentStatus: sortedRecords[0].value,
+      lastChangedDate: lastChangedDate.slice(0, 10),
+      effectiveLastOpenDate: lastChangedDate.slice(0, 10),
       closuresInLast7Days: closures["7"],
       closuresInLast28Days: closures["28"],
       closuresInLast182Days: closures["182"],
@@ -177,6 +94,6 @@ export default async function handler(req, res) {
     });
   } catch (error) {
     console.error(timestamp + " " + error);
-    res.status(500).json({ error: error });
+    res.status(500).json({ error });
   }
 }

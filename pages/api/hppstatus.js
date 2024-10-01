@@ -87,10 +87,10 @@ export default async function handler(req, res) {
       currentStatus: sortedRecords[0].value,
       lastChangedDate: lastChangedDate.slice(0, 10),
       effectiveLastOpenDate: lastChangedDate.slice(0, 10),
-      closuresInLast7Days: closures["7"],
-      closuresInLast28Days: closures["28"],
-      closuresInLast182Days: closures["182"],
-      closuresInLast365Days: closures["365"],
+      closuresInLast7Days: closures["7"] > 7 ? 7 : closures["7"],
+      closuresInLast28Days: closures["28"] > 28 ? 28 : closures["28"],
+      closuresInLast182Days: closures["182"] > 182 ? 182 : closures["182"],
+      closuresInLast365Days: closures["365"] > 365 ? 365 : closures["365"],
     });
   } catch (error) {
     console.error(timestamp + " " + error);

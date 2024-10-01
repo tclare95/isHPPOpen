@@ -23,6 +23,7 @@ export default function TrentWeirs() {
             { id: 4009, name: "Colwick" },
             { id: 4067, name: "Church Wilne" },
             { id: 4007, name: "Shardlow" },
+            { id: 4074, name: "Kegworth", measureType: "level" },
           ]}
         />
       </Container>

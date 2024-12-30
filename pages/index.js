@@ -41,7 +41,7 @@ export default function Home(props) {
       >
         <Container>
           <TopContent cachedEvents={props.data} />
-          <SessionBooking />
+          {/* <SessionBooking /> */}
           <EventsArea />
           <WaterQuality />
           <WeirInfo />

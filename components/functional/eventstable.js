@@ -1,6 +1,5 @@
 import Row from "react-bootstrap/Row";
 import Col from "react-bootstrap/Col";
-import { useFetchedEvents } from "../../libs/eventsswrhook";
 import EventsForm from "./eventsform";
 import useSWR from "swr";
 import { fetcher } from "../../libs/fetcher";
@@ -21,10 +20,10 @@ export default function EventsTable() {
         <Row>
           <h2 className="text-light mx-auto my-4">Current events:</h2>
         </Row>
-        <Row xs={1} sm={2} md={3} lg={4} className="g-4">
+        <Row className="g-4 justify-content-center">
           {data &&
             data.eventsArray.map((event) => (
-              <Col key={event._id}>
+              <Col key={event._id} xs="auto" style={{ flex: "0 0 45%" }}>
                 <EventsForm
                   id={event._id}
                   name={event.event_name}

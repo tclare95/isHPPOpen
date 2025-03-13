@@ -18,34 +18,21 @@ const validationSchema = Yup.object().shape({
   eventDetails: Yup.string().required("Event details are required"),
 });
 
-export default function EventsForm(props) {
+export default function EventsForm({ id, name, startDate, endDate, eventDetails, isNew, mutate }) {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
   const [deleteState, setDeleteState] = useState(false);
 
-  const handleDeleteClick = async (id) => {
-    if (deleteState) {
-      try {
-        await axios.delete(`/api/events/?${id}`, { withCredentials: true });
-        setSuccess(true);
-        mutate("/api/events");
-      } catch (err) {
-        setError("Error deleting event!");
-      }
-      setDeleteState(false);
-    } else {
-      setDeleteState(true);
+  // Updated delete handler: uses the proper event id from props.
+  const handleDelete = async () => {
+    try {
+      await fetch(`/api/events/${id}`, { method: "DELETE" });
+      if (mutate) mutate();
+    } catch (err) {
+      console.error("Failed to delete event", err);
     }
   };
 
-  const {
-    id = "",
-    name = "",
-    startDate = new Date(),
-    endDate = new Date(),
-    eventDetails = "",
-  } = props;
-  
   return (
       <Formik
         enableReinitialize={true}
@@ -170,10 +157,10 @@ export default function EventsForm(props) {
               <Row className="my-2 mx-auto">
                 <Button
                   variant="danger"
-                  onClick={() => handleDeleteClick(props.id)}
-                  disabled={!props.isNew}
+                  onClick={handleDelete}
+                  disabled={!isNew}
                 >
-                  {props.isNew ? "Delete Event" : "N/A"}
+                  {isNew ? "Delete Event" : "N/A"}
                   {deleteState ? " - Click again to confirm" : ""}
                 </Button>
               </Row>

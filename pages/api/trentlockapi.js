@@ -33,7 +33,6 @@ const getLevelByStation = async (stationId, dateObject, delay) => {
     console.log("error getting level data for station", stationId);
     console.log(error);
     throw error;
-    return error;
   }
 };
 
@@ -41,20 +40,15 @@ export default async function handler(req, res) {
   try {
     const { method, body } = req;
     let submissionDate;
-    // turn the request into a JSON object
-
-    // try parsing the body, if it fails, return an error
+    let parsedRequest;
+    // try parsing the body once
     try {
-      const request = JSON.parse(Object.keys(body)[0]);
-      submissionDate = new Date(request.dateTime);
-      res.status(200).json({
-        message: "Update successful",
-      });
+      parsedRequest = JSON.parse(Object.keys(body)[0]);
+      submissionDate = new Date(parsedRequest.dateTime);
+      res.status(200).json({ message: "Update successful" });
     } catch (parseError) {
       console.error(`[${new Date().toISOString()}] [${req.method}] JSON parse error:`, parseError);
-      return res.status(403).json({
-        message: "Error parsing request body",
-      });
+      return res.status(403).json({ message: "Error parsing request body" });
     }
     // this stuff is all done asynchronously, so we can't return a response here
     // access the EA API, pull data for colwick (#12345), clifton (#12346), shardlow(#123456), church wilne (#1234567), and kegworth (#12345678) for the previous 7 days.
@@ -70,7 +64,6 @@ export default async function handler(req, res) {
     // some working variables for getting the river level data
     let levelData = [];
     let levels = {};
-    const request = JSON.parse(Object.keys(body)[0]);
     // try getting the levels, if it fails, return an error and save the basic data
     try {
       levelStations.forEach((station) => {
@@ -89,11 +82,11 @@ export default async function handler(req, res) {
       console.log("error getting levels, saving basic data");
       // as a backup, if the river level call fails write the user input to the database with blank river levels
       const documentToInsert = {
-        date: request.dateTime,
+        date: parsedRequest.dateTime,
         dateCreated: new Date(),
-        userRange: request.range,
-        userComment: request.comment,
-        userBoat: request.boat,
+        userRange: parsedRequest.range,
+        userComment: parsedRequest.comment,
+        userBoat: parsedRequest.boat,
         recordedLevels: null,
       };
       const { db } = await connectToDatabase();
@@ -107,11 +100,11 @@ export default async function handler(req, res) {
       try {
 
         const documentToInsert = {
-          date: request.dateTime,
+          date: parsedRequest.dateTime,
           dateCreated: new Date(),
-          userRange: request.range,
-          userComment: request.comments,
-          userBoat: request.boatType,
+          userRange: parsedRequest.range,
+          userComment: parsedRequest.comments,
+          userBoat: parsedRequest.boatType,
           recordedLevels: levels,
         };
 

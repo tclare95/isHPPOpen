@@ -43,18 +43,18 @@ export default async function handler(req, res) {
                 break;
             case 'POST':
                 try {
-                    const request = JSON.parse(Object.keys(body)[0]);
-                    console.log(request);
+                    const parsedRequest = JSON.parse(Object.keys(body)[0]);
+                    console.log(parsedRequest);
                     if (session) {
                         const now = new Date();
                         try {
-                            const query = { event_name: request.new_event_name };
+                            const query = { event_name: parsedRequest.new_event_name };
                             const update = {
                                 $set: {
-                                    event_name: request.new_event_name,
-                                    event_start_date: new Date(request.new_event_start_date),
-                                    event_end_date: new Date(request.new_event_end_date),
-                                    event_details: request.new_event_details,
+                                    event_name: parsedRequest.new_event_name,
+                                    event_start_date: new Date(parsedRequest.new_event_start_date),
+                                    event_end_date: new Date(parsedRequest.new_event_end_date),
+                                    event_details: parsedRequest.new_event_details,
                                 },
                             };
                             const options = { upsert: true };
@@ -64,20 +64,20 @@ export default async function handler(req, res) {
                             if (result.modifiedCount === 1 || result.upsertedCount === 1) {
                                 // log userID, objectID and action
                                 console.log(
-                                    `${timestamp} Event modified by ${session.user.email} ${request.new_event_id}`
+                                    `${timestamp} Event modified by ${session.user.email} ${parsedRequest.new_event_id}`
                                 );
                                 res.status(200).json({
                                     message: 'Update successful',
-                                    id: request.new_event_id,
+                                    id: parsedRequest.new_event_id,
                                 });
                             } else {
                                 // send an error message if the update fails
                                 console.error(
-                                    `${timestamp} Update unsuccessful for event ${request.new_event_id}`
+                                    `${timestamp} Update unsuccessful for event ${parsedRequest.new_event_id}`
                                 );
                                 res.status(500).json({
                                     message: 'Update failed',
-                                    id: request.new_event_id,
+                                    id: parsedRequest.new_event_id,
                                 });
                             }
                         } catch (error) {

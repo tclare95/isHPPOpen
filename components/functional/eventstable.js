@@ -42,7 +42,12 @@ export default function EventsTable() {
           <h2 className="text-light mx-auto my-4">Add new event:</h2>
         </Row>
         <Row className="pb-4">
-          <EventsForm isNew={false} mutate={mutate} />
+          <EventsForm
+            isNew={false}
+            mutate={mutate}
+            startDate={new Date()} // added default start date for new events
+            endDate={new Date()}   // added default end date for new events
+          />
         </Row>
       </div>
     );

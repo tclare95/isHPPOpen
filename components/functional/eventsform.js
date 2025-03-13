@@ -1,4 +1,5 @@
 import { Formik } from "formik";
+import * as Yup from "yup"; // added Yup for validation
 import Form from "react-bootstrap/Form";
 import Row from "react-bootstrap/Row";
 import Col from "react-bootstrap/Col";
@@ -7,32 +8,34 @@ import axios from "axios";
 import { useState } from "react";
 import { mutate } from "swr";
 
+// Validation schema using Yup
+const validationSchema = Yup.object().shape({
+  name: Yup.string().required("Event name is required"),
+  startDate: Yup.date().required("Start date is required"),
+  endDate: Yup.date()
+    .required("End date is required")
+    .min(Yup.ref("startDate"), "End date can’t be before start date"),
+  eventDetails: Yup.string().required("Event details are required"),
+});
+
 export default function EventsForm(props) {
   const [success, setSuccess] = useState(false);
-  const [error, setError] = useState(false);
-
-  // Set the default state for the delete button confirmation.
+  const [error, setError] = useState("");
   const [deleteState, setDeleteState] = useState(false);
 
-  const handleDeleteClick = (id) => {
-
+  const handleDeleteClick = async (id) => {
     if (deleteState) {
-      axios
-      .delete(`/api/events/?${id}`, { withCredentials: true })
-      .then((response) => {
-        try {
-          setSuccess(true);
-          mutate("/api/events");
-          // window.location.reload();
-        } catch {
-          setError(true);
-        }
-      });
+      try {
+        await axios.delete(`/api/events/?${id}`, { withCredentials: true });
+        setSuccess(true);
+        mutate("/api/events");
+      } catch (err) {
+        setError("Error deleting event!");
+      }
       setDeleteState(false);
     } else {
       setDeleteState(true);
     }
-    
   };
 
   const {
@@ -42,10 +45,10 @@ export default function EventsForm(props) {
     endDate = new Date(),
     eventDetails = "",
   } = props;
+  
   return (
-    <>
       <Formik
-        enableReinitialize="true"
+        enableReinitialize={true}
         initialValues={{
           id: id,
           name: name,
@@ -53,7 +56,8 @@ export default function EventsForm(props) {
           endDate: endDate.toISOString().split("T")[0],
           eventDetails: eventDetails,
         }}
-        onSubmit={(values, { setSubmitting, resetForm }) => {
+        validationSchema={validationSchema}
+        onSubmit={async (values, { setSubmitting, resetForm }) => {
           const dataArray = {
             new_event_id: values.id,
             new_event_name: values.name,
@@ -61,19 +65,19 @@ export default function EventsForm(props) {
             new_event_end_date: values.endDate,
             new_event_details: values.eventDetails,
           };
-          const json = JSON.stringify(dataArray);
-          axios
-            .post("/api/events", json, { withCredentials: true })
-            .then((response) => {
-              if (response.status === 200) {
-                setSuccess(true);
-                mutate("/api/events");
-                // window.location.reload();
-              } else {
-                setError(true);
-              }
-            });
-            resetForm();
+          try {
+            const response = await axios.post("/api/events", JSON.stringify(dataArray), { withCredentials: true });
+            if (response.status === 200) {
+              setSuccess(true);
+              mutate("/api/events");
+            } else {
+              setError("Error modifying event!");
+            }
+          } catch (err) {
+            setError("Error modifying event!");
+          }
+          resetForm();
+          setSubmitting(false);
         }}
       >
         {(formik) => (
@@ -95,8 +99,15 @@ export default function EventsForm(props) {
                   id="name"
                   name="name"
                   onChange={formik.handleChange}
+                  onBlur={formik.handleBlur}
                   value={formik.values.name}
+                  isInvalid={!!formik.errors.name && formik.touched.name}
                 />
+                {formik.touched.name && formik.errors.name && (
+                  <Form.Control.Feedback type="invalid">
+                    {formik.errors.name}
+                  </Form.Control.Feedback>
+                )}
               </Row>
               <Row>
                 <Form.Label htmlFor="startDate">Event Start Date</Form.Label>
@@ -105,8 +116,15 @@ export default function EventsForm(props) {
                   name="startDate"
                   type="date"
                   onChange={formik.handleChange}
+                  onBlur={formik.handleBlur}
                   value={formik.values.startDate}
+                  isInvalid={!!formik.errors.startDate && formik.touched.startDate}
                 />
+                {formik.touched.startDate && formik.errors.startDate && (
+                  <Form.Control.Feedback type="invalid">
+                    {formik.errors.startDate}
+                  </Form.Control.Feedback>
+                )}
               </Row>
               <Row>
                 <Form.Label htmlFor="endDate">Event End Date</Form.Label>
@@ -115,25 +133,37 @@ export default function EventsForm(props) {
                   name="endDate"
                   type="date"
                   onChange={formik.handleChange}
+                  onBlur={formik.handleBlur}
                   value={formik.values.endDate}
+                  isInvalid={!!formik.errors.endDate && formik.touched.endDate}
                 />
+                {formik.touched.endDate && formik.errors.endDate && (
+                  <Form.Control.Feedback type="invalid">
+                    {formik.errors.endDate}
+                  </Form.Control.Feedback>
+                )}
               </Row>
-              <Row className>
+              <Row>
                 <Form.Label htmlFor="eventDetails">Event Details</Form.Label>
                 <Form.Control
                   id="eventDetails"
                   name="eventDetails"
                   as="textarea"
                   onChange={formik.handleChange}
-                  value={formik.values.eventDetails}
                   onBlur={formik.handleBlur}
+                  value={formik.values.eventDetails}
+                  isInvalid={!!formik.errors.eventDetails && formik.touched.eventDetails}
                   rows={8}
                   style={{ resize: "none" }}
                 />
+                {formik.touched.eventDetails && formik.errors.eventDetails && (
+                  <Form.Control.Feedback type="invalid">
+                    {formik.errors.eventDetails}
+                  </Form.Control.Feedback>
+                )}
               </Row>
               <Row className="my-2 mx-auto">
-                <Button type="submit"
-                disabled={!formik.touched.eventDetails}>
+                <Button type="submit" disabled={formik.isSubmitting || !formik.isValid}>
                   {formik.values.id ? "Save Edit" : "Add Event"}
                 </Button>
               </Row>
@@ -148,11 +178,14 @@ export default function EventsForm(props) {
                 </Button>
               </Row>
             </Form>
-            {success && <div><h5>Event successfully modified!</h5></div>}
-            {error && <div>Error modifying event!</div>}
+            {success && (
+              <div>
+                <h5>Event successfully modified!</h5>
+              </div>
+            )}
+            {error && <div className="text-danger">{error}</div>}
           </Row>
         )}
       </Formik>
-    </>
   );
 }

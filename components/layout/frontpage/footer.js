@@ -9,7 +9,9 @@ export default function Footer () {
     return (
         <div className="mt-4 text-light text-center justify-content-center">
             <Row className="justify-content-center bg-secondary">
-                <a onClick={() => setOpen(!open)} aria-controls="footer-collapse-text" aria-expanded={open} className="text-info"><p>About</p></a>
+                <button onClick={() => setOpen(!open)} aria-controls="footer-collapse-text" aria-expanded={open} className="text-info btn btn-link">
+                    About
+                </button>
                 <Link href="/trentlock">Trent Lock Logging</Link>
             </Row>
             <Row className="justify-content-center bg-secondary">

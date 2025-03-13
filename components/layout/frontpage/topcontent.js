@@ -15,14 +15,10 @@ const currentTime = new Date();
 
 export default function TopContent(props) {
   const { levelData, error, isPending } = useFetchedLevels();
-  let readingTime = new Date();
-  // fixes a weird bug with the time since last reading jumping to large negative values
-  let recentLevel;
-  if (!isPending) {
-    readingTime = new Date(levelData.level_data[0].reading_date);
-    recentLevel = levelData.level_data[0].reading_level;
-  }
-  const { upperBound, lowerBound, updateBounds } = useContext(GraphContext);
+  const recentEntry = !isPending && levelData.level_data?.[0];
+  const readingTime = recentEntry ? new Date(recentEntry.reading_date) : new Date();
+  const recentLevel = recentEntry ? recentEntry.reading_level : 0;
+  const { lowerBound, upperBound, updateBounds } = useContext(GraphContext);
 
   return (
     <div className="text-white text-center">
@@ -40,7 +36,7 @@ export default function TopContent(props) {
               ? "0.00"
               : (Math.round((recentLevel + Number.EPSILON) * 100) / 100).toFixed(
                   2
-                )}
+                )}{" "}
             M
           </h3>
           <a href="#waterquality">
@@ -50,7 +46,7 @@ export default function TopContent(props) {
       </Row>
       <Row className="justify-content-center">
         {isPending ? (
-          <div className="d-none"></div>
+          <Spinner animation="border" role="status" />
         ) : (
           <WeirLevels currentLevel={recentLevel} />
         )}
@@ -82,9 +78,7 @@ export default function TopContent(props) {
       <Row className="justify-content-center text-white mt-2" id="chart">
         <Col className="justify-content-center text-center">
           {isPending ? (
-            <Spinner animation="border" role="status">
-            
-          </Spinner>
+            <Spinner animation="border" role="status" />
           ) : (
             <ChartRender
               lowerBound={lowerBound}

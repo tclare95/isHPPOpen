@@ -21,14 +21,13 @@ export default function EventsTable() {
           <h2 className="text-light mx-auto my-4">Current events:</h2>
         </Row>
         <Row className="g-4 justify-content-center">
-          {data &&
-            data.eventsArray.map((event) => (
+          {data?.eventsArray?.map((event) => (
               <Col key={event._id} xs="auto" style={{ flex: "0 0 45%" }}>
                 <EventsForm
                   id={event._id}
                   name={event.event_name}
-                  startDate={new Date(event.event_start_date)}
-                  endDate={new Date(event.event_end_date)}
+                  startDate={event.event_start_date ? new Date(event.event_start_date) : undefined}
+                  endDate={event.event_end_date ? new Date(event.event_end_date) : undefined}
                   eventDetails={event.event_details}
                   isNew={true}
                   mutate={mutate}

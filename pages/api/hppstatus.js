@@ -55,7 +55,6 @@ const processRecords = (sortedRecords, intervals) => {
 
 export default async function handler(req, res) {
   const timestamp = new Date().toISOString();
-
   try {
     const { db } = await connectToDatabase();
     const collection = await db.collection("openIndicator");
@@ -67,6 +66,7 @@ export default async function handler(req, res) {
     const sortedRecords = records.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
 
     if (sortedRecords.length === 0) {
+      console.error(`[${timestamp}] No records found in hppstatus`);
       return res.status(500).json({ error: "No records found in the database." });
     }
 
@@ -76,12 +76,13 @@ export default async function handler(req, res) {
     const lastClosureRecord = sortedRecords.reverse().find((record) => record.value === false);
 
     if (!lastClosureRecord) {
+      console.error(`[${timestamp}] No closure records found in hppstatus`);
       return res.status(500).json({ error: "No closure records found." });
     }
 
     const lastChangedDate = new Date(lastClosureRecord.timestamp).toISOString();
     
-    console.log(timestamp + " HPPSTATUS CALLED");
+    console.log(`${timestamp} HPPSTATUS CALLED`);
 
     res.status(200).json({
       currentStatus: sortedRecords[0].value,
@@ -93,7 +94,7 @@ export default async function handler(req, res) {
       closuresInLast365Days: closures["365"] > 365 ? 365 : closures["365"],
     });
   } catch (error) {
-    console.error(timestamp + " " + error);
-    res.status(500).json({ error });
+    console.error(`[${timestamp}] Error in hppstatus:`, error);
+    res.status(500).json({ message: "Internal Server Error" });
   }
 }

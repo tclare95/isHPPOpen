@@ -26,11 +26,11 @@ const fetchTimetableSlots = async (offset = 0) => {
 };
 
 export default async function handler(req, res) {
-  // send post to hpp api
   try {
     const arrayToSend = await fetchTimetableSlots(req.query.offset);
     res.json(arrayToSend);
   } catch (error) {
-    res.status(404).send();
+    console.error(`[${new Date().toISOString()}] [${req.method}] Error in newslot:`, error);
+    res.status(500).json({ message: "Internal Server Error" });
   }
 };

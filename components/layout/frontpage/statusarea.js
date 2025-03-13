@@ -56,7 +56,6 @@ export default function StatusArea() {
   }
 
   const currentStatus = statusData.currentStatus ? "Open" : "Closed";
-  // split just the date from the datetime string
   const effectiveLastOpenDate = statusData.lastChangedDate.split("T")[0];
 
   return (
@@ -80,7 +79,6 @@ export default function StatusArea() {
             { days: 7, closures: statusData.closuresInLast7Days },
             { days: 28, closures: statusData.closuresInLast28Days },
             { days: 182, closures: statusData.closuresInLast182Days },
-            // { days: 365, closures: statusData.closuresInLast365Days },
           ].map(({ days, closures }) => (
             <Row className="justify-content-center mb-3" key={days}>
               <div className="text-center w-100">
@@ -107,7 +105,7 @@ export default function StatusArea() {
 
         <div
           className="mt-4 text-white text-center justify-content-center"
-          id="stats"
+          id="historical-accordion"
         >
           <Accordion>
             <Accordion.Item eventKey="0">

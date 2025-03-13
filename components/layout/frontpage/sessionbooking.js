@@ -12,22 +12,18 @@ export default function SessionBooking() {
   const [open, setOpen] = useState(false);
   const [queryLength, setQueryLength] = useState("0");
   const [showFull, setShowFull] = useState(false);
-  let isPending = true;
   const { data, error, mutate } = useSWR(
     "/api/newslot?offset=" + queryLength,
     fetcher
   );
-
-  if (data) isPending = false;
-
-  let slotArrayMod = data;
+  const loading = !data;
+  const slotsData = data;
 
   const handleClick = (event) => {
     setQueryLength(event.target.value);
-
     setOpen(true);
   };
-  const handleSwitchClick = (event) => {
+  const handleSwitchClick = () => {
     setShowFull(!showFull);
   };
 
@@ -67,12 +63,12 @@ export default function SessionBooking() {
       <Row className="justify-content-center">
         <Collapse in={open}>
           <div id="toggle-sessions-area">
-            {isPending ? (
+            {loading ? (
               "Loading"
             ) : (
               <Slots
-                slotArray={slotArrayMod}
-                isPending={isPending}
+                slotArray={slotsData}
+                isPending={loading}
                 showFull={showFull}
               />
             )}

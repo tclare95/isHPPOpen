@@ -98,7 +98,11 @@ export default async function handler(req, res) {
 
             case 'DELETE':
                 try {
-                    const id = Object.keys(req.query)[0];
+                    const { id } = req.query;
+                    if (!id) {
+                        res.status(400).json({ message: "Missing id parameter" });
+                        break;
+                    }
                     if (session) {
                         try {
                             const { db } = await connectToDatabase();

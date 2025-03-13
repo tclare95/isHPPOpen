@@ -21,30 +21,30 @@ export default function EventsTable() {
         <Row>
           <h2 className="text-light mx-auto my-4">Current events:</h2>
         </Row>
-        <Row>
+        <Row xs={1} sm={2} md={3} lg={4} className="g-4">
           {data &&
-            data.eventsArray.map((event, index) => (
-              <Col lg={3} className="m-2">
+            data.eventsArray.map((event) => (
+              <Col key={event._id}>
                 <EventsForm
-                  key={event._id}
                   id={event._id}
                   name={event.event_name}
                   startDate={new Date(event.event_start_date)}
                   endDate={new Date(event.event_end_date)}
                   eventDetails={event.event_details}
                   isNew={true}
+                  mutate={mutate}
                 />
               </Col>
             ))}
-            {data[0] ? null :  <h4 className="text-light mx-auto my-0">No events</h4>}
+          {data.eventsArray.length === 0 && (
+            <h4 className="text-light mx-auto my-0">No events</h4>
+          )}
         </Row>
         <Row>
           <h2 className="text-light mx-auto my-4">Add new event:</h2>
         </Row>
         <Row className="pb-4">
-          <EventsForm
-          isNew={false}
-          />
+          <EventsForm isNew={false} mutate={mutate} />
         </Row>
       </div>
     );

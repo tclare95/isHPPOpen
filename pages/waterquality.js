@@ -42,7 +42,6 @@ export default function WaterQuality() {
         <Row className="mb-5">
           <Col>
             <h2>CSO Map</h2>
-            <p>Still to come...</p>
             <WaterQualityMap />
           </Col>
         </Row>

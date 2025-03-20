@@ -64,7 +64,7 @@ export default function WeirInfo() {
             <Accordion.Header className="bg-dark text-white">
               {weir.header}
             </Accordion.Header>
-            <Accordion.Body>
+            <Accordion.Body className="bg-secondary">
               <h6 className="font-weight-bold">{weir.header}</h6>
               <p>{weir.description}</p>
               <ListGroup variant="flush">

@@ -2,7 +2,7 @@ import { connectToDatabase } from "../../../libs/database";
 
 export default async function handler(req, res) {
   const timestamp = new Date().toISOString();
-  const hours = parseInt(req.query.hours) || 36;
+  const hours = parseInt(req.query.hours) || 120;
 
   if (req.method === "GET") {
     try {

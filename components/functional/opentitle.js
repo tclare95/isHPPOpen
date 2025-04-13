@@ -31,7 +31,13 @@ export default function OpenTitle(props) {
   const isClosedForEvent = cachedEvents.some(event => {
     const startDate = new Date(event.event_start_date);
     const endDate = new Date(event.event_end_date);
-    return startDate <= currentDate && endDate >= currentDate
+
+    // Normalize dates to ignore time portion
+    const normalizedCurrentDate = new Date(currentDate.toDateString());
+    const normalizedStartDate = new Date(startDate.toDateString());
+    const normalizedEndDate = new Date(endDate.toDateString());
+
+    return normalizedStartDate <= normalizedCurrentDate && normalizedEndDate >= normalizedCurrentDate;
   });
 
   if (isClosedForEvent) {

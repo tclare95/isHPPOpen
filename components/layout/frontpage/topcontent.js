@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import Row from "react-bootstrap/Row";
 import Col from "react-bootstrap/Col";
 import Button from "react-bootstrap/Button";
@@ -20,6 +21,26 @@ export default function TopContent(props) {
   const recentLevel = recentEntry ? recentEntry.reading_level : 0;
   const { lowerBound, upperBound, updateBounds } = useContext(GraphContext);
 
+  const [csoData, setCsoData] = useState([]);
+
+  useEffect(() => {
+    async function fetchCsoData() {
+      try {
+        const response = await fetch("/api/waterquality/csodensity");
+        if (!response.ok) {
+          throw new Error("Failed to fetch CSO data");
+        }
+        const data = await response.json();
+        console.log("CSO data:", data);
+        setCsoData(data);
+      } catch (error) {
+        console.error("Error fetching CSO data:", error);
+      }
+    }
+
+    fetchCsoData();
+  }, []);
+
   return (
     <div className="text-white text-center">
       <Row className="justify-content-center">
@@ -40,7 +61,9 @@ export default function TopContent(props) {
             M
           </h3>
           <a href="#waterquality">
-            {isPending ? null : <VomitFactor levelData={levelData.level_data} />}
+            {isPending ? null : (
+              <VomitFactor levelData={levelData.level_data} csoData={csoData} />
+            )}
           </a>
         </Col>
       </Row>

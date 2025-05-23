@@ -40,6 +40,10 @@ export default async function handler(req, res) {
             {
               $match: {
                 "mostRecent.attributes.Status": 1,
+                "mostRecent.attributes.LatestEventStart": {
+                  $gte: startTime,
+                  $lte: scrapeTimestamp,
+                },
               },
             },
           ])

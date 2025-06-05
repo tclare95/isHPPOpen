@@ -5,10 +5,10 @@ import Button from "react-bootstrap/Button";
 
 export default function Events() {
     const [limit, setLimit] = useState(3);
-    const { eventData, eventError, eventIsPending } = useFetchedEvents(limit);
+    const { eventData, error, isPending } = useFetchedEvents(limit);
 
-    if (eventIsPending) return <p>Events Loading...</p>;
-    if (eventError) return <p>Error Fetching Events</p>;
+    if (isPending) return <p>Events Loading...</p>;
+    if (error) return <p>Error Fetching Events</p>;
 
     // useMemo to sort only when eventData changes
     const sortedEvents = useMemo(() => {

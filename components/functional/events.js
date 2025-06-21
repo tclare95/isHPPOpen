@@ -7,13 +7,13 @@ export default function Events() {
     const [limit, setLimit] = useState(3);
     const { data: eventData, error: eventError, isPending: eventIsPending } = useFetch(`/api/events?limit=${limit}`);
 
-    if (eventIsPending) return <p>Events Loading...</p>;
-    if (eventError) return <p>Error Fetching Events</p>;
-
     // useMemo to sort only when eventData changes
     const sortedEvents = useMemo(() => {
         return eventData?.eventsArray.sort((a, b) => new Date(a.event_start_date) - new Date(b.event_start_date));
     }, [eventData]);
+
+    if (eventIsPending) return <p>Events Loading...</p>;
+    if (eventError) return <p>Error Fetching Events</p>;
 
     // Adjust displayed limit based on actual events count
     const displayLimit = eventData && eventData.count < limit ? eventData.count : limit;

@@ -1,43 +1,39 @@
 import { getServerSession } from "next-auth/next";
-import { connectToDatabase } from '../../libs/database';
 import { authOptions } from "./auth/[...nextauth]";
-import { ObjectID } from 'mongodb';
+import { getBanners, upsertBanner } from "../../libs/services/siteBannerService";
 
 export default async function handler(req, res) {
   try {
-    const { method } = req;
+    const { method, body } = req;
     const session = await getServerSession(req, res, authOptions);
 
-    const { db } = await connectToDatabase();
-    const collection = db.collection('sitebannerschemas');
-
     switch (method) {
-      case 'GET':
-        const data = await collection.find({}).toArray();
-        res.status(200).json(data);
+      case "GET": {
+        try {
+          const data = await getBanners();
+          res.status(200).json(data);
+        } catch (error) {
+          console.error(`[${new Date().toISOString()}] [${req.method}] Error in sitebanner:`, error);
+          res.status(500).json({ message: "Internal Server Error" });
+        }
         break;
-      case 'POST':
+      }
+      case "POST": {
         if (!session) {
           console.error(`[${new Date().toISOString()}] [${req.method}] Unauthorized POST request`);
           return res.status(403).json({ message: "Unauthorized" });
         }
-
-        // Assuming req.body is already parsed by Next.js
-        const { banner_message, banner_start_date, banner_end_date } = req.body;
-        const update = {
-          $set: {
-            banner_message,
-            banner_update_date: new Date(),
-            banner_start_date: new Date(banner_start_date),
-            banner_end_date: new Date(banner_end_date),
-          },
-        };
-        const options = { upsert: true };
-        const result = await collection.updateOne({}, update, options);
-        res.status(200).json(result);
+        try {
+          const result = await upsertBanner(body);
+          res.status(200).json(result);
+        } catch (error) {
+          console.error(`[${new Date().toISOString()}] [${req.method}] Error in sitebanner:`, error);
+          res.status(400).json({ message: error.message });
+        }
         break;
+      }
       default:
-        res.setHeader('Allow', ['GET', 'POST']);
+        res.setHeader("Allow", ["GET", "POST"]);
         res.status(405).end(`Method ${method} Not Allowed`);
     }
   } catch (error) {

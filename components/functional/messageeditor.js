@@ -2,8 +2,7 @@ import { Formik, Form, Field, ErrorMessage } from 'formik';
 import axios from 'axios';
 import useSWR, { mutate } from 'swr';
 import { useState } from 'react';
-
-const fetcher = (url) => axios.get(url).then((res) => res.data);
+import { fetcher } from '../../libs/fetcher';
 
 export default function MessageEditor() {
     const { data: messageData, error: messageError } = useSWR("/api/sitebanner", fetcher);

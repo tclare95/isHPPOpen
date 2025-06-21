@@ -1,5 +1,5 @@
 import { Row, ProgressBar, Container } from "react-bootstrap";
-import { useFetchedStatus } from "../../../libs/statussswrhook";
+import useFetch from "../../../libs/useFetch";
 import { Accordion } from "react-bootstrap";
 
 const historicData = {
@@ -49,7 +49,7 @@ const historicData = {
 };
 
 export default function StatusArea() {
-  const { statusData, statusError, statusPending } = useFetchedStatus();
+  const { data: statusData, error: statusError, isPending: statusPending } = useFetch("/api/hppstatus");
 
   if (statusPending || !statusData) {
     return <div>Loading</div>;

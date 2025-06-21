@@ -56,7 +56,10 @@ export default function EventsForm({ id, name, startDate, endDate, eventDetails,
             const response = await axios.post("/api/events", JSON.stringify(dataArray), { withCredentials: true });
             if (response.status === 200) {
               setSuccess(true);
-              mutate("/api/events");
+              // Revalidate events data so the table reflects the update
+              // Passing no arguments uses the bound mutate from useSWR
+              // which will refetch the data for the current key
+              mutate();
             } else {
               setError("Error modifying event!");
             }

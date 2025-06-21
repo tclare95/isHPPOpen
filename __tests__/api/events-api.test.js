@@ -1,5 +1,5 @@
 // Mock all necessary dependencies before imports
-jest.mock('../../libs/database');
+jest.mock('../../libs/services/eventsService');
 jest.mock('next-auth/next');
 jest.mock('mongodb');
 
@@ -13,7 +13,7 @@ jest.mock('../../pages/api/auth/[...nextauth]', () => ({
 
 require('dotenv').config({ path: '.env.test' });
 
-const dbModule = require('../../libs/database');
+const eventsService = require('../../libs/services/eventsService');
 const { createMocks } = require('node-mocks-http');
 const eventsHandler = require('../../pages/api/events').default;
 
@@ -46,20 +46,8 @@ describe('Events API', () => {
       }
     ];
     
-    // Setup the database mock to return our test events
-    const toArrayMock = jest.fn().mockResolvedValue(mockEvents);
-    const sortMock = jest.fn().mockReturnValue({ toArray: toArrayMock });
-    const limitMock = jest.fn().mockReturnValue({ sort: sortMock });
-    const findMock = jest.fn().mockReturnValue({ limit: limitMock });
-    
-    const mockCollection = jest.fn().mockReturnValue({ find: findMock });
-    
-    const mockDb = {
-      collection: mockCollection
-    };
-    
-    const mockClient = { close: jest.fn() };
-    dbModule.connectToDatabase.mockResolvedValue({ db: mockDb, client: mockClient });
+    // Mock service layer to return our test events
+    eventsService.fetchUpcomingEvents.mockResolvedValue({ count: 2, eventsArray: mockEvents });
 
     // Mock console methods to prevent noise during tests
     const originalConsoleLog = console.log;
@@ -76,12 +64,6 @@ describe('Events API', () => {
 
     // Restore console
     console.log = originalConsoleLog;
-
-    // Verify database was called correctly
-    expect(mockCollection).toHaveBeenCalledWith('eventschemas');
-    expect(findMock).toHaveBeenCalled();
-    expect(limitMock).toHaveBeenCalledWith(10);
-    expect(sortMock).toHaveBeenCalledWith({ event_start_date: 1 });
     
     // Verify response
     expect(res._getStatusCode()).toBe(200);

@@ -2,14 +2,7 @@ import useSWR from 'swr';
 import { useState } from 'react';
 import { Chart } from 'react-google-charts';
 import { Card, Col, Dropdown } from 'react-bootstrap';
-
-async function fetcher(url) {
-  const res = await fetch(url);
-  if (!res.ok) {
-    throw new Error('Failed to fetch');
-  }
-  return res.json();
-}
+import { fetcher } from '../../libs/fetcher';
 
 export default function TrentWeirBlock({ gaugeName, gaugeId = 4126, measureType = 'level' }) {
   const [numDays, setNumDays] = useState(7);

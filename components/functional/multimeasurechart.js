@@ -1,6 +1,7 @@
 import useSWR from "swr";
 import { Chart } from "react-google-charts";
 import { useState } from "react";
+import { fetcher } from "../../libs/fetcher";
 
 function simpleMovingAverage(data, windowSize) {
   const result = [];
@@ -16,13 +17,6 @@ function simpleMovingAverage(data, windowSize) {
   return result;
 }
 
-const fetcher = async (url) => {
-  const res = await fetch(url);
-  if (!res.ok) {
-    throw new Error("Failed to fetch");
-  }
-  return res.json();
-};
 
 const multiFetcher = async (urls) => {
   return await Promise.all(urls.map((url) => fetcher(url)));

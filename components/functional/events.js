@@ -1,11 +1,11 @@
-import { useFetchedEvents } from "../../libs/eventsswrhook"
+import useFetch from "../../libs/useFetch";
 import { useState, useMemo } from "react";
 import Event from './event';
 import Button from "react-bootstrap/Button";
 
 export default function Events() {
     const [limit, setLimit] = useState(3);
-    const { eventData, eventError, eventIsPending } = useFetchedEvents(limit);
+    const { data: eventData, error: eventError, isPending: eventIsPending } = useFetch(`/api/events?limit=${limit}`);
 
     if (eventIsPending) return <p>Events Loading...</p>;
     if (eventError) return <p>Error Fetching Events</p>;

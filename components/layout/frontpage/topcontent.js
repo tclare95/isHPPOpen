@@ -3,7 +3,7 @@ import Row from "react-bootstrap/Row";
 import Col from "react-bootstrap/Col";
 import Button from "react-bootstrap/Button";
 import OpenTitle from "../../functional/opentitle";
-import { useFetchedLevels } from "../../../libs/levelsswrhook";
+import useFetch from "../../../libs/useFetch";
 import VomitFactor from "../../functional/vomitfactor";
 import WeirLevels from "../../functional/weirlevels";
 import ChartRender from "../../functional/chart";
@@ -15,7 +15,7 @@ import Link from "next/link";
 const currentTime = new Date();
 
 export default function TopContent(props) {
-  const { levelData, error, isPending } = useFetchedLevels();
+  const { data: levelData, error, isPending } = useFetch("/api/levels");
   const recentEntry = !isPending && levelData.level_data?.[0];
   const readingTime = recentEntry ? new Date(recentEntry.reading_date) : new Date();
   const recentLevel = recentEntry ? recentEntry.reading_level : 0;

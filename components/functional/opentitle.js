@@ -1,13 +1,10 @@
-const currentTime = new Date();
-const tomorrowTime = currentTime.setDate(1);
 import Link from "next/link";
-import { useFetchedLevels } from "../../libs/levelsswrhook";
-import { useFetchedStatus } from "../../libs/statussswrhook";
+import useFetch from "../../libs/useFetch";
 
 
 export default function OpenTitle(props) {
-  const { levelData, error, isPending } = useFetchedLevels();
-  const { statusData, statusError, statusPending } = useFetchedStatus();
+  const { data: levelData, error, isPending } = useFetch("/api/levels");
+  const { data: statusData, error: statusError, isPending: statusPending } = useFetch("/api/hppstatus");
 
   const cachedEvents = props.cachedEvents;
 

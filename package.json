@@ -34,6 +34,7 @@
     "@testing-library/user-event": "^14.6.1",
     "eslint-config-next": "^15.2.2",
     "jest": "^30.0.2",
-    "jest-environment-jsdom": "^30.0.2"
+    "jest-environment-jsdom": "^30.0.2",
+    "node-mocks-http": "^1.17.2"
   }
 }

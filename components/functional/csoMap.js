@@ -39,13 +39,16 @@ export default function WaterQualityMap() {
       .then(response => response.json())
       .then(data => {
         setWaterQualityData(data.waterQualityData);
-        data.waterQualityData.WaterQuality.CSOIds.forEach(id => {
-          fetch(`/api/waterquality/cso/${id}`)
-            .then(response => response.json())
-            .then(details => {
-              setCsoDetails(prevDetails => ({ ...prevDetails, [id]: details }));
-            });
-        });
+        const ids = data.waterQualityData.WaterQuality.CSOIds;
+        fetch("/api/waterquality/cso", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ids }),
+        })
+          .then(response => response.json())
+          .then(details => {
+            setCsoDetails(details);
+          });
       });
   }, []);
 

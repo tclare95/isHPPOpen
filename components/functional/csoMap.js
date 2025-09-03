@@ -40,15 +40,14 @@ export default function WaterQualityMap() {
       .then(data => {
         setWaterQualityData(data.waterQualityData);
         const ids = data.waterQualityData.WaterQuality.CSOIds;
-        fetch("/api/waterquality/cso", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ids }),
-        })
-          .then(response => response.json())
-          .then(details => {
-            setCsoDetails(details);
-          });
+        if (Array.isArray(ids) && ids.length > 0) {
+          const query = encodeURIComponent(ids.join(','));
+          fetch(`/api/waterquality/cso?ids=${query}`)
+            .then(response => response.json())
+            .then(details => {
+              setCsoDetails(details);
+            });
+        }
       });
   }, []);
 
@@ -69,7 +68,7 @@ export default function WaterQualityMap() {
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
 
-      {waterQualityData.WaterQuality.CSOIds.map((id) => {
+      {waterQualityData.WaterQuality.CSOIds.filter(id => csoDetails[id]).map((id) => {
         const position = csoLocation(id);
         const activeTime = calculateActiveTime(csoDetails[id]);
         return (

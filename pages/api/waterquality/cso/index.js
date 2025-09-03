@@ -11,42 +11,48 @@ export default async function handler(req, res) {
         if (Array.isArray(req.query.ids)) {
           ids = req.query.ids;
         } else if (typeof req.query.ids === "string") {
-          ids = req.query.ids.split(",").map(id => id.trim());
+          ids = req.query.ids.split(",");
         }
       } else if (req.method === "POST") {
         ids = req.body.ids || [];
       }
 
-      if (!ids || ids.length === 0) {
+      ids = ids.filter(Boolean).map((id) => id.toString().trim());
+
+      if (ids.length === 0) {
         return res.status(400).json({ message: "No CSO ids provided" });
       }
 
       const { db } = await connectToDatabase();
       const csoDataCollection = await db.collection("csoData");
 
-      const cursor = await csoDataCollection
-        .find({ "attributes.Id": { $in: ids } })
-        .sort({ DateScraped: -1 });
-
-      const docs = await cursor.toArray();
+      const docs = await csoDataCollection
+        .aggregate([
+          { $match: { "attributes.Id": { $in: ids } } },
+          { $sort: { DateScraped: -1 } },
+          {
+            $group: {
+              _id: "$attributes.Id",
+              doc: { $first: "$$ROOT" },
+            },
+          },
+        ])
+        .toArray();
 
       const results = {};
-      for (const doc of docs) {
-        const id = doc.attributes.Id;
-        if (!results[id]) {
-          const { attributes, geometry } = doc;
-          results[id] = {
-            Id: attributes.Id,
-            Status: attributes.Status,
-            LatestEventStart: attributes.LatestEventStart,
-            LatestEventEnd: attributes.LatestEventEnd,
-            DateScraped: doc.DateScraped,
-            Coordinates: {
-              x: geometry.x,
-              y: geometry.y,
-            },
-          };
-        }
+      for (const { _id, doc } of docs) {
+        const { attributes, geometry } = doc;
+        results[_id] = {
+          Id: attributes.Id,
+          Status: attributes.Status,
+          LatestEventStart: attributes.LatestEventStart,
+          LatestEventEnd: attributes.LatestEventEnd,
+          DateScraped: doc.DateScraped,
+          Coordinates: {
+            x: geometry.x,
+            y: geometry.y,
+          },
+        };
       }
 
       console.log(`${timestamp} CSO DATA FOR IDS ${ids.join(",")} CALLED`);

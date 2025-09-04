@@ -39,13 +39,18 @@ export default function WaterQualityMap() {
       .then(response => response.json())
       .then(data => {
         setWaterQualityData(data.waterQualityData);
-        data.waterQualityData.WaterQuality.CSOIds.forEach(id => {
-          fetch(`/api/waterquality/cso/${id}`)
-            .then(response => response.json())
-            .then(details => {
-              setCsoDetails(prevDetails => ({ ...prevDetails, [id]: details }));
+        const ids = data?.waterQualityData?.WaterQuality?.CSOIds;
+        if (Array.isArray(ids) && ids.length > 0) {
+          fetch("/api/waterquality/cso", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ids }),
+          })
+            .then((response) => response.json())
+            .then((details) => {
+              setCsoDetails(details);
             });
-        });
+        }
       });
   }, []);
 
@@ -53,7 +58,8 @@ export default function WaterQualityMap() {
     return null;
   }
 
-  const activeCSOs = new Set(waterQualityData.ActiveCSOIds);
+  const activeCSOs = new Set(waterQualityData?.ActiveCSOIds || []);
+  const csoIds = waterQualityData?.WaterQuality?.CSOIds || [];
 
   return (
     <MapContainer
@@ -66,7 +72,7 @@ export default function WaterQualityMap() {
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
 
-      {waterQualityData.WaterQuality.CSOIds.map((id) => {
+      {csoIds.filter((id) => csoDetails[id]).map((id) => {
         const position = csoLocation(id);
         const activeTime = calculateActiveTime(csoDetails[id]);
         return (

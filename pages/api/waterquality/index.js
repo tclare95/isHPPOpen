@@ -78,7 +78,8 @@ export default async function handler(req, res) {
           ScrapeTimestamp: rest.scrape_timestamp,
           WaterQuality: {
             NumberUpstreamCSOs: rest.water_quality.number_upstream_CSOs,
-            NumberCSOsPerKm2: rest.water_quality.number_CSOs_per_km2,
+            NumberCSOsPerKm2:
+              rest.water_quality.number_CSOs_per_km2 ?? 0,
             CSOIds: rest.water_quality.CSO_IDs,
             CSOActiveTime: rest.totalDischargeTime,
           },

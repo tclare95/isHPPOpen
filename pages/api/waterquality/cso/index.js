@@ -27,16 +27,19 @@ export default async function handler(req, res) {
       const csoDataCollection = await db.collection("csoData");
 
       const docs = await csoDataCollection
-        .aggregate([
-          { $match: { "attributes.Id": { $in: ids } } },
-          { $sort: { DateScraped: -1 } },
-          {
-            $group: {
-              _id: "$attributes.Id",
-              doc: { $first: "$$ROOT" },
+        .aggregate(
+          [
+            { $match: { "attributes.Id": { $in: ids } } },
+            { $sort: { "attributes.Id": 1, DateScraped: -1 } },
+            {
+              $group: {
+                _id: "$attributes.Id",
+                doc: { $first: "$$ROOT" },
+              },
             },
-          },
-        ])
+          ],
+          { allowDiskUse: true }
+        )
         .toArray();
 
       const results = {};

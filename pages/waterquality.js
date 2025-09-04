@@ -59,7 +59,13 @@ export default function WaterQuality() {
                 <p>Number of currently active CSOs: {currentData.ActiveCSOCount}</p>
                 <p>Number of CSO's active in past 48 hours: {currentData.WaterQuality.NumberUpstreamCSOs}</p>
                 <p>Total discharge time (last 48 hours): {currentData.WaterQuality.CSOActiveTime} hours</p>
-                <p>Number of active CSO's per square kilometer: {currentData.WaterQuality.NumberCSOsPerKm2.toFixed(4)}</p>
+                <p>
+                  Number of active CSO's per square kilometer: {
+                    currentData.WaterQuality.NumberCSOsPerKm2 != null
+                      ? currentData.WaterQuality.NumberCSOsPerKm2.toFixed(4)
+                      : "N/A"
+                  }
+                </p>
               </>
             ) : (
               <p>Loading current data...</p>

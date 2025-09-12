@@ -23,13 +23,32 @@ export default function EventsForm({ id, name, startDate, endDate, eventDetails,
   const [error, setError] = useState("");
   const [deleteState, setDeleteState] = useState(false);
 
-  // Updated delete handler: uses the proper event id from props.
+  // Updated delete handler: use existing /api/events?id= pattern to match API file.
   const handleDelete = async () => {
+    if (!id) return;
+
+    // Simple two-step confirmation using deleteState flag
+    if (!deleteState) {
+      setDeleteState(true);
+      setTimeout(() => setDeleteState(false), 4000); // auto-reset after 4s
+      return;
+    }
+
     try {
-      await fetch(`/api/events/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/events?id=${encodeURIComponent(id)}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const msg = await res.text();
+        throw new Error(`Delete failed ${res.status}: ${msg}`);
+      }
       if (mutate) mutate();
     } catch (err) {
       console.error("Failed to delete event", err);
+      setError("Failed to delete event");
+    } finally {
+      setDeleteState(false);
     }
   };
 
@@ -39,8 +58,8 @@ export default function EventsForm({ id, name, startDate, endDate, eventDetails,
         initialValues={{
           id: id,
           name: name,
-          startDate: startDate.toISOString().split("T")[0],
-          endDate: endDate.toISOString().split("T")[0],
+            startDate: startDate.toISOString().split("T")[0],
+            endDate: endDate.toISOString().split("T")[0],
           eventDetails: eventDetails,
         }}
         validationSchema={validationSchema}
@@ -56,9 +75,6 @@ export default function EventsForm({ id, name, startDate, endDate, eventDetails,
             const response = await axios.post("/api/events", JSON.stringify(dataArray), { withCredentials: true });
             if (response.status === 200) {
               setSuccess(true);
-              // Revalidate events data so the table reflects the update
-              // Passing no arguments uses the bound mutate from useSWR
-              // which will refetch the data for the current key
               mutate();
             } else {
               setError("Error modifying event!");
@@ -161,10 +177,9 @@ export default function EventsForm({ id, name, startDate, endDate, eventDetails,
                 <Button
                   variant="danger"
                   onClick={handleDelete}
-                  disabled={!isNew}
+                  disabled={!id}
                 >
-                  {isNew ? "Delete Event" : "N/A"}
-                  {deleteState ? " - Click again to confirm" : ""}
+                  {deleteState ? "Confirm Delete" : "Delete Event"}
                 </Button>
               </Row>
             </Form>

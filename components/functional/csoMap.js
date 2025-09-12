@@ -37,15 +37,20 @@ export default function WaterQualityMap() {
     setIsClient(true);
     fetch("/api/waterquality")
       .then(response => response.json())
-      .then(data => {
+      .then(async data => {
         setWaterQualityData(data.waterQualityData);
-        data.waterQualityData.WaterQuality.CSOIds.forEach(id => {
-          fetch(`/api/waterquality/cso/${id}`)
-            .then(response => response.json())
-            .then(details => {
-              setCsoDetails(prevDetails => ({ ...prevDetails, [id]: details }));
-            });
-        });
+        const ids = data.waterQualityData.WaterQuality.CSOIds;
+        if (ids && ids.length) {
+          try {
+            const bulkRes = await fetch(`/api/waterquality/cso?ids=${ids.join(',')}`);
+            if (bulkRes.ok) {
+              const bulkJson = await bulkRes.json();
+              setCsoDetails(bulkJson.csoData || {});
+            }
+          } catch (e) {
+            console.error('Failed to fetch bulk CSO data', e);
+          }
+        }
       });
   }, []);
 
@@ -79,7 +84,7 @@ export default function WaterQualityMap() {
               <div className="text-center">
                 <strong>CSO ID: {id}</strong>
                 <br />
-                Status:{" "}
+                Status:{' '}
                 {activeCSOs.has(id) ? (
                   <Badge bg="danger">Currently Active</Badge>
                 ) : (

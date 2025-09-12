@@ -31,7 +31,6 @@ export default function TopContent(props) {
           throw new Error("Failed to fetch CSO data");
         }
         const data = await response.json();
-        console.log("CSO data:", data);
         setCsoData(data);
       } catch (error) {
         console.error("Error fetching CSO data:", error);

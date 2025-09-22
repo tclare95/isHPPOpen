@@ -27,21 +27,49 @@ export default async function handler(req, res) {
   try {
     const { db } = await connectToDatabase();
     const csoDataCollection = await db.collection("csoData");
+    // Optional and safe: ensure an index to support this query pattern efficiently
+    // Note: createIndex is idempotent; it will be a no-op if the index already exists
+    try {
+      await csoDataCollection.createIndex(
+        { "attributes.Id": 1, DateScraped: -1 },
+        { name: "id_date_desc" }
+      );
+    } catch (e) {
+      // index creation failure shouldn't break the request
+      console.warn("Failed to ensure index id_date_desc:", e?.message || e);
+    }
 
-    // Aggregation to get latest (by DateScraped) document per attributes.Id
+    // Aggregation to get latest (by DateScraped) document per attributes.Id WITHOUT global $sort
+    // 1) Group to compute the max DateScraped per Id (no sort required)
+    // 2) Lookup back the matching document (Id + max DateScraped)
     const pipeline = [
       { $match: { "attributes.Id": { $in: idArray } } },
-      { $sort: { DateScraped: -1 } },
+      { $group: { _id: "$attributes.Id", maxDate: { $max: "$DateScraped" } } },
       {
-        $group: {
-          _id: "$attributes.Id",
-          doc: { $first: "$$ROOT" },
+        $lookup: {
+          from: "csoData",
+          let: { id: "$_id", d: "$maxDate" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ["$attributes.Id", "$$id"] },
+                    { $eq: ["$DateScraped", "$$d"] },
+                  ],
+                },
+              },
+            },
+            { $limit: 1 },
+          ],
+          as: "doc",
         },
       },
+      { $unwind: "$doc" },
     ];
 
-  // Enable disk use to avoid 32MB in-memory sort limit for large result sets
-  const aggCursor = csoDataCollection.aggregate(pipeline, { allowDiskUse: true });
+    // Enable disk use just in case intermediate stages need it
+    const aggCursor = csoDataCollection.aggregate(pipeline, { allowDiskUse: true });
     const results = await aggCursor.toArray();
 
     // Build response object keyed by Id mirroring single-item endpoint format

@@ -40,7 +40,8 @@ export default async function handler(req, res) {
       },
     ];
 
-    const aggCursor = csoDataCollection.aggregate(pipeline);
+  // Enable disk use to avoid 32MB in-memory sort limit for large result sets
+  const aggCursor = csoDataCollection.aggregate(pipeline, { allowDiskUse: true });
     const results = await aggCursor.toArray();
 
     // Build response object keyed by Id mirroring single-item endpoint format

@@ -43,6 +43,7 @@ function getAccuracyRating(mae) {
 export default function ForecastInfo() {
   const [forecastSource, setForecastSource] = useState("s3");
   const [showConfidence, setShowConfidence] = useState(true);
+  const [showStats, setShowStats] = useState(false);
   
   const { data: levelData, isPending: levelPending } = useFetch("/api/levels");
   const { data: s3Data, isPending: s3Pending } = useFetch("/api/s3forecast");
@@ -265,6 +266,128 @@ export default function ForecastInfo() {
             </Col>
           </Row>
 
+          {/* Stats Section */}
+          {forecastSource === "s3" && (
+            <Row className="justify-content-center mb-4">
+              <Col md={10} lg={8}>
+                <Card bg="dark" border="secondary" text="white">
+                  <Card.Header 
+                    className="d-flex justify-content-between align-items-center"
+                    style={{ cursor: "pointer" }}
+                    onClick={() => setShowStats(!showStats)}
+                  >
+                    <h5 className="mb-0">Stats</h5>
+                    <span>{showStats ? "▼" : "▶"}</span>
+                  </Card.Header>
+                  {showStats && (
+                    <Card.Body>
+                      {s3Pending ? (
+                        <Spinner animation="border" role="status" size="sm" />
+                      ) : s3Data?.forecast_data?.length > 0 ? (
+                        <>
+                          {/* Forecast Metadata */}
+                          <h6 className="text-info mb-3">Current Forecast</h6>
+                          <Table variant="dark" size="sm" className="mb-4">
+                            <tbody>
+                              <tr>
+                                <td className="text-muted text-white-50">Forecast generated</td>
+                                <td className="text-white">{s3Data.metadata?.forecast_time ? new Date(s3Data.metadata.forecast_time).toLocaleString() : "N/A"}</td>
+                              </tr>
+                              <tr>
+                                <td className="text-muted text-white-50">River level at forecast time</td>
+                                <td className="text-white">{s3Data.metadata?.current_level ? `${s3Data.metadata.current_level.toFixed(3)}m` : "N/A"}</td>
+                              </tr>
+                              <tr>
+                                <td className="text-muted text-white-50">Data points</td>
+                                <td className="text-white">{s3Data.forecast_data.length}</td>
+                              </tr>
+                              <tr>
+                                <td className="text-muted text-white-50">Forecast range</td>
+                                <td className="text-white">
+                                  {new Date(s3Data.forecast_data[0].forecast_date).toLocaleString()} →{" "}
+                                  {new Date(s3Data.forecast_data[s3Data.forecast_data.length - 1].forecast_date).toLocaleString()}
+                                </td>
+                              </tr>
+                              <tr>
+                                <td className="text-muted text-white-50">Max horizon</td>
+                                <td className="text-white">{Math.max(...s3Data.forecast_data.map(d => d.horizon_hours))} hours</td>
+                              </tr>
+                            </tbody>
+                          </Table>
+
+                          {/* Forecast Statistics */}
+                          <h6 className="text-info mb-3">Prediction Statistics</h6>
+                          {(() => {
+                            const readings = s3Data.forecast_data.map(d => d.forecast_reading);
+                            const minReading = Math.min(...readings);
+                            const maxReading = Math.max(...readings);
+                            const avgReading = readings.reduce((a, b) => a + b, 0) / readings.length;
+                            return (
+                              <Table variant="dark" size="sm" className="mb-4">
+                                <tbody>
+                                  <tr>
+                                    <td className="text-white-50">Predicted minimum</td>
+                                    <td className="text-white">{minReading.toFixed(3)}m</td>
+                                  </tr>
+                                  <tr>
+                                    <td className="text-white-50">Predicted maximum</td>
+                                    <td className="text-white">{maxReading.toFixed(3)}m</td>
+                                  </tr>
+                                  <tr>
+                                    <td className="text-white-50">Predicted range</td>
+                                    <td className="text-white">{(maxReading - minReading).toFixed(3)}m</td>
+                                  </tr>
+                                  <tr>
+                                    <td className="text-white-50">Average prediction</td>
+                                    <td className="text-white">{avgReading.toFixed(3)}m</td>
+                                  </tr>
+                                </tbody>
+                              </Table>
+                            );
+                          })()}
+
+                          {/* Accuracy Extended Stats */}
+                          {accuracyData?.accuracy_data?.length > 0 && (
+                            <>
+                              <h6 className="text-info mb-3">Accuracy Details</h6>
+                              <Table variant="dark" striped size="sm" responsive>
+                                <thead>
+                                  <tr>
+                                    <th className="text-white">Horizon</th>
+                                    <th className="text-white">MAE</th>
+                                    <th className="text-white">RMSE</th>
+                                    <th className="text-white">Bias</th>
+                                    <th className="text-white">Max Error</th>
+                                    <th className="text-white">Samples</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {accuracyData.accuracy_data.map((row) => (
+                                    <tr key={row.horizon_hours}>
+                                      <td className="text-white">{row.horizon_hours}h</td>
+                                      <td className="text-white">{formatMetric(row.mae)}</td>
+                                      <td className="text-white">{formatMetric(row.rmse)}</td>
+                                      <td className="text-white">{formatMetric(row.bias)}</td>
+                                      <td className="text-white">{formatMetric(row.max_error)}</td>
+                                      <td className="text-white">{row.predictions_compared || "N/A"}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </Table>
+                            </>
+                          )}
+
+                        </>
+                      ) : (
+                        <p className="mb-0">No forecast data available</p>
+                      )}
+                    </Card.Body>
+                  )}
+                </Card>
+              </Col>
+            </Row>
+          )}
+
           {/* Limitations */}
           <Row className="justify-content-center">
             <Col md={10} lg={8}>
@@ -279,9 +402,6 @@ export default function ForecastInfo() {
                     </li>
                     <li>
                       Extreme weather events may cause larger variations
-                    </li>
-                    <li>
-                      Always check current conditions before visiting HPP
                     </li>
                   </ul>
                 </Card.Body>

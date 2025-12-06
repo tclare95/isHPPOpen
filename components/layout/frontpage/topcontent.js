@@ -6,7 +6,7 @@ import OpenTitle from "../../functional/opentitle";
 import useFetch from "../../../libs/useFetch";
 import VomitFactor from "../../functional/vomitfactor";
 import WeirLevels from "../../functional/weirlevels";
-import ChartRender from "../../functional/chart";
+import ForecastChartWithConfidence from "../../functional/forecastChart";
 import Spinner from "react-bootstrap/Spinner";
 import { useContext } from "react";
 import GraphContext from "../../../libs/context/graphcontrol";
@@ -16,6 +16,10 @@ const currentTime = new Date();
 
 export default function TopContent(props) {
   const { data: levelData, error, isPending } = useFetch("/api/levels");
+  const { data: s3Forecast, isPending: forecastPending } = useFetch("/api/s3forecast");
+  const { data: accuracyData, isPending: accuracyPending } = useFetch("/api/forecastaccuracy");
+  const { data: featureFlags, isPending: flagsPending } = useFetch("/api/featureflags");
+  
   const recentEntry = !isPending && levelData.level_data?.[0];
   const readingTime = recentEntry ? new Date(recentEntry.reading_date) : new Date();
   const recentLevel = recentEntry ? recentEntry.reading_level : 0;
@@ -99,16 +103,21 @@ export default function TopContent(props) {
       </Row>
       <Row className="justify-content-center text-white mt-2" id="chart">
         <Col className="justify-content-center text-center">
-          {isPending ? (
+          {isPending || forecastPending ? (
             <Spinner animation="border" role="status" />
           ) : (
-            <ChartRender
+            <ForecastChartWithConfidence
               lowerBound={lowerBound}
               upperBound={upperBound}
               graphData={levelData.level_data}
-              graphForeCastData={levelData.forecast_data}
+              graphForeCastData={s3Forecast?.forecast_data || []}
+              accuracyData={accuracyData?.accuracy_data || []}
+              showConfidence={featureFlags?.SHOW_FORECAST_CONFIDENCE ?? true}
             />
           )}
+          <p className="mt-2 small">
+            <Link href="/forecastinfo">About this forecast</Link>
+          </p>
           <Button
             className=" mt-2"
             data-lowerbound="0.98"

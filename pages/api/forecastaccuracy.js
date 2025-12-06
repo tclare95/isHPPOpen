@@ -1,3 +1,5 @@
+import { parseCSVToAccuracy } from '../../libs/csvParser';
+
 export default async function handler(req, res) {
   const timestamp = new Date().toISOString();
 
@@ -37,39 +39,4 @@ export default async function handler(req, res) {
     console.error(`[${timestamp}] Error in forecastaccuracy:`, error);
     res.status(500).json({ message: "Internal Server Error" });
   }
-}
-
-function parseCSVToAccuracy(csvText) {
-  const lines = csvText.trim().split('\n');
-  
-  if (lines.length < 2) {
-    return [];
-  }
-
-  // Skip header row
-  const dataLines = lines.slice(1);
-
-  return dataLines.map(line => {
-    const [
-      evaluation_time,
-      horizon_hours,
-      forecast_made_at,
-      predictions_compared,
-      mae,
-      rmse,
-      bias,
-      max_error
-    ] = line.split(',');
-    
-    return {
-      evaluation_time,
-      horizon_hours: parseInt(horizon_hours, 10),
-      forecast_made_at,
-      predictions_compared: parseInt(predictions_compared, 10),
-      mae: mae ? parseFloat(mae) : null,
-      rmse: rmse ? parseFloat(rmse) : null,
-      bias: bias ? parseFloat(bias) : null,
-      max_error: max_error ? parseFloat(max_error) : null,
-    };
-  }).filter(row => !isNaN(row.horizon_hours));
 }

@@ -15,7 +15,7 @@ export default async function handler(req, res) {
     switch (method) {
       case "GET":
         try {
-          const limit = query && query.limit ? parseInt(query.limit) : 5;
+          const limit = query && query.limit ? parseInt(query.limit, 10) : 5;
           const data = await fetchUpcomingEvents(limit);
           console.log(`${timestamp} GETEVENTS CALLED`);
           res.status(200).json(data);

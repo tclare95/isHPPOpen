@@ -1,3 +1,5 @@
+import { parseCSVToForecast } from '../../libs/csvParser';
+
 export default async function handler(req, res) {
   const timestamp = new Date().toISOString();
 
@@ -41,28 +43,4 @@ export default async function handler(req, res) {
     console.error(`[${timestamp}] Error in s3forecast:`, error);
     res.status(500).json({ message: "Internal Server Error" });
   }
-}
-
-function parseCSVToForecast(csvText) {
-  const lines = csvText.trim().split('\n');
-  
-  if (lines.length < 2) {
-    return [];
-  }
-
-  // Skip header row
-  const dataLines = lines.slice(1);
-
-  return dataLines.map(line => {
-    const [forecast_time, target_time, horizon_hours, predicted_level, current_level] = line.split(',');
-    
-    return {
-      forecast_date: target_time,
-      forecast_reading: parseFloat(predicted_level),
-      // Keep original fields for metadata
-      forecast_time,
-      horizon_hours: parseFloat(horizon_hours),
-      current_level: parseFloat(current_level),
-    };
-  }).filter(row => !isNaN(row.forecast_reading));
 }

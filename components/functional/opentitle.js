@@ -1,5 +1,6 @@
 import Link from "next/link";
 import useFetch from "../../libs/useFetch";
+import PropTypes from "prop-types";
 
 
 export default function OpenTitle(props) {
@@ -66,3 +67,12 @@ export default function OpenTitle(props) {
     </h2>
   );
 }
+
+OpenTitle.propTypes = {
+  cachedEvents: PropTypes.arrayOf(
+    PropTypes.shape({
+      event_start_date: PropTypes.string.isRequired,
+      event_end_date: PropTypes.string.isRequired,
+    })
+  ),
+};

@@ -1,5 +1,5 @@
 import { connectToDatabase } from '../database';
-import { ObjectID } from 'mongodb';
+import { ObjectId } from 'mongodb';
 import * as yup from 'yup';
 
 const eventSchema = yup.object({
@@ -43,5 +43,5 @@ export async function upsertEvent(eventData) {
 export async function deleteEventById(id) {
   const { db } = await connectToDatabase();
   const collection = db.collection('eventschemas');
-  return collection.deleteOne({ _id: new ObjectID(id) });
+  return collection.deleteOne({ _id: new ObjectId(id) });
 }

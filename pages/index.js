@@ -1,7 +1,6 @@
 import Container from "react-bootstrap/Container";
 import TopContent from "../components/layout/frontpage/topcontent";
 import Header from "../components/layout/frontpage/header";
-import SessionBooking from "../components/layout/frontpage/sessionbooking";
 import EventsArea from "../components/layout/frontpage/eventsarea";
 import WaterQuality from "../components/layout/frontpage/waterquality";
 import WeirInfo from "../components/layout/frontpage/weirinfo";
@@ -41,7 +40,6 @@ export default function Home(props) {
       >
         <Container>
           <TopContent cachedEvents={props.data} />
-          {/* <SessionBooking /> */}
           <EventsArea />
           <WaterQuality />
           <WeirInfo />

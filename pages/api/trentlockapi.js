@@ -1,6 +1,8 @@
 import axios from "axios";
 import { connectToDatabase } from "../../libs/database";
 
+const ALLOWED_METHODS = ['POST'];
+
 const getLevelByStation = async (stationId, dateObject, delay) => {
   //takes a station id and a date object and returns the level at the station for the preceding 2 days.
   // returns an array of objects with the date and level
@@ -20,7 +22,7 @@ const getLevelByStation = async (stationId, dateObject, delay) => {
     )
     .catch((error) => {
       if (error.response) {
-        console.log(error.response.status);
+        console.error(`[${new Date().toISOString()}] EA API error status:`, error.response.status);
       }
     });
 
@@ -30,29 +32,33 @@ const getLevelByStation = async (stationId, dateObject, delay) => {
     );
     return arrayToReturn;
   } catch (error) {
-    console.log("error getting level data for station", stationId);
-    console.log(error);
+    console.error(`[${new Date().toISOString()}] Error getting level data for station`, stationId, error);
     throw error;
   }
 };
 
 export default async function handler(req, res) {
+  if (!ALLOWED_METHODS.includes(req.method)) {
+    res.setHeader('Allow', ALLOWED_METHODS);
+    return res.status(405).end(`Method ${req.method} Not Allowed`);
+  }
+
+  const timestamp = new Date().toISOString();
   try {
-    const { method, body } = req;
+    const { body } = req;
     let submissionDate;
     let parsedRequest;
-    // try parsing the body once
+    
+    // Parse the request body
     try {
       parsedRequest = JSON.parse(Object.keys(body)[0]);
       submissionDate = new Date(parsedRequest.dateTime);
-      res.status(200).json({ message: "Update successful" });
     } catch (parseError) {
-      console.error(`[${new Date().toISOString()}] [${req.method}] JSON parse error:`, parseError);
-      return res.status(403).json({ message: "Error parsing request body" });
+      console.error(`[${timestamp}] [${req.method}] JSON parse error:`, parseError);
+      return res.status(400).json({ message: "Error parsing request body" });
     }
-    // this stuff is all done asynchronously, so we can't return a response here
-    // access the EA API, pull data for colwick (#12345), clifton (#12346), shardlow(#123456), church wilne (#1234567), and kegworth (#12345678) for the previous 7 days.
-    // return the data as a JSON object
+
+    // Fetch river level data from EA API
     const levelStations = [
       ["colwick", 4009, 0],
       ["clifton", 4126, 2000],
@@ -61,64 +67,47 @@ export default async function handler(req, res) {
       ["kegworth", 4074, 8000],
     ];
 
-    // some working variables for getting the river level data
-    let levelData = [];
     let levels = {};
-    // try getting the levels, if it fails, return an error and save the basic data
-    try {
-      levelStations.forEach((station) => {
-          levelData.push(getLevelByStation(station[1], submissionDate, station[2]));
-      });
+    let levelsFetchFailed = false;
 
-      // resolve promises and map into return object
-      await Promise.all(levelData).then((values) => {
-          // push into return object (levels)
-          values.forEach((value, index) => {
-              levels[levelStations[index][0]] = value;
-          }
-          );
+    try {
+      const levelData = levelStations.map((station) =>
+        getLevelByStation(station[1], submissionDate, station[2])
+      );
+
+      const values = await Promise.all(levelData);
+      values.forEach((value, index) => {
+        levels[levelStations[index][0]] = value;
       });
     } catch (error) {
-      console.log("error getting levels, saving basic data");
-      // as a backup, if the river level call fails write the user input to the database with blank river levels
-      const documentToInsert = {
-        date: parsedRequest.dateTime,
-        dateCreated: new Date(),
-        userRange: parsedRequest.range,
-        userComment: parsedRequest.comment,
-        userBoat: parsedRequest.boat,
-        recordedLevels: null,
-      };
-      const { db } = await connectToDatabase();
-      const collection = db.collection("trentlockdata");
-      const result = await collection.insertOne(documentToInsert);
+      console.error(`[${timestamp}] Error getting levels, saving basic data`);
+      levelsFetchFailed = true;
     }
 
-    // if the above has worked, do the main datavase write
+    // Save to database
+    const { db } = await connectToDatabase();
+    const collection = db.collection("trentlockdata");
 
-      const { db } = await connectToDatabase();
-      try {
+    const documentToInsert = {
+      date: parsedRequest.dateTime,
+      dateCreated: new Date(),
+      userRange: parsedRequest.range,
+      userComment: levelsFetchFailed ? parsedRequest.comment : parsedRequest.comments,
+      userBoat: levelsFetchFailed ? parsedRequest.boat : parsedRequest.boatType,
+      recordedLevels: levelsFetchFailed ? null : levels,
+    };
 
-        const documentToInsert = {
-          date: parsedRequest.dateTime,
-          dateCreated: new Date(),
-          userRange: parsedRequest.range,
-          userComment: parsedRequest.comments,
-          userBoat: parsedRequest.boatType,
-          recordedLevels: levels,
-        };
+    const result = await collection.insertOne(documentToInsert);
 
-        const collection = db.collection("trentlockdata");
-        const result = await collection.insertOne(documentToInsert);
-        if (result) {
-        } else {
-          console.log("insert failed error");
-        }
-      } catch (error) {
-        console.log("error", error);
-      }
+    if (result.insertedId) {
+      console.log(`[${timestamp}] Trentlock data saved successfully`);
+      return res.status(200).json({ message: "Update successful" });
+    } else {
+      console.error(`[${timestamp}] Insert failed for trentlock data`);
+      return res.status(500).json({ message: "Failed to save data" });
+    }
   } catch (error) {
-    console.error(`[${new Date().toISOString()}] [${req.method}] Error in trentlockapi:`, error);
-    res.status(500).json({ message: "Internal Server Error" });
+    console.error(`[${timestamp}] [${req.method}] Error in trentlockapi:`, error);
+    return res.status(500).json({ message: "Internal Server Error" });
   }
 }

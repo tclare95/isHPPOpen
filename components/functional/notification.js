@@ -1,4 +1,5 @@
 import Toast from 'react-bootstrap/Toast'
+import PropTypes from 'prop-types'
 
 export default function NotificationToast (props) {
     return (
@@ -10,3 +11,9 @@ export default function NotificationToast (props) {
         </Toast>
     )
 }
+
+NotificationToast.propTypes = {
+  show: PropTypes.bool.isRequired,
+  title: PropTypes.string.isRequired,
+  message: PropTypes.string.isRequired,
+};

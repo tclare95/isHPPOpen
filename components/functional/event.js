@@ -1,5 +1,6 @@
 import Col from "react-bootstrap/Col";
 import Row from "react-bootstrap/Row";
+import PropTypes from "prop-types";
 
 export default function Event (props) {
         const start = new Date(props.startDate);
@@ -24,3 +25,10 @@ export default function Event (props) {
             
         )
 }
+
+Event.propTypes = {
+  name: PropTypes.string.isRequired,
+  startDate: PropTypes.string.isRequired,
+  endDate: PropTypes.string.isRequired,
+  eventDetails: PropTypes.string,
+};

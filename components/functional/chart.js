@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Chart from 'react-google-charts';
+import PropTypes from 'prop-types';
 
 const chartArrayHeader = [
   { type: 'datetime', label: 'Date' },
@@ -131,3 +132,20 @@ const ChartRender = ({ graphData, graphForeCastData, lowerBound, upperBound }) =
 };
 
 export default ChartRender;
+
+ChartRender.propTypes = {
+  graphData: PropTypes.arrayOf(
+    PropTypes.shape({
+      reading_date: PropTypes.string.isRequired,
+      reading_level: PropTypes.number.isRequired,
+    })
+  ).isRequired,
+  graphForeCastData: PropTypes.arrayOf(
+    PropTypes.shape({
+      forecast_date: PropTypes.string.isRequired,
+      forecast_reading: PropTypes.number.isRequired,
+    })
+  ).isRequired,
+  lowerBound: PropTypes.number.isRequired,
+  upperBound: PropTypes.number.isRequired,
+};

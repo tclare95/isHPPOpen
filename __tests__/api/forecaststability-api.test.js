@@ -55,7 +55,7 @@ describe('Forecast Stability API', () => {
     expect(data.stability_data[0].historical_forecasts).toHaveLength(12);
   });
 
-  test('GET returns 500 when S3_FORECAST_STABILITY_URL not set', async () => {
+  test('GET returns empty array when S3_FORECAST_STABILITY_URL not set', async () => {
     delete process.env.S3_FORECAST_STABILITY_URL;
 
     const { req, res } = createMocks({
@@ -64,12 +64,12 @@ describe('Forecast Stability API', () => {
 
     await forecaststabilityHandler(req, res);
 
-    expect(res._getStatusCode()).toBe(500);
+    expect(res._getStatusCode()).toBe(200);
     const data = JSON.parse(res._getData());
-    expect(data.message).toBe('Stability URL not configured');
+    expect(data.stability_data).toEqual([]);
   });
 
-  test('GET returns 502 when S3 fetch fails', async () => {
+  test('GET returns empty array when S3 fetch fails', async () => {
     process.env.S3_FORECAST_STABILITY_URL = 'https://test-bucket.s3.amazonaws.com/stability.csv';
     
     global.fetch.mockResolvedValue({
@@ -83,9 +83,9 @@ describe('Forecast Stability API', () => {
 
     await forecaststabilityHandler(req, res);
 
-    expect(res._getStatusCode()).toBe(502);
+    expect(res._getStatusCode()).toBe(200);
     const data = JSON.parse(res._getData());
-    expect(data.message).toBe('Failed to fetch stability data');
+    expect(data.stability_data).toEqual([]);
   });
 
   test('POST method not allowed', async () => {

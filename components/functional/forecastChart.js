@@ -98,7 +98,7 @@ const ForecastChartWithConfidence = ({
   lowerBound, 
   upperBound,
   accuracyData,
-  showConfidence = true 
+  showConfidence = true,
 }) => {
   const [chartData, setChartData] = useState([chartArrayHeader]);
 

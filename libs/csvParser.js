@@ -136,45 +136,50 @@ export function parseForecastRowWithStability(line) {
 }
 
 /**
- * Parse stability CSV row into stability data object
- * Expected columns: target_time, forecast_current, forecast_1h_ago, forecast_2h_ago, ..., forecast_12h_ago, stability_std, stability_range, revision_trend
+ * Parse stability CSV row into stability data object using header-based column lookup
  * @param {string} line - Single CSV row
+ * @param {Object} columnIndices - Map of column names to indices
  * @returns {Object|null} Parsed stability object or null if invalid
  */
-export function parseStabilityRow(line) {
+function parseStabilityRowWithHeaders(line, columnIndices) {
   const parts = line.split(',');
   
-  // Expected: target_time, forecast_current, forecast_1h_ago...forecast_12h_ago (12 cols), stability_std, stability_range, revision_trend
-  // Total: 1 + 1 + 12 + 3 = 17 columns minimum
-  if (parts.length < 17) {
-    return null;
-  }
-
-  const target_time = parts[0];
-  const forecast_current = parseFloat(parts[1]);
+  const getValue = (colName) => {
+    const idx = columnIndices[colName];
+    if (idx === undefined || idx >= parts.length) return null;
+    const val = parts[idx];
+    if (val === undefined || val === '') return null;
+    const parsed = parseFloat(val);
+    return isNaN(parsed) ? null : parsed;
+  };
   
-  if (isNaN(forecast_current)) {
+  const getStringValue = (colName) => {
+    const idx = columnIndices[colName];
+    if (idx === undefined || idx >= parts.length) return null;
+    return parts[idx] || null;
+  };
+
+  const target_time = getStringValue('target_time');
+  const forecast_current = getValue('forecast_current');
+  
+  if (!target_time || forecast_current === null) {
     return null;
   }
 
-  // Parse historical forecasts (forecast_1h_ago through forecast_12h_ago)
+  // Parse historical forecasts
   const historical_forecasts = [];
-  for (let i = 2; i <= 13; i++) {
-    const val = parts[i] ? parseFloat(parts[i]) : null;
-    historical_forecasts.push(isNaN(val) ? null : val);
+  for (let h = 1; h <= 12; h++) {
+    historical_forecasts.push(getValue(`forecast_${h}h_ago`));
   }
-
-  const stability_std = parts[14] ? parseFloat(parts[14]) : null;
-  const stability_range = parts[15] ? parseFloat(parts[15]) : null;
-  const revision_trend = parts[16] ? parseFloat(parts[16]) : null;
 
   return {
     target_time,
     forecast_current,
-    historical_forecasts, // Array of 12 values: [1h_ago, 2h_ago, ..., 12h_ago]
-    stability_std: isNaN(stability_std) ? null : stability_std,
-    stability_range: isNaN(stability_range) ? null : stability_range,
-    revision_trend: isNaN(revision_trend) ? null : revision_trend,
+    historical_forecasts,
+    stability_std: getValue('stability_std'),
+    stability_range: getValue('stability_range'),
+    revision_trend: getValue('revision_trend'),
+    rain_forecast_mm: getValue('rain_forecast_mm'),
   };
 }
 
@@ -189,9 +194,27 @@ export function parseCSVToForecastWithStability(csvText) {
 
 /**
  * Parse stability CSV text into array of stability objects
+ * Uses header row to determine column positions for flexibility
  * @param {string} csvText - Raw CSV text content
  * @returns {Array} Array of stability data objects
  */
 export function parseCSVToStability(csvText) {
-  return parseCSV(csvText, parseStabilityRow);
+  const lines = csvText.trim().split('\n');
+  
+  if (lines.length < 2) {
+    return [];
+  }
+
+  // Parse header to get column indices
+  const headers = lines[0].split(',');
+  const columnIndices = {};
+  headers.forEach((header, index) => {
+    columnIndices[header.trim()] = index;
+  });
+
+  // Parse data rows
+  const dataLines = lines.slice(1);
+  return dataLines
+    .map(line => parseStabilityRowWithHeaders(line, columnIndices))
+    .filter(Boolean);
 }

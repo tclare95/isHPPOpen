@@ -75,6 +75,26 @@ function getRevisionTrend(revisionTrend) {
   return { label: "Stable", color: "success", icon: "→" };
 }
 
+/**
+ * Get rainfall intensity rating based on cumulative forecast rainfall
+ * 0-2mm = Dry, 2-10mm = Light, 10-25mm = Moderate, 25+mm = Heavy
+ */
+function getRainfallRating(rainMm) {
+  if (rainMm === null || rainMm === undefined) {
+    return { label: "No data", color: "secondary", icon: "—" };
+  }
+  if (rainMm < 2) {
+    return { label: "Dry", color: "success", icon: "☀" };
+  }
+  if (rainMm < 10) {
+    return { label: "Light", color: "info", icon: "🌧" };
+  }
+  if (rainMm < 25) {
+    return { label: "Moderate", color: "warning", icon: "🌧" };
+  }
+  return { label: "Heavy", color: "danger", icon: "⛈" };
+}
+
 export default function ForecastInfo() {
   const [forecastSource, setForecastSource] = useState("s3");
   const [showConfidence, setShowConfidence] = useState(true);
@@ -481,6 +501,77 @@ export default function ForecastInfo() {
                               <StabilityChart stabilityData={stabilityData.stability_data} />
                             </>
                           )}
+
+                          {/* Rainfall Forecast Summary */}
+                          {stabilityData?.stability_data?.length > 0 && (() => {
+                            // Get rainfall data points - filter to show key horizons
+                            const rainfallPoints = stabilityData.stability_data
+                              .filter(row => row.rain_forecast_mm !== null && row.rain_forecast_mm !== undefined);
+                            
+                            if (rainfallPoints.length === 0) return null;
+                            
+                            // Get the max (cumulative) rainfall
+                            const maxRain = Math.max(...rainfallPoints.map(r => r.rain_forecast_mm));
+                            const rainRating = getRainfallRating(maxRain);
+                            
+                            // Get key time points: +12h, +24h, +48h, +72h
+                            const now = new Date();
+                            const getClosestTo = (targetHours) => {
+                              const targetTime = new Date(now.getTime() + targetHours * 60 * 60 * 1000);
+                              return rainfallPoints.reduce((closest, row) => {
+                                const rowTime = new Date(row.target_time);
+                                const closestTime = closest ? new Date(closest.target_time) : null;
+                                if (!closestTime) return row;
+                                return Math.abs(rowTime - targetTime) < Math.abs(closestTime - targetTime) ? row : closest;
+                              }, null);
+                            };
+                            
+                            const keyPoints = [
+                              { label: '12 hours', data: getClosestTo(12) },
+                              { label: '24 hours', data: getClosestTo(24) },
+                              { label: '48 hours', data: getClosestTo(48) },
+                              { label: '72 hours', data: getClosestTo(72) },
+                            ].filter((p, i, arr) => {
+                              // Remove duplicates and entries without data
+                              if (!p.data) return false;
+                              return i === arr.findIndex(x => x.data?.target_time === p.data?.target_time);
+                            });
+                            
+                            return (
+                              <>
+                                <h6 className="text-info mb-3 mt-4">
+                                  Rainfall Forecast{" "}
+                                  <Badge bg={rainRating.color}>{rainRating.icon} {rainRating.label}</Badge>
+                                </h6>
+                                <p className="text-white-50 mb-3">
+                                  Cumulative rainfall forecast across the Trent catchment.
+                                  {maxRain >= 10 && " Higher rainfall increases forecast uncertainty."}
+                                </p>
+                                <Row className="g-2 mb-3">
+                                  {keyPoints.map((point, idx) => {
+                                    const rating = getRainfallRating(point.data.rain_forecast_mm);
+                                    return (
+                                      <Col key={idx} xs={6} md={3}>
+                                        <Card bg="secondary" text="white" className="h-100 text-center">
+                                          <Card.Body className="py-2 px-1">
+                                            <div className="small text-white-50">{point.label}</div>
+                                            <div className="h5 mb-0">
+                                              <Badge bg={rating.color} className="w-100">
+                                                {rating.icon} {point.data.rain_forecast_mm.toFixed(1)}mm
+                                              </Badge>
+                                            </div>
+                                          </Card.Body>
+                                        </Card>
+                                      </Col>
+                                    );
+                                  })}
+                                </Row>
+                                <small className="text-white-50">
+                                  Cumulative rainfall forecast for the Trent catchment.
+                                </small>
+                              </>
+                            );
+                          })()}
 
                           {/* Stability Summary from forecast data */}
                           {s3Data?.forecast_data?.length > 0 && (

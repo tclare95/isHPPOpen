@@ -99,3 +99,99 @@ export function parseCSVToForecast(csvText) {
 export function parseCSVToAccuracy(csvText) {
   return parseCSV(csvText, parseAccuracyRow);
 }
+
+/**
+ * Parse forecast CSV row with stability data into forecast data object
+ * Expected columns: forecast_time, target_time, horizon_hours, predicted_level, current_level, stability_std (optional)
+ * @param {string} line - Single CSV row
+ * @returns {Object|null} Parsed forecast object with stability or null if invalid
+ */
+export function parseForecastRowWithStability(line) {
+  const parts = line.split(',');
+  const [forecast_time, target_time, horizon_hours, predicted_level, current_level] = parts;
+  const stability_std = parts[5]; // May be undefined if column doesn't exist
+  
+  const forecast_reading = parseFloat(predicted_level);
+  if (isNaN(forecast_reading)) {
+    return null;
+  }
+
+  // Handle stability_std: could be undefined, empty string, or a number
+  let parsedStability = null;
+  if (stability_std !== undefined && stability_std !== '') {
+    const parsed = parseFloat(stability_std);
+    if (!isNaN(parsed)) {
+      parsedStability = parsed;
+    }
+  }
+
+  return {
+    forecast_date: target_time,
+    forecast_reading,
+    forecast_time,
+    horizon_hours: parseFloat(horizon_hours),
+    current_level: parseFloat(current_level),
+    stability_std: parsedStability,
+  };
+}
+
+/**
+ * Parse stability CSV row into stability data object
+ * Expected columns: target_time, forecast_current, forecast_1h_ago, forecast_2h_ago, ..., forecast_12h_ago, stability_std, stability_range, revision_trend
+ * @param {string} line - Single CSV row
+ * @returns {Object|null} Parsed stability object or null if invalid
+ */
+export function parseStabilityRow(line) {
+  const parts = line.split(',');
+  
+  // Expected: target_time, forecast_current, forecast_1h_ago...forecast_12h_ago (12 cols), stability_std, stability_range, revision_trend
+  // Total: 1 + 1 + 12 + 3 = 17 columns minimum
+  if (parts.length < 17) {
+    return null;
+  }
+
+  const target_time = parts[0];
+  const forecast_current = parseFloat(parts[1]);
+  
+  if (isNaN(forecast_current)) {
+    return null;
+  }
+
+  // Parse historical forecasts (forecast_1h_ago through forecast_12h_ago)
+  const historical_forecasts = [];
+  for (let i = 2; i <= 13; i++) {
+    const val = parts[i] ? parseFloat(parts[i]) : null;
+    historical_forecasts.push(isNaN(val) ? null : val);
+  }
+
+  const stability_std = parts[14] ? parseFloat(parts[14]) : null;
+  const stability_range = parts[15] ? parseFloat(parts[15]) : null;
+  const revision_trend = parts[16] ? parseFloat(parts[16]) : null;
+
+  return {
+    target_time,
+    forecast_current,
+    historical_forecasts, // Array of 12 values: [1h_ago, 2h_ago, ..., 12h_ago]
+    stability_std: isNaN(stability_std) ? null : stability_std,
+    stability_range: isNaN(stability_range) ? null : stability_range,
+    revision_trend: isNaN(revision_trend) ? null : revision_trend,
+  };
+}
+
+/**
+ * Parse forecast CSV text with stability into array of forecast objects
+ * @param {string} csvText - Raw CSV text content
+ * @returns {Array} Array of forecast data objects with stability
+ */
+export function parseCSVToForecastWithStability(csvText) {
+  return parseCSV(csvText, parseForecastRowWithStability);
+}
+
+/**
+ * Parse stability CSV text into array of stability objects
+ * @param {string} csvText - Raw CSV text content
+ * @returns {Array} Array of stability data objects
+ */
+export function parseCSVToStability(csvText) {
+  return parseCSV(csvText, parseStabilityRow);
+}

@@ -1,4 +1,4 @@
-import { parseCSVToForecast } from '../../libs/csvParser';
+import { parseCSVToForecastWithStability } from '../../libs/csvParser';
 
 export default async function handler(req, res) {
   const timestamp = new Date().toISOString();
@@ -24,7 +24,7 @@ export default async function handler(req, res) {
     }
 
     const csvText = await response.text();
-    const forecastData = parseCSVToForecast(csvText);
+    const forecastData = parseCSVToForecastWithStability(csvText);
 
     // Extract metadata from first row
     const firstRow = forecastData[0];

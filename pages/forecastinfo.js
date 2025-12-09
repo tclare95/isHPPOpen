@@ -13,6 +13,7 @@ import Form from "react-bootstrap/Form";
 import Spinner from "react-bootstrap/Spinner";
 import useFetch from "../libs/useFetch";
 import ForecastChartWithConfidence from "../components/functional/forecastChart";
+import StabilityChart from "../components/functional/stabilityChart";
 import GraphContext from "../libs/context/graphcontrol";
 
 // Helper to format numbers to fixed decimals, handling nulls
@@ -40,14 +41,50 @@ function getAccuracyRating(mae) {
   return { label: "Poor", color: "danger" };
 }
 
+/**
+ * Get stability rating based on stability_std
+ * <0.10m = Stable (good), 0.10-0.25m = Variable (caution), >0.25m = Unstable (bad)
+ */
+function getStabilityRating(stabilityStd) {
+  if (stabilityStd === null || stabilityStd === undefined) {
+    return { label: "No data", color: "secondary", icon: "—" };
+  }
+  if (stabilityStd < 0.10) {
+    return { label: "Stable", color: "success", icon: "✓" };
+  }
+  if (stabilityStd < 0.25) {
+    return { label: "Variable", color: "warning", icon: "~" };
+  }
+  return { label: "Unstable", color: "danger", icon: "!" };
+}
+
+/**
+ * Get revision trend indicator based on revision_trend value
+ * Positive = rising, negative = falling, near-zero = stable
+ */
+function getRevisionTrend(revisionTrend) {
+  if (revisionTrend === null || revisionTrend === undefined) {
+    return { label: "Unknown", color: "secondary", icon: "—" };
+  }
+  if (revisionTrend > 0.005) {
+    return { label: "Rising", color: "warning", icon: "↑" };
+  }
+  if (revisionTrend < -0.005) {
+    return { label: "Falling", color: "info", icon: "↓" };
+  }
+  return { label: "Stable", color: "success", icon: "→" };
+}
+
 export default function ForecastInfo() {
   const [forecastSource, setForecastSource] = useState("s3");
   const [showConfidence, setShowConfidence] = useState(true);
   const [showStats, setShowStats] = useState(false);
+  const [showStability, setShowStability] = useState(false);
   
   const { data: levelData, isPending: levelPending } = useFetch("/api/levels");
   const { data: s3Data, isPending: s3Pending } = useFetch("/api/s3forecast");
   const { data: accuracyData, isPending: accuracyPending } = useFetch("/api/forecastaccuracy");
+  const { data: stabilityData, isPending: stabilityPending } = useFetch("/api/forecaststability");
   
   const { lowerBound, upperBound, updateBounds } = useContext(GraphContext);
 
@@ -380,6 +417,171 @@ export default function ForecastInfo() {
                         </>
                       ) : (
                         <p className="mb-0">No forecast data available</p>
+                      )}
+                    </Card.Body>
+                  )}
+                </Card>
+              </Col>
+            </Row>
+          )}
+
+          {/* Forecast Stability Analytics Section */}
+          {forecastSource === "s3" && (
+            <Row className="justify-content-center mb-4">
+              <Col md={10} lg={8}>
+                <Card bg="dark" border="info" text="white">
+                  <Card.Header 
+                    className="d-flex justify-content-between align-items-center"
+                    style={{ cursor: "pointer" }}
+                    onClick={() => setShowStability(!showStability)}
+                  >
+                    <h5 className="mb-0">
+                      Forecast Stability{" "}
+                      {s3Data?.forecast_data?.length > 0 && (() => {
+                        // Calculate overall stability from forecast data
+                        const stabilityValues = s3Data.forecast_data
+                          .filter(d => d.stability_std !== null)
+                          .map(d => d.stability_std);
+                        if (stabilityValues.length > 0) {
+                          const avgStability = stabilityValues.reduce((a, b) => a + b, 0) / stabilityValues.length;
+                          const rating = getStabilityRating(avgStability);
+                          return <Badge bg={rating.color} className="ms-2">{rating.icon} {rating.label}</Badge>;
+                        }
+                        return null;
+                      })()}
+                    </h5>
+                    <span>{showStability ? "▼" : "▶"}</span>
+                  </Card.Header>
+                  {showStability && (
+                    <Card.Body>
+                      {stabilityPending ? (
+                        <div className="text-center py-3">
+                          <Spinner animation="border" role="status" size="sm" />
+                        </div>
+                      ) : (
+                        <>
+                          {/* Explanation */}
+                          <p className="text-white-50 mb-3">
+                            <small>
+                              Stability shows how consistent the forecast has been over the last 12 hours.
+                              Low stability means the model is confident; high stability means predictions have been changing.
+                            </small>
+                          </p>
+
+                          {/* Spaghetti Plot - How predictions evolved */}
+                          {stabilityData?.stability_data?.length > 0 && (
+                            <>
+                              <h6 className="text-info mb-3">Prediction Evolution</h6>
+                              <p className="text-white-50 mb-2">
+                                <small>
+                                  Shows how predictions for each target time have changed over the last 6 hours.
+                                  The solid line is the current forecast; dashed lines show what was predicted earlier.
+                                </small>
+                              </p>
+                              <StabilityChart stabilityData={stabilityData.stability_data} />
+                            </>
+                          )}
+
+                          {/* Stability Summary from forecast data */}
+                          {s3Data?.forecast_data?.length > 0 && (
+                            <>
+                              <h6 className="text-info mb-3 mt-4">Stability by Horizon</h6>
+                              <Table variant="dark" striped bordered hover responsive size="sm">
+                                <thead>
+                                  <tr>
+                                    <th>Target Time</th>
+                                    <th>Horizon</th>
+                                    <th>Prediction</th>
+                                    <th>Stability</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {s3Data.forecast_data
+                                    .filter((_, i) => i % 3 === 0) // Show every 3rd row for readability
+                                    .slice(0, 12) // Limit to 12 rows
+                                    .map((row, idx) => {
+                                      const stability = getStabilityRating(row.stability_std);
+                                      return (
+                                        <tr key={idx}>
+                                          <td>{new Date(row.forecast_date).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
+                                          <td>{row.horizon_hours}h</td>
+                                          <td>{row.forecast_reading.toFixed(3)}m</td>
+                                          <td>
+                                            <Badge bg={stability.color}>
+                                              {stability.icon} {row.stability_std !== null ? `${(row.stability_std * 100).toFixed(1)}cm` : 'N/A'}
+                                            </Badge>
+                                          </td>
+                                        </tr>
+                                      );
+                                    })}
+                                </tbody>
+                              </Table>
+                            </>
+                          )}
+
+                          {/* Detailed Stability Table with Revision Trends */}
+                          {stabilityData?.stability_data?.length > 0 && (
+                            <>
+                              <h6 className="text-info mb-3 mt-4">Revision Trends</h6>
+                              <p className="text-white-50 mb-2">
+                                <small>
+                                  <strong>↑ Rising</strong> = model is revising predictions upward &bull;{" "}
+                                  <strong>↓ Falling</strong> = revising downward &bull;{" "}
+                                  <strong>→ Stable</strong> = consistent predictions
+                                </small>
+                              </p>
+                              <Table variant="dark" striped bordered hover responsive size="sm">
+                                <thead>
+                                  <tr>
+                                    <th>Target Time</th>
+                                    <th>Current</th>
+                                    <th>Stability (σ)</th>
+                                    <th>Range</th>
+                                    <th>Trend</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {stabilityData.stability_data
+                                    .filter((_, i) => i % 4 === 0) // Show every 4th row
+                                    .slice(0, 10) // Limit rows
+                                    .map((row, idx) => {
+                                      const stability = getStabilityRating(row.stability_std);
+                                      const trend = getRevisionTrend(row.revision_trend);
+                                      return (
+                                        <tr key={idx}>
+                                          <td>{new Date(row.target_time).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
+                                          <td>{row.forecast_current.toFixed(3)}m</td>
+                                          <td>
+                                            <Badge bg={stability.color}>
+                                              {row.stability_std !== null ? `${(row.stability_std * 100).toFixed(1)}cm` : 'N/A'}
+                                            </Badge>
+                                          </td>
+                                          <td>
+                                            {row.stability_range !== null ? `${(row.stability_range * 100).toFixed(1)}cm` : 'N/A'}
+                                          </td>
+                                          <td>
+                                            <Badge bg={trend.color}>
+                                              {trend.icon} {trend.label}
+                                            </Badge>
+                                          </td>
+                                        </tr>
+                                      );
+                                    })}
+                                </tbody>
+                              </Table>
+                            </>
+                          )}
+
+                          {/* Legend */}
+                          <div className="mt-3">
+                            <small className="text-white-50">
+                              <strong className="text-white">Stability thresholds:</strong>{" "}
+                              <Badge bg="success" className="me-1">{"<"}10cm</Badge> Stable &bull;{" "}
+                              <Badge bg="warning" className="me-1">10-25cm</Badge> Variable &bull;{" "}
+                              <Badge bg="danger" className="me-1">{">"}25cm</Badge> Unstable
+                            </small>
+                          </div>
+                        </>
                       )}
                     </Card.Body>
                   )}

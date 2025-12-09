@@ -74,6 +74,24 @@ const getErrorForHorizon = (horizonHours, accuracyData) => {
   return null;
 };
 
+/**
+ * Calculate stability factor for confidence interval scaling
+ * When stability_std is high relative to MAE, widen the interval modestly
+ * When stability is zero or null, factor stays at baseline (1.0)
+ * @param {number|null} stabilityStd - Standard deviation of recent predictions
+ * @param {number|null} mae - Mean absolute error for this horizon
+ * @returns {number} Stability factor between 1.0 and 1.5
+ */
+const getStabilityFactor = (stabilityStd, mae) => {
+  if (stabilityStd === null || stabilityStd === undefined || mae === null || mae === undefined || mae === 0) {
+    return 1;
+  }
+  // Scale factor: 1.0 when stability is 0, up to 1.5 when stability >= MAE
+  // Using 0.5x multiplier for more modest scaling
+  const factor = 1 + 0.5 * (stabilityStd / mae);
+  return Math.min(1.5, Math.max(1, factor));
+};
+
 const ForecastChartWithConfidence = ({ 
   graphData, 
   graphForeCastData, 
@@ -108,8 +126,24 @@ const ForecastChartWithConfidence = ({
       ? new Date(Date.parse(graphForeCastData[0].forecast_date))
       : new Date();
 
-    // Add forecast data with confidence intervals
-    graphForeCastData.forEach((element) => {
+    // Pre-calculate smoothed stability values using a moving average (window of 5)
+    const smoothedStability = graphForeCastData.map((element, index) => {
+      const windowSize = 5;
+      const halfWindow = Math.floor(windowSize / 2);
+      const start = Math.max(0, index - halfWindow);
+      const end = Math.min(graphForeCastData.length, index + halfWindow + 1);
+      
+      const windowValues = graphForeCastData
+        .slice(start, end)
+        .map(e => e.stability_std)
+        .filter(v => v !== null && v !== undefined);
+      
+      if (windowValues.length === 0) return null;
+      return windowValues.reduce((sum, v) => sum + v, 0) / windowValues.length;
+    });
+
+    // Add forecast data with confidence intervals (scaled by smoothed stability)
+    graphForeCastData.forEach((element, index) => {
       const dateConvert = new Date(Date.parse(element.forecast_date));
       const forecastValue = element.forecast_reading;
       
@@ -123,8 +157,10 @@ const ForecastChartWithConfidence = ({
       if (showConfidence && accuracyData && accuracyData.length > 0) {
         const errorMargin = getErrorForHorizon(horizonHours, accuracyData);
         if (errorMargin !== null) {
-          // Use 1.96x MAE for ~95% confidence interval (assuming normal distribution)
-          const interval = errorMargin * 1.96;
+          // Calculate stability factor using smoothed stability to avoid jagged bands
+          const stabilityFactor = getStabilityFactor(smoothedStability[index], errorMargin);
+          // Use 1.96x MAE for ~95% confidence interval, scaled by stability
+          const interval = errorMargin * 1.96 * stabilityFactor;
           confLow = forecastValue - interval;
           confHigh = forecastValue + interval;
         }

@@ -1,12 +1,12 @@
 const { createMocks } = require('node-mocks-http');
 const s3forecastHandler = require('../../pages/api/s3forecast').default;
 
-// Sample CSV data matching the format from S3
-const mockCSVData = `forecast_time,target_time,horizon_hours,predicted_level,current_level
-2025-12-02T13:00:00+00:00,2025-12-02T13:15:00+00:00,0.25,1.562,2.58
-2025-12-02T13:00:00+00:00,2025-12-02T13:30:00+00:00,0.5,1.563,2.58
-2025-12-02T13:00:00+00:00,2025-12-02T13:45:00+00:00,0.75,1.563,2.58
-2025-12-02T13:00:00+00:00,2025-12-02T14:00:00+00:00,1.0,1.563,2.58`;
+// Sample CSV data matching the format from S3 (with stability_std column)
+const mockCSVData = `forecast_time,target_time,horizon_hours,predicted_level,current_level,stability_std
+2025-12-02T13:00:00+00:00,2025-12-02T13:15:00+00:00,0.25,1.562,2.58,0.015
+2025-12-02T13:00:00+00:00,2025-12-02T13:30:00+00:00,0.5,1.563,2.58,0.018
+2025-12-02T13:00:00+00:00,2025-12-02T13:45:00+00:00,0.75,1.563,2.58,
+2025-12-02T13:00:00+00:00,2025-12-02T14:00:00+00:00,1.0,1.563,2.58,0.025`;
 
 describe('S3 Forecast API', () => {
   const originalEnv = process.env;
@@ -50,7 +50,9 @@ describe('S3 Forecast API', () => {
     expect(data.forecast_data[0]).toMatchObject({
       forecast_date: '2025-12-02T13:15:00+00:00',
       forecast_reading: 1.562,
+      stability_std: 0.015,
     });
+    expect(data.forecast_data[2].stability_std).toBeNull(); // Empty stability
     expect(data.metadata).toMatchObject({
       forecast_time: '2025-12-02T13:00:00+00:00',
       current_level: 2.58,
@@ -105,7 +107,7 @@ describe('S3 Forecast API', () => {
     
     global.fetch.mockResolvedValue({
       ok: true,
-      text: () => Promise.resolve('forecast_time,target_time,horizon_hours,predicted_level,current_level'),
+      text: () => Promise.resolve('forecast_time,target_time,horizon_hours,predicted_level,current_level,stability_std'),
     });
 
     const { req, res } = createMocks({
@@ -123,10 +125,10 @@ describe('S3 Forecast API', () => {
   test('filters out invalid rows', async () => {
     process.env.S3_FORECAST_URL = 'https://test-bucket.s3.amazonaws.com/forecast.csv';
     
-    const csvWithInvalidRow = `forecast_time,target_time,horizon_hours,predicted_level,current_level
-2025-12-02T13:00:00+00:00,2025-12-02T13:15:00+00:00,0.25,1.562,2.58
-invalid,row,data,not_a_number,here
-2025-12-02T13:00:00+00:00,2025-12-02T13:30:00+00:00,0.5,1.563,2.58`;
+    const csvWithInvalidRow = `forecast_time,target_time,horizon_hours,predicted_level,current_level,stability_std
+2025-12-02T13:00:00+00:00,2025-12-02T13:15:00+00:00,0.25,1.562,2.58,0.01
+invalid,row,data,not_a_number,here,bad
+2025-12-02T13:00:00+00:00,2025-12-02T13:30:00+00:00,0.5,1.563,2.58,0.02`;
 
     global.fetch.mockResolvedValue({
       ok: true,

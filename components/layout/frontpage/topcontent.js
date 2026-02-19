@@ -16,12 +16,18 @@ const currentTime = new Date();
 
 export default function TopContent(props) {
   const { data: levelData, error, isPending } = useFetch("/api/levels");
-  const { data: s3Forecast, isPending: forecastPending } = useFetch("/api/s3forecast");
-  const { data: accuracyData, isPending: accuracyPending } = useFetch("/api/forecastaccuracy");
-  const { data: featureFlags, isPending: flagsPending } = useFetch("/api/featureflags");
-  
+  const { data: s3Forecast, isPending: forecastPending } =
+    useFetch("/api/s3forecast");
+  const { data: accuracyData, isPending: accuracyPending } = useFetch(
+    "/api/forecastaccuracy",
+  );
+  const { data: featureFlags, isPending: flagsPending } =
+    useFetch("/api/featureflags");
+
   const recentEntry = !isPending && levelData.level_data?.[0];
-  const readingTime = recentEntry ? new Date(recentEntry.reading_date) : new Date();
+  const readingTime = recentEntry
+    ? new Date(recentEntry.reading_date)
+    : new Date();
   const recentLevel = recentEntry ? recentEntry.reading_level : 0;
   const { lowerBound, upperBound, updateBounds } = useContext(GraphContext);
 
@@ -58,9 +64,9 @@ export default function TopContent(props) {
             The River Level is{" "}
             {isPending
               ? "0.00"
-              : (Math.round((recentLevel + Number.EPSILON) * 100) / 100).toFixed(
-                  2
-                )}{" "}
+              : (
+                  Math.round((recentLevel + Number.EPSILON) * 100) / 100
+                ).toFixed(2)}{" "}
             M
           </h3>
           <a href="#waterquality">
@@ -83,7 +89,10 @@ export default function TopContent(props) {
           {isPending
             ? "Loading"
             : Math.floor(
-                (currentTime.getTime() - readingTime.getTime()) / 1000 / 60 / 60
+                (currentTime.getTime() - readingTime.getTime()) /
+                  1000 /
+                  60 /
+                  60,
               )}{" "}
           hours old. Generally HPP white water course is open below 2.2 meters
           on the gauge. Check the graph below for trends and a 36 hour river
@@ -91,9 +100,13 @@ export default function TopContent(props) {
         </p>
         <p>
           Need some new paddling kit or forgotten something? Check out{" "}
-          <Link target="blank" href="https://www.flowkayaks.co.uk/">
+          <a
+            href="https://www.flowkayaks.co.uk/"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
             Flow Kayaks
-          </Link>{" "}
+          </a>{" "}
           who are just over the river.
         </p>
         <p>

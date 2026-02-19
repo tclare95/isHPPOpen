@@ -52,25 +52,33 @@ export default function Home(props) {
 }
 
 export async function getStaticProps() {
+  let cleanedData = [];
+  let cleanedData2 = { banner_message: "" };
 
-  // Static caching of events
-  const { db } = await connectToDatabase();
-  let now = null
-  now = new Date();
-  const tomorrow = new Date(now);
-  tomorrow.setDate(tomorrow.getDate() - 1);
-  const collection = await db.collection("eventschemas");
-  const data = await collection
-    .find({ event_end_date: { $gte: tomorrow } })
-    .limit(5)
-    .toArray();
-  const cleanedData = JSON.parse(JSON.stringify(data));
+  try {
+    // Static caching of events
+    const { db } = await connectToDatabase();
+    let now = null;
+    now = new Date();
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() - 1);
+    const collection = await db.collection("eventschemas");
+    const data = await collection
+      .find({ event_end_date: { $gte: tomorrow } })
+      .limit(5)
+      .toArray();
+    cleanedData = JSON.parse(JSON.stringify(data));
 
-  // get the site message for the banner
-  const collection2 = await db.collection("sitebannerschemas");
-  const data2 = await collection2.findOne();
-  const cleanedData2 = JSON.parse(JSON.stringify(data2));
+    // get the site message for the banner
+    const collection2 = await db.collection("sitebannerschemas");
+    const data2 = await collection2.findOne();
+    if (data2) {
+      cleanedData2 = JSON.parse(JSON.stringify(data2));
+    }
+  } catch (error) {
+    console.error("Failed to load static home page data", error);
+  }
 
   // Revalidate = time before next re-renders the page in seconds = 30 minutes
-  return { props: { data: cleanedData, message: cleanedData2}, revalidate: 900 };
+  return { props: { data: cleanedData, message: cleanedData2 }, revalidate: 900 };
 }

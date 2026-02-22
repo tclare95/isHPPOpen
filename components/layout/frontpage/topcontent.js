@@ -99,9 +99,13 @@ export default function TopContent(props) {
         </p>
         <p>
           Need some new paddling kit or forgotten something? Check out{" "}
-          <Link target="blank" href="https://www.flowkayaks.co.uk/">
+          <a
+            href="https://www.flowkayaks.co.uk/"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
             Flow Kayaks
-          </Link>{" "}
+          </a>{" "}
           who are just over the river.
         </p>
         <p>

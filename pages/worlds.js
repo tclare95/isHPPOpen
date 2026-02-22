@@ -42,7 +42,7 @@ export default function WorldChamps() {
               </p>
               
                 <h6>
-                  <a>There are competitions as part of the festival of paddling that are open to be public - <Link href="https://britishcanoeingevents.org.uk/freestyle2022/festival-of-paddling/">Click Here</Link> for more information.</a>
+                  There are competitions as part of the festival of paddling that are open to be public - <a href="https://britishcanoeingevents.org.uk/freestyle2022/festival-of-paddling/" target="_blank" rel="noopener noreferrer">Click Here</a> for more information.
                 </h6>
             </Col>
           </Row>
@@ -58,7 +58,7 @@ export default function WorldChamps() {
                 </span>
               </h5>
               <p>
-Booking for these slots is <span className="fw-bold"><Link href="https://www.nwscnotts.com/nwsc/bookingscentre/index">open now</Link></span>. Expect them to get booked up quickly, even with extended opening hours into the evenings. The slot checker on the site shows NON world champs slots             </p>
+Booking for these slots is <span className="fw-bold"><a href="https://www.nwscnotts.com/nwsc/bookingscentre/index" target="_blank" rel="noopener noreferrer">open now</a></span>. Expect them to get booked up quickly, even with extended opening hours into the evenings. The slot checker on the site shows NON world champs slots             </p>
               
             </Col>
           </Row>
@@ -82,7 +82,7 @@ Booking for these slots is <span className="fw-bold"><Link href="https://www.nws
     <tr>
       <td>Wednesday 22nd June</td>
       <td>17:00 - 22:00</td>
-      <td><Link href="https://britishcanoeingevents.org.uk/freestyle2022/festival-of-paddling/">World Freestyle League</Link></td>
+      <td><a href="https://britishcanoeingevents.org.uk/freestyle2022/festival-of-paddling/" target="_blank" rel="noopener noreferrer">World Freestyle League</a></td>
     </tr>
     <tr>
       <td>Thursday 23rd June</td>
@@ -92,17 +92,17 @@ Booking for these slots is <span className="fw-bold"><Link href="https://www.nws
     <tr>
       <td>Friday 24th June</td>
       <td>17:00 - 22:00</td>
-      <td><Link href="https://britishcanoeingevents.org.uk/freestyle2022/festival-of-paddling/">World Freestyle League</Link></td>
+      <td><a href="https://britishcanoeingevents.org.uk/freestyle2022/festival-of-paddling/" target="_blank" rel="noopener noreferrer">World Freestyle League</a></td>
     </tr>
     <tr>
       <td>Saturday 25th June</td>
       <td>17:00 - 22:00</td>
-      <td><Link href="https://britishcanoeingevents.org.uk/freestyle2022/festival-of-paddling/">Young Guns World Series</Link></td>
+      <td><a href="https://britishcanoeingevents.org.uk/freestyle2022/festival-of-paddling/" target="_blank" rel="noopener noreferrer">Young Guns World Series</a></td>
     </tr>
     <tr>
       <td>Sunday 26th June</td>
       <td>17:00 - ??:??</td>
-      <td><Link href="https://britishcanoeingevents.org.uk/freestyle2022/festival-of-paddling/">Young Guns World Series, Opening Ceremony</Link></td>
+      <td><a href="https://britishcanoeingevents.org.uk/freestyle2022/festival-of-paddling/" target="_blank" rel="noopener noreferrer">Young Guns World Series, Opening Ceremony</a></td>
     </tr>
   </tbody>
 </Table>
@@ -111,9 +111,9 @@ Booking for these slots is <span className="fw-bold"><Link href="https://www.nws
                 </Accordion.Item>
                 <Accordion.Item eventKey="1">
                   <Accordion.Header>Competition Dates</Accordion.Header>
-                  <Accordion.Body><Link href="https://britishcanoeingevents.org.uk/freestyle2022/schedule/">
+                  <Accordion.Body><a href="https://britishcanoeingevents.org.uk/freestyle2022/schedule/" target="_blank" rel="noopener noreferrer">
                   Please click here for the official competition schedule
-                  </Link></Accordion.Body>
+                  </a></Accordion.Body>
                 </Accordion.Item>
               </Accordion>
               

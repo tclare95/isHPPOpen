@@ -1,21 +1,73 @@
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { Col, Container, Row } from "react-bootstrap";
 import Meta from "../components/meta";
-import WaterQualityMap from "../components/functional/csoMap";
-import CsoChart from "../components/functional/csoChart";
 import { useEffect, useState } from "react";
+
+const WaterQualityMap = dynamic(() => import("../components/functional/csoMap"), {
+  ssr: false,
+  loading: () => <p>Loading map...</p>,
+});
+
+const CsoChart = dynamic(() => import("../components/functional/csoChart"), {
+  ssr: false,
+  loading: () => <p>Loading chart...</p>,
+});
 
 export default function WaterQuality() {
   const [currentData, setCurrentData] = useState(null);
+  const [isLoadingCurrentData, setIsLoadingCurrentData] = useState(true);
+  const [currentDataError, setCurrentDataError] = useState("");
 
   useEffect(() => {
+    let ignore = false;
+
     async function fetchData() {
-      const response = await fetch("/api/waterquality");
-      const data = await response.json();
-      setCurrentData(data.waterQualityData);
+      try {
+        const response = await fetch("/api/waterquality");
+        if (!response.ok) {
+          throw new Error(`Request failed with status ${response.status}`);
+        }
+
+        const data = await response.json();
+        if (ignore) return;
+
+        setCurrentData(data?.waterQualityData ?? null);
+      } catch (error) {
+        if (ignore) return;
+        console.error("Failed to fetch water quality summary", error);
+        setCurrentDataError("Unable to load current data right now.");
+      } finally {
+        if (!ignore) {
+          setIsLoadingCurrentData(false);
+        }
+      }
     }
+
     fetchData();
+
+    return () => {
+      ignore = true;
+    };
   }, []);
+
+  const activeCSOCount = Number(currentData?.ActiveCSOCount);
+  const numberUpstreamCSOs = Number(currentData?.WaterQuality?.NumberUpstreamCSOs);
+  const csoActiveTime = Number(currentData?.WaterQuality?.CSOActiveTime);
+  const numberCSOsPerKm2 = Number(currentData?.WaterQuality?.NumberCSOsPerKm2);
+
+  const activeCSOCountDisplay = Number.isFinite(activeCSOCount)
+    ? activeCSOCount
+    : "N/A";
+  const numberUpstreamDisplay = Number.isFinite(numberUpstreamCSOs)
+    ? numberUpstreamCSOs
+    : "N/A";
+  const activeTimeDisplay = Number.isFinite(csoActiveTime)
+    ? `${csoActiveTime} hours`
+    : "N/A";
+  const numberPerKm2Display = Number.isFinite(numberCSOsPerKm2)
+    ? numberCSOsPerKm2.toFixed(4)
+    : "N/A";
 
   return (
     <Container fluid className="bg-dark">
@@ -54,15 +106,19 @@ export default function WaterQuality() {
         <Row className="mb-5">
           <Col>
             <h2>Current Data</h2>
-            {currentData ? (
+            {isLoadingCurrentData ? (
+              <p>Loading current data...</p>
+            ) : currentDataError ? (
+              <p>{currentDataError}</p>
+            ) : currentData ? (
               <>
-                <p>Number of currently active CSOs: {currentData.ActiveCSOCount}</p>
-                <p>Number of CSO's active in past 48 hours: {currentData.WaterQuality.NumberUpstreamCSOs}</p>
-                <p>Total discharge time (last 48 hours): {currentData.WaterQuality.CSOActiveTime} hours</p>
-                <p>Number of active CSO's per square kilometer: {currentData.WaterQuality.NumberCSOsPerKm2.toFixed(4)}</p>
+                <p>Number of currently active CSOs: {activeCSOCountDisplay}</p>
+                <p>Number of CSO's active in past 48 hours: {numberUpstreamDisplay}</p>
+                <p>Total discharge time (last 48 hours): {activeTimeDisplay}</p>
+                <p>Number of active CSO's per square kilometer: {numberPerKm2Display}</p>
               </>
             ) : (
-              <p>Loading current data...</p>
+              <p>No current data available.</p>
             )}
           </Col>
         </Row>

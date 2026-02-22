@@ -1,5 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import Chart from 'react-google-charts';
+import dynamic from 'next/dynamic';
+
+const Chart = dynamic(
+  () => import('react-google-charts').then((mod) => mod.Chart),
+  { ssr: false }
+);
 
 const chartArrayHeader = [
   { type: 'datetime', label: 'Date' },
@@ -8,26 +13,68 @@ const chartArrayHeader = [
 
 const CsoChart = () => {
   const [chartData, setChartData] = useState([chartArrayHeader]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
+    let ignore = false;
+
     const fetchData = async () => {
       try {
         const response = await fetch('/api/waterquality/csodensity');
+        if (!response.ok) {
+          throw new Error(`CSO density request failed with status ${response.status}`);
+        }
+
         const csoData = await response.json();
-        const data = csoData.map((element) => {
-          const dateConvert = new Date(Date.parse(element.timestamp));
-          return [dateConvert, element.numberCSOsPerKm2];
-        });
+        const source = Array.isArray(csoData) ? csoData : [];
+        const data = source
+          .map((element) => {
+            const dateConvert = new Date(Date.parse(element?.timestamp));
+            const numberPerKm2 = Number(element?.numberCSOsPerKm2);
+
+            if (Number.isNaN(dateConvert.getTime()) || !Number.isFinite(numberPerKm2)) {
+              return null;
+            }
+
+            return [dateConvert, numberPerKm2];
+          })
+          .filter(Boolean);
 
         // Set chart data with header
-        setChartData([chartArrayHeader, ...data]);
+        if (!ignore) {
+          setChartData([chartArrayHeader, ...data]);
+        }
       } catch (error) {
         console.error('Error fetching CSO data:', error);
+        if (!ignore) {
+          setError('Unable to load chart data right now.');
+        }
+      } finally {
+        if (!ignore) {
+          setIsLoading(false);
+        }
       }
     };
 
     fetchData();
+
+    return () => {
+      ignore = true;
+    };
   }, []); // Empty dependency array to run only once on mount
+
+  if (isLoading) {
+    return <div>Loading chart...</div>;
+  }
+
+  if (error) {
+    return <div>{error}</div>;
+  }
+
+  if (chartData.length <= 1) {
+    return <div>No chart data available.</div>;
+  }
 
   return (
     <Chart

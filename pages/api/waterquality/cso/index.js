@@ -27,16 +27,23 @@ export default async function handler(req, res) {
   try {
     const { db } = await connectToDatabase();
     const csoDataCollection = await db.collection("csoData");
-    // Optional and safe: ensure an index to support this query pattern efficiently
-    // Note: createIndex is idempotent; it will be a no-op if the index already exists
+    // Optional and safe: ensure an index to support this query pattern efficiently.
+    // Do not force a name here, because production may already have the same key pattern
+    // under a different index name.
     try {
-      await csoDataCollection.createIndex(
-        { "attributes.Id": 1, DateScraped: -1 },
-        { name: "id_date_desc" }
-      );
+      await csoDataCollection.createIndex({ "attributes.Id": 1, DateScraped: -1 });
     } catch (e) {
-      // index creation failure shouldn't break the request
-      console.warn("Failed to ensure index id_date_desc:", e?.message || e);
+      // Index creation failure shouldn't break the request.
+      // Ignore expected conflicts where an equivalent index already exists
+      // with a different name/options in the database.
+      const message = e?.message || "";
+      const isExpectedConflict =
+        e?.codeName === "IndexOptionsConflict" ||
+        message.includes("Index already exists with a different name");
+
+      if (!isExpectedConflict) {
+        console.warn("Failed to ensure CSO index:", e?.message || e);
+      }
     }
 
     // Aggregation to get latest (by DateScraped) document per attributes.Id WITHOUT global $sort

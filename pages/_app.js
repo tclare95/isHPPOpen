@@ -1,5 +1,6 @@
 import '../styles/globals.css'
 import 'bootstrap/dist/css/bootstrap.min.css';
+import 'leaflet/dist/leaflet.css';
 import TagManager from 'react-gtm-module'
 import {useEffect} from 'react'
 import { SessionProvider } from "next-auth/react"

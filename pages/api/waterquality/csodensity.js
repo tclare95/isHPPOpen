@@ -2,7 +2,8 @@ import { connectToDatabase } from "../../../libs/database";
 
 export default async function handler(req, res) {
   const timestamp = new Date().toISOString();
-  const hours = parseInt(req.query.hours, 10) || 120;
+  const parsedHours = Number(req.query.hours);
+  const hours = Number.isFinite(parsedHours) ? parsedHours : 120;
 
   if (req.method === "GET") {
     try {
@@ -18,10 +19,21 @@ export default async function handler(req, res) {
 
       const timeSeriesData = await cursor.toArray();
 
-      const result = timeSeriesData.map((data) => ({
-        timestamp: data.scrape_timestamp,
-        numberCSOsPerKm2: data.water_quality.number_CSOs_per_km2,
-      }));
+      const result = timeSeriesData
+        .map((data) => {
+          const timestamp = data?.scrape_timestamp;
+          const numberCSOsPerKm2 = Number(data?.water_quality?.number_CSOs_per_km2);
+
+          if (!timestamp || !Number.isFinite(numberCSOsPerKm2)) {
+            return null;
+          }
+
+          return {
+            timestamp,
+            numberCSOsPerKm2,
+          };
+        })
+        .filter(Boolean);
 
       console.log(`${timestamp} CSODENSITY TIME SERIES CALLED`);
       res.status(200).json(result);

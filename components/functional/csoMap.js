@@ -9,56 +9,122 @@ const Popup = dynamic(() => import("react-leaflet").then(mod => mod.Popup), { ss
 
 const center = [52.94576790782451, -1.0907147684529286];
 
-let activeCsoIcon, inactiveIcon;
-if (typeof window !== "undefined") {
-  const { Icon } = require("leaflet");
-  require("leaflet/dist/leaflet.css");
-
-  activeCsoIcon = new Icon({
-    iconUrl: "/red-marker-icon.png",
-    iconSize: [25, 25],
-    iconAnchor: [12, 25],
-  });
-
-  inactiveIcon = new Icon({
-    iconUrl: "/grey-marker-icon.png",
-    iconSize: [25, 25],
-    iconAnchor: [12, 25],
-  });
-
-}
-
 export default function WaterQualityMap() {
-  const [isClient, setIsClient] = useState(false);
   const [waterQualityData, setWaterQualityData] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
   const [csoDetails, setCsoDetails] = useState({});
+  const [icons, setIcons] = useState({
+    active: null,
+    inactive: null,
+  });
 
   useEffect(() => {
-    setIsClient(true);
-    fetch("/api/waterquality")
-      .then(response => response.json())
-      .then(async data => {
-        setWaterQualityData(data.waterQualityData);
-        const ids = data.waterQualityData.WaterQuality.CSOIds;
-        if (ids && ids.length) {
-          try {
-            const bulkRes = await fetch(`/api/waterquality/cso?ids=${ids.join(',')}`);
-            if (bulkRes.ok) {
-              const bulkJson = await bulkRes.json();
-              setCsoDetails(bulkJson.csoData || {});
-            }
-          } catch (e) {
-            console.error('Failed to fetch bulk CSO data', e);
-          }
+    let ignore = false;
+
+    const initializeIcons = async () => {
+      try {
+        const leafletModule = await import("leaflet");
+        const { Icon } = leafletModule;
+
+        if (ignore) return;
+
+        setIcons({
+          active: new Icon({
+            iconUrl: "/red-marker-icon.png",
+            iconSize: [25, 25],
+            iconAnchor: [12, 25],
+          }),
+          inactive: new Icon({
+            iconUrl: "/grey-marker-icon.png",
+            iconSize: [25, 25],
+            iconAnchor: [12, 25],
+          }),
+        });
+      } catch (iconError) {
+        if (!ignore) {
+          console.error("Failed to initialize map icons", iconError);
         }
-      });
+      }
+    };
+
+    const fetchWaterQualityData = async () => {
+      try {
+        const response = await fetch("/api/waterquality");
+        if (!response.ok) {
+          throw new Error(`Water quality request failed with status ${response.status}`);
+        }
+
+        const data = await response.json();
+        const latest = data?.waterQualityData ?? null;
+        if (!latest) {
+          throw new Error("Water quality payload missing data");
+        }
+
+        if (ignore) return;
+        setWaterQualityData(latest);
+
+        const ids = Array.isArray(latest?.WaterQuality?.CSOIds)
+          ? latest.WaterQuality.CSOIds.filter(Boolean)
+          : [];
+
+        if (!ids.length) {
+          return;
+        }
+
+        try {
+          const bulkRes = await fetch(`/api/waterquality/cso?ids=${ids.join(",")}`);
+          if (!bulkRes.ok) {
+            throw new Error(`Bulk CSO request failed with status ${bulkRes.status}`);
+          }
+
+          const bulkJson = await bulkRes.json();
+          if (!ignore) {
+            setCsoDetails(bulkJson?.csoData || {});
+          }
+        } catch (bulkError) {
+          console.error("Failed to fetch bulk CSO data", bulkError);
+        }
+      } catch (fetchError) {
+        if (!ignore) {
+          console.error("Failed to fetch map water quality data", fetchError);
+          setError("Unable to load map data right now.");
+        }
+      } finally {
+        if (!ignore) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    initializeIcons();
+    fetchWaterQualityData();
+
+    return () => {
+      ignore = true;
+    };
   }, []);
 
-  if (!isClient || !waterQualityData) {
-    return null;
+  if (isLoading) {
+    return <p>Loading map data...</p>;
   }
 
-  const activeCSOs = new Set(waterQualityData.ActiveCSOIds);
+  if (error) {
+    return <p>{error}</p>;
+  }
+
+  if (!waterQualityData) {
+    return <p>No map data available.</p>;
+  }
+
+  const activeCSOs = new Set(Array.isArray(waterQualityData.ActiveCSOIds) ? waterQualityData.ActiveCSOIds : []);
+  const csoIds = Array.isArray(waterQualityData?.WaterQuality?.CSOIds)
+    ? waterQualityData.WaterQuality.CSOIds
+    : [];
+
+  if (!csoIds.length) {
+    return <p>No recent CSO locations found.</p>;
+  }
 
   return (
     <MapContainer
@@ -71,14 +137,14 @@ export default function WaterQualityMap() {
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
 
-      {waterQualityData.WaterQuality.CSOIds.map((id) => {
+      {csoIds.map((id) => {
         const position = csoLocation(id);
         const activeTime = calculateActiveTime(csoDetails[id]);
         return (
           <Marker
             key={id}
             position={position}
-            icon={activeCSOs.has(id) ? activeCsoIcon : inactiveIcon}
+            icon={activeCSOs.has(id) ? icons.active : icons.inactive}
           >
             <Popup>
               <div className="text-center">
@@ -115,6 +181,9 @@ export default function WaterQualityMap() {
     if (!details) return "N/A";
     const start = new Date(details.LatestEventStart);
     const end = details.LatestEventEnd ? new Date(details.LatestEventEnd) : new Date();
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      return "N/A";
+    }
     const diffMs = end - start;
     const diffMins = Math.round(diffMs / (1000 * 60));
     const hours = Math.floor(diffMins / 60);
@@ -124,6 +193,7 @@ export default function WaterQualityMap() {
 
   function formatTimestamp(timestamp) {
     if (!timestamp) return "N/A";
-    return new Date(timestamp).toLocaleString();
+    const date = new Date(timestamp);
+    return Number.isNaN(date.getTime()) ? "N/A" : date.toLocaleString();
   }
 }

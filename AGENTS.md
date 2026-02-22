@@ -23,17 +23,32 @@ Without MongoDB env vars, imports from `libs/database.js` throw immediately.
 ## Architecture map
 - **Pages router app**: UI routes in `pages/`, shared UI in `components/`.
 - **API layer**: `pages/api/*` contains server handlers for levels, status, events, forecasts, site banner, feature flags, and auth.
+- **API shared helpers**: `libs/api/http.js` centralizes method dispatch, session enforcement, request-body parsing, and error mapping.
 - **Service layer**: business logic extracted in `libs/services/*` for events and site banner operations.
 - **Data layer**: `libs/database.js` manages a cached singleton Mongo client.
 - **State/fetching**: SWR-based data hooks in `libs/useFetch.js` and helpers in `libs/fetcher.js`.
 - **Testing**: Jest + Testing Library under `__tests__/` with DB/auth mocks in `__mocks__/`.
 
-For details, see `docs/ARCHITECTURE.md` and `docs/LESSONS_LEARNED.md`.
+For details, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [docs/LESSONS_LEARNED.md](docs/LESSONS_LEARNED.md).
+
+### Source-of-truth docs
+- API route standards and response conventions: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+- Agent workflow and PR definition-of-done: [AGENTS.md](AGENTS.md)
+- Historical pitfalls and change guidance: [docs/LESSONS_LEARNED.md](docs/LESSONS_LEARNED.md)
+
+Keep this file focused on actionable guardrails. If architecture behavior changes, update [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) first, then adjust this file only where agent workflow is impacted.
 
 ## Agent guardrails
 - Prefer changing service modules (`libs/services`) over duplicating logic in API routes.
 - Keep API handlers thin: validate input, authorize, delegate, shape response.
+- For API routes, follow the standard pattern:
+	- define `handlers` map by method
+	- dispatch with `getMethodHandler()`
+	- use one route-level `try/catch`
+	- map errors via `mapApiError()`
 - Preserve unauthenticated `GET` for public data endpoints unless explicitly requested otherwise.
+- Use `requireSession()` for protected writes and return `401` when unauthenticated.
+- Prefer `{ message: "..." }` for error payloads.
 - If adding new API behavior, add/update a corresponding test in `__tests__/api/`.
 - When touching DB logic, keep connection reuse through `connectToDatabase()`.
 - Avoid broad refactors unless needed for the task; this repo has legacy and newer patterns co-existing.

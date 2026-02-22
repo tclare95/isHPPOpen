@@ -23,9 +23,14 @@ Next.js 15 application for Holme Pierrepont whitewater course status. Displays w
 
 ### Key Patterns
 - **Database Connection**: Uses singleton pattern with global caching in `libs/database.js` - always import `connectToDatabase` from there
-- **API Routes**: Switch on HTTP method within single handler (see `pages/api/events.js` for GET/POST/DELETE pattern)
-- **Auth Protection**: Use `getServerSession(req, res, authOptions)` from `next-auth/next` for protected endpoints. Admin access controlled via Auth0 configuration.
+- **API Routes**: Use handler maps + `getMethodHandler()` with one route-level `try/catch`; centralize shared concerns in `libs/api/http.js`
+- **Auth Protection**: Use shared `requireSession()` for protected endpoints (wraps `getServerSession(req, res, authOptions)`). Admin access controlled via Auth0 configuration.
 - **Form Validation**: Yup schemas in service layer (`libs/services/`) and Formik forms (`components/functional/eventsform.js`)
+
+### Documentation source of truth
+- API route standards: [docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md)
+- Agent workflow/guardrails: [AGENTS.md](../AGENTS.md)
+- Lessons and historical pitfalls: [docs/LESSONS_LEARNED.md](../docs/LESSONS_LEARNED.md)
 
 ### Component Structure
 ```

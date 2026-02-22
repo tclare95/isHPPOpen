@@ -1,5 +1,10 @@
 # Architecture and Core Functionality
 
+Related docs:
+- Project setup and commands: [README.md](../README.md)
+- Contribution/agent guardrails: [AGENTS.md](../AGENTS.md)
+- Historical pitfalls and rationale: [docs/LESSONS_LEARNED.md](LESSONS_LEARNED.md)
+
 ## 1) Runtime and framework
 - The app is a **Next.js Pages Router** application.
 - Server-rendered/static page entry points live in `pages/`.
@@ -18,6 +23,12 @@
 
 ### API/application layer
 - Public and protected server handlers are in `pages/api/*`.
+- Shared route concerns are centralized in `libs/api/http.js`.
+- Current standard route pattern is:
+   - define a small per-method handler map (`handlers`)
+   - dispatch methods via shared `getMethodHandler()`
+   - keep one route-level `try/catch` boundary
+   - map errors with shared `mapApiError()`
 - Examples:
   - `pages/api/events.js`: read/update/delete events.
   - `pages/api/sitebanner.js`: get/update banner messages.
@@ -36,7 +47,14 @@
 
 ### AuthN/AuthZ
 - NextAuth is configured in `pages/api/auth/[...nextauth].js` using Auth0 provider.
-- Protected mutations (e.g., POST/DELETE in events, POST in site banner) rely on server session checks.
+- Protected mutations (e.g., POST/DELETE in events, POST in site banner) rely on server session checks via shared `requireSession()`.
+- Unauthenticated protected writes return `401` with `{ message: "Unauthorized" }`.
+
+## 2.1) API route conventions
+- Prefer `message` as the standard error response key.
+- For method mismatches, set `Allow` and return `405`.
+- Prefer domain-level throws (`HttpError`, Yup validation errors) and route-level mapping in `mapApiError()`.
+- Keep route handlers focused on orchestration; place domain validation/persistence in services where available.
 
 ## 3) Important functionality
 
@@ -71,5 +89,5 @@
 
 ## 5) Known architectural characteristics
 - The codebase is in a transition state: some logic is still in route handlers while newer behavior uses `libs/services`.
-- API handlers mix legacy request-body parsing and newer direct-object parsing.
-- There is strong value in gradually standardizing validation and response shaping in services.
+- Some endpoints still accept legacy body shapes; `parseRequestBody()` exists to smooth migration.
+- Continued value: move remaining domain logic from handlers to `libs/services` while preserving the shared route contract.

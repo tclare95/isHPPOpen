@@ -26,7 +26,15 @@ The site provides a quick way to check if the Holme Pierrepont whitewater course
 - `npm run test:coverage` - run tests with coverage
 - `npm run lint` - run ESLint
 
+## API route conventions
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) (API/application layer + API route conventions) for the canonical, maintained standard.
+
 ## Project documentation
-- Agent operating guidance: `AGENTS.md`
-- Architecture overview and key functionality: `docs/ARCHITECTURE.md`
-- Engineering retrospective notes: `docs/LESSONS_LEARNED.md`
+- Agent operating guidance: [AGENTS.md](AGENTS.md)
+- Architecture overview and key functionality: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+- Engineering retrospective notes: [docs/LESSONS_LEARNED.md](docs/LESSONS_LEARNED.md)
+
+Documentation ownership:
+- Runtime architecture and API standards: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+- Process and guardrails for contributors/agents: [AGENTS.md](AGENTS.md)
+- Retrospective guidance and pitfalls: [docs/LESSONS_LEARNED.md](docs/LESSONS_LEARNED.md)

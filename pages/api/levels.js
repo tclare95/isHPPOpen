@@ -1,24 +1,18 @@
-import { connectToDatabase } from '../../libs/database'
+import { getLevelsData } from '../../libs/services/forecastService';
 
 export default async function handler(req, res) {
-    if (req.method !== 'GET') {
-        res.setHeader('Allow', ['GET']);
-        return res.status(405).end(`Method ${req.method} Not Allowed`);
-    }
+  if (req.method !== 'GET') {
+    res.setHeader('Allow', ['GET']);
+    return res.status(405).end(`Method ${req.method} Not Allowed`);
+  }
 
-    const timestamp = new Date().toISOString();
-    try {
-        const { db } = await connectToDatabase();
-        const collection = await db.collection('riverschemas');
-        const cursor = await collection.find().sort({ '_id': -1 }).limit(1);
-        const data = await cursor.next();
-        console.log(`${timestamp} LEVELS CALLED`);
-        res.status(200).json({
-            level_data: data.level_readings,
-            forecast_data: data.forecast_readings,
-        });
-    } catch (error) {
-        console.error(`[${timestamp}] Error in levels:`, error);
-        res.status(500).json({ message: "Internal Server Error" });
-    }
+  const timestamp = new Date().toISOString();
+  try {
+    const data = await getLevelsData();
+    console.log(`${timestamp} LEVELS CALLED`);
+    res.status(200).json(data);
+  } catch (error) {
+    console.error(`[${timestamp}] Error in levels:`, error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
 }

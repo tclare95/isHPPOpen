@@ -7,8 +7,17 @@ const intervals = {
   365: 365,
 };
 
+const DAY_MS = 1000 * 60 * 60 * 24;
+const intervalKeys = Object.keys(intervals);
+
+const buildIntervalStarts = (currentDate) =>
+  intervalKeys.reduce((accumulator, interval) => {
+    accumulator[interval] = new Date(currentDate.getTime() - intervals[interval] * DAY_MS);
+    return accumulator;
+  }, {});
+
 const calculateDaysBetween = (startDate, endDate) =>
-  Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
+  Math.ceil((endDate - startDate) / DAY_MS);
 
 const updateClosures = (closures, interval, intervalStart, closureStart, recordDate) => {
   const overlapStart = new Date(Math.max(closureStart.getTime(), intervalStart.getTime()));
@@ -20,32 +29,31 @@ const updateClosures = (closures, interval, intervalStart, closureStart, recordD
   }
 };
 
-const processRecords = (sortedRecords) => {
+const processRecords = (sortedRecords, currentDate = new Date()) => {
   const closures = { 7: 0, 28: 0, 182: 0, 365: 0 };
   let closureStart = null;
-  const currentDate = new Date();
+  const intervalStarts = buildIntervalStarts(currentDate);
 
   sortedRecords.forEach((record) => {
     const recordDate = new Date(record.timestamp);
+
+    if (Number.isNaN(recordDate.getTime())) {
+      return;
+    }
+
     if (!record.value && closureStart === null) {
       closureStart = recordDate;
     } else if (record.value && closureStart !== null) {
-      Object.keys(intervals).forEach((interval) => {
-        const intervalStart = new Date(
-          currentDate.getTime() - intervals[interval] * 24 * 60 * 60 * 1000
-        );
-        updateClosures(closures, interval, intervalStart, closureStart, recordDate);
+      intervalKeys.forEach((interval) => {
+        updateClosures(closures, interval, intervalStarts[interval], closureStart, recordDate);
       });
       closureStart = null;
     }
   });
 
   if (closureStart !== null) {
-    Object.keys(intervals).forEach((interval) => {
-      const intervalStart = new Date(
-        currentDate.getTime() - intervals[interval] * 24 * 60 * 60 * 1000
-      );
-      updateClosures(closures, interval, intervalStart, closureStart, currentDate);
+    intervalKeys.forEach((interval) => {
+      updateClosures(closures, interval, intervalStarts[interval], closureStart, currentDate);
     });
   }
 
@@ -55,7 +63,9 @@ const processRecords = (sortedRecords) => {
 export const buildEmptyStatusPayload = () => ({
   isEmpty: true,
   currentStatus: null,
+  lastChangedAt: null,
   lastChangedDate: null,
+  effectiveLastOpenAt: null,
   effectiveLastOpenDate: null,
   closuresInLast7Days: 0,
   closuresInLast28Days: 0,
@@ -71,7 +81,9 @@ export async function getHppStatusSnapshot() {
   const oneYearAgo = new Date(new Date().setFullYear(currentDate.getFullYear() - 1));
 
   const records = await collection.find({ timestamp: { $gte: oneYearAgo } }).toArray();
-  const sortedRecords = records.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+  const sortedRecords = records
+    .filter((record) => !Number.isNaN(new Date(record?.timestamp).getTime()))
+    .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
 
   if (sortedRecords.length === 0) {
     return {
@@ -80,7 +92,7 @@ export async function getHppStatusSnapshot() {
     };
   }
 
-  const closures = processRecords(sortedRecords);
+  const closures = processRecords(sortedRecords, currentDate);
   const latestRecord = sortedRecords[sortedRecords.length - 1];
   const lastClosureRecord = [...sortedRecords].reverse().find((record) => record.value === false);
 
@@ -89,7 +101,9 @@ export async function getHppStatusSnapshot() {
       data: {
         isEmpty: false,
         currentStatus: latestRecord?.value ?? null,
+        lastChangedAt: null,
         lastChangedDate: null,
+        effectiveLastOpenAt: null,
         effectiveLastOpenDate: null,
         closuresInLast7Days: Math.min(closures['7'], 7),
         closuresInLast28Days: Math.min(closures['28'], 28),
@@ -100,14 +114,16 @@ export async function getHppStatusSnapshot() {
     };
   }
 
-  const lastChangedDate = new Date(lastClosureRecord.timestamp).toISOString();
+  const lastChangedAt = new Date(lastClosureRecord.timestamp).toISOString();
 
   return {
     data: {
       isEmpty: false,
       currentStatus: latestRecord?.value ?? null,
-      lastChangedDate: lastChangedDate.slice(0, 10),
-      effectiveLastOpenDate: lastChangedDate.slice(0, 10),
+      lastChangedAt,
+      lastChangedDate: lastChangedAt.slice(0, 10),
+      effectiveLastOpenAt: lastChangedAt,
+      effectiveLastOpenDate: lastChangedAt.slice(0, 10),
       closuresInLast7Days: Math.min(closures['7'], 7),
       closuresInLast28Days: Math.min(closures['28'], 28),
       closuresInLast182Days: Math.min(closures['182'], 182),

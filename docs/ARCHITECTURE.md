@@ -46,7 +46,6 @@ Related docs:
   - `pages/api/events.js`: read/update/delete events.
   - `pages/api/sitebanner.js`: get/update banner messages.
   - `pages/api/hppstatus.js`: computes closure days over time windows.
-  - `pages/api/featureflags.js`: returns feature flag configuration.
 
 ### Service layer
 - Domain logic has begun moving into service modules:
@@ -105,7 +104,6 @@ Related docs:
 
 4. **Forecasting and analysis views**
    - Forecast pages compare data sources and surface quality metrics.
-   - Feature toggles are available through `/api/featureflags`.
 
 5. **Home page static data strategy**
    - `pages/index.js` uses `getStaticProps` with **6-hour ISR** to cache events/banner and reduce load.

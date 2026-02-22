@@ -3,12 +3,32 @@ import useFetch from "../../libs/useFetch";
 import PropTypes from "prop-types";
 import { SWR_15_MINUTES } from "../../libs/dataFreshness";
 
+const getDaysSince = (dateInput) => {
+  if (!dateInput) {
+    return 0;
+  }
+
+  const parsedDate = new Date(dateInput);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return 0;
+  }
+
+  const today = new Date();
+  const utcToday = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
+  const utcDate = Date.UTC(
+    parsedDate.getUTCFullYear(),
+    parsedDate.getUTCMonth(),
+    parsedDate.getUTCDate()
+  );
+
+  return Math.max(0, Math.floor((utcToday - utcDate) / (1000 * 60 * 60 * 24)));
+};
 
 export default function OpenTitle(props) {
   const { data: levelData, error, isPending } = useFetch("/api/levels", SWR_15_MINUTES);
   const { data: statusData, error: statusError, isPending: statusPending } = useFetch("/api/hppstatus", SWR_15_MINUTES);
 
-  const cachedEvents = props.cachedEvents;
+  const cachedEvents = props.cachedEvents ?? [];
 
   if (error || statusError) {
     return <div>Error Loading</div>;
@@ -33,10 +53,9 @@ export default function OpenTitle(props) {
 
     // Calculate days since HPP was last open
     const currentDate = new Date();
-    const hasLastOpenDate = typeof statusData.effectiveLastOpenDate === "string";
-    const daysSinceLastOpen = hasLastOpenDate
-      ? Math.floor((currentDate - new Date(statusData.effectiveLastOpenDate)) / (1000 * 60 * 60 * 24))
-      : 0;
+    const lastOpenReference = statusData.effectiveLastOpenAt ?? statusData.effectiveLastOpenDate;
+    const hasLastOpenDate = typeof lastOpenReference === "string";
+    const daysSinceLastOpen = hasLastOpenDate ? getDaysSince(lastOpenReference) : 0;
 
   //pull the event array, check if the current date falls between two events
   const isClosedForEvent = cachedEvents.some(event => {

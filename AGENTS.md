@@ -22,7 +22,7 @@ Without MongoDB env vars, imports from `libs/database.js` throw immediately.
 
 ## Architecture map
 - **Pages router app**: UI routes in `pages/`, shared UI in `components/`.
-- **API layer**: `pages/api/*` contains server handlers for levels, status, events, forecasts, site banner, feature flags, and auth.
+- **API layer**: `pages/api/*` contains server handlers for levels, status, events, forecasts, site banner, and auth.
 - **API shared helpers**: `libs/api/http.js` centralizes method dispatch, session enforcement, request-body parsing, and error mapping.
 - **Service layer**: business logic extracted in `libs/services/*` for events and site banner operations.
 - **Data layer**: `libs/database.js` manages a cached singleton Mongo client.

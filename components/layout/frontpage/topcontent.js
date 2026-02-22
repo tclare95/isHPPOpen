@@ -11,13 +11,12 @@ import Spinner from "react-bootstrap/Spinner";
 import GraphContext from "../../../libs/context/graphcontrol";
 import Link from "next/link";
 import PropTypes from "prop-types";
-import { SWR_15_MINUTES, SWR_EDITORIAL } from "../../../libs/dataFreshness";
+import { SWR_15_MINUTES } from "../../../libs/dataFreshness";
 
 export default function TopContent(props) {
   const { data: levelData, isPending } = useFetch("/api/levels", SWR_15_MINUTES);
   const { data: s3Forecast, isPending: forecastPending } = useFetch("/api/s3forecast", SWR_15_MINUTES);
   const { data: accuracyData } = useFetch("/api/forecastaccuracy", SWR_15_MINUTES);
-  const { data: featureFlags } = useFetch("/api/featureflags", SWR_EDITORIAL);
   
   const recentEntry = !isPending && levelData.level_data?.[0];
   const [currentTime, setCurrentTime] = useState(() => new Date());
@@ -126,7 +125,7 @@ export default function TopContent(props) {
               graphData={levelData.level_data}
               graphForeCastData={s3Forecast?.forecast_data || []}
               accuracyData={accuracyData?.accuracy_data || []}
-              showConfidence={featureFlags?.SHOW_FORECAST_CONFIDENCE ?? true}
+              showConfidence
             />
           )}
           <p className="mt-2 small">

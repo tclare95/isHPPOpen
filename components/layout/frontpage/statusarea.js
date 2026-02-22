@@ -131,7 +131,7 @@ export default function StatusArea() {
       currentStatus = "Closed";
     }
   }
-  const lastOpenDate = statusData.lastChangedDate;
+  const lastOpenDate = statusData.lastChangedAt ?? statusData.lastChangedDate;
   const lastOpenDaysAgo = getDaysAgo(lastOpenDate);
   let lastOpenAgoText = "";
   if (lastOpenDaysAgo !== null) {

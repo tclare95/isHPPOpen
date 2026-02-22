@@ -128,6 +128,23 @@ describe('Events API', () => {
     expect(payload.error.message).toBe('Validation failed');
   });
 
+  test('POST returns 400 envelope for invalid body payload', async () => {
+    getServerSession.mockResolvedValue({ user: { email: 'admin@test.com' } });
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: 'not-json',
+    });
+
+    await eventsHandler(req, res);
+
+    expect(res._getStatusCode()).toBe(400);
+    const payload = JSON.parse(res._getData());
+    expect(payload.ok).toBe(false);
+    expect(payload.error.message).toBe('Invalid request body');
+    expect(eventsService.upsertEvent).not.toHaveBeenCalled();
+  });
+
   test('DELETE returns 200 envelope when deleted', async () => {
     getServerSession.mockResolvedValue({ user: { email: 'admin@test.com' } });
     eventsService.deleteEventById.mockResolvedValue({ deletedCount: 1 });
@@ -160,6 +177,75 @@ describe('Events API', () => {
     const payload = JSON.parse(res._getData());
     expect(payload.ok).toBe(false);
     expect(payload.error.message).toBe('Missing id parameter');
+  });
+
+  test('DELETE returns 404 envelope when event does not exist', async () => {
+    getServerSession.mockResolvedValue({ user: { email: 'admin@test.com' } });
+    eventsService.deleteEventById.mockResolvedValue({ deletedCount: 0 });
+
+    const { req, res } = createMocks({
+      method: 'DELETE',
+      query: { id: '603388a6dabef6c8fb6f3986' },
+    });
+
+    await eventsHandler(req, res);
+
+    expect(res._getStatusCode()).toBe(404);
+    const payload = JSON.parse(res._getData());
+    expect(payload.ok).toBe(false);
+    expect(payload.error.message).toBe('Event Not Found');
+  });
+
+  test('GET returns 500 envelope on service failure', async () => {
+    eventsService.fetchUpcomingEvents.mockRejectedValue(new Error('Database unavailable'));
+
+    const { req, res } = createMocks({ method: 'GET' });
+
+    await eventsHandler(req, res);
+
+    expect(res._getStatusCode()).toBe(500);
+    const payload = JSON.parse(res._getData());
+    expect(payload.ok).toBe(false);
+    expect(payload.error.message).toBe('Internal Server Error');
+  });
+
+  test('POST returns 500 envelope on service failure', async () => {
+    getServerSession.mockResolvedValue({ user: { email: 'admin@test.com' } });
+    eventsService.upsertEvent.mockRejectedValue(new Error('Write failed'));
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: {
+        new_event_name: 'Race',
+        new_event_start_date: '2026-02-20',
+        new_event_end_date: '2026-02-21',
+        new_event_details: 'Details',
+      },
+    });
+
+    await eventsHandler(req, res);
+
+    expect(res._getStatusCode()).toBe(500);
+    const payload = JSON.parse(res._getData());
+    expect(payload.ok).toBe(false);
+    expect(payload.error.message).toBe('Internal Server Error');
+  });
+
+  test('DELETE returns 500 envelope on service failure', async () => {
+    getServerSession.mockResolvedValue({ user: { email: 'admin@test.com' } });
+    eventsService.deleteEventById.mockRejectedValue(new Error('Delete failed'));
+
+    const { req, res } = createMocks({
+      method: 'DELETE',
+      query: { id: '603388a6dabef6c8fb6f3986' },
+    });
+
+    await eventsHandler(req, res);
+
+    expect(res._getStatusCode()).toBe(500);
+    const payload = JSON.parse(res._getData());
+    expect(payload.ok).toBe(false);
+    expect(payload.error.message).toBe('Internal Server Error');
   });
 
   test('returns JSON 405 envelope for unsupported methods', async () => {

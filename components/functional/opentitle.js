@@ -1,11 +1,12 @@
 import Link from "next/link";
 import useFetch from "../../libs/useFetch";
 import PropTypes from "prop-types";
+import { SWR_15_MINUTES } from "../../libs/dataFreshness";
 
 
 export default function OpenTitle(props) {
-  const { data: levelData, error, isPending } = useFetch("/api/levels");
-  const { data: statusData, error: statusError, isPending: statusPending } = useFetch("/api/hppstatus");
+  const { data: levelData, error, isPending } = useFetch("/api/levels", SWR_15_MINUTES);
+  const { data: statusData, error: statusError, isPending: statusPending } = useFetch("/api/hppstatus", SWR_15_MINUTES);
 
   const cachedEvents = props.cachedEvents;
 

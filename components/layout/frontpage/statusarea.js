@@ -1,5 +1,6 @@
 import { Row, ProgressBar, Accordion, Alert, Spinner } from "react-bootstrap";
 import useFetch from "../../../libs/useFetch";
+import { SWR_15_MINUTES } from "../../../libs/dataFreshness";
 
 const historicData = {
   yearlyClosureTrend: [
@@ -95,7 +96,11 @@ const getDaysAgo = (dateInput) => {
 };
 
 export default function StatusArea() {
-  const { data: statusData, error: statusError, isPending: statusPending } = useFetch("/api/hppstatus");
+  const {
+    data: statusData,
+    error: statusError,
+    isPending: statusPending,
+  } = useFetch("/api/hppstatus", SWR_15_MINUTES);
 
   if (statusPending || statusData === undefined || statusData === null) {
     return (

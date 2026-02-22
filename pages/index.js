@@ -11,6 +11,7 @@ import { useState } from "react";
 import Meta from "../components/meta";
 import { connectToDatabase } from "../libs/database";
 import StatusArea from "../components/layout/frontpage/statusarea";
+import { HOME_ISR_REVALIDATE_SECONDS } from "../libs/dataFreshness";
 
 export default function Home(props) {
   // Set state for bounds for river level graph
@@ -79,6 +80,9 @@ export async function getStaticProps() {
     console.error("Failed to load static home page data", error);
   }
 
-  // Revalidate = time before next re-renders the page in seconds = 30 minutes
-  return { props: { data: cleanedData, message: cleanedData2 }, revalidate: 900 };
+  // Revalidate controls ISR regeneration in seconds.
+  return {
+    props: { data: cleanedData, message: cleanedData2 },
+    revalidate: HOME_ISR_REVALIDATE_SECONDS,
+  };
 }

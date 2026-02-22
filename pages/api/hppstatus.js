@@ -1,124 +1,27 @@
-import { connectToDatabase } from "../../libs/database";
 import { getMethodHandler, mapApiError, sendApiError, sendApiSuccess } from "../../libs/api/http";
-
-const intervals = {
-  7: 7,
-  28: 28,
-  182: 182,
-  365: 365,
-};
-
-const calculateDaysBetween = (startDate, endDate) =>
-  Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
-
-const updateClosures = (closures, interval, intervalStart, closureStart, recordDate) => {
-  const overlapStart = new Date(Math.max(closureStart.getTime(), intervalStart.getTime()));
-  const overlapEnd = recordDate;
-  const overlapDays = calculateDaysBetween(overlapStart, overlapEnd);
-
-  if (overlapDays > 0) {
-    closures[interval] += overlapDays;
-  }
-};
-
-const processRecords = (sortedRecords, intervals) => {
-  const closures = { 7: 0, 28: 0, 182: 0, 365: 0 };
-  let closureStart = null;
-  const currentDate = new Date();
-
-  sortedRecords.forEach((record) => {
-    const recordDate = new Date(record.timestamp);
-    if (!record.value && closureStart === null) {
-      closureStart = recordDate;
-    } else if (record.value && closureStart !== null) {
-      Object.keys(intervals).forEach((interval) => {
-        const intervalStart = new Date(
-          currentDate.getTime() - intervals[interval] * 24 * 60 * 60 * 1000
-        );
-        updateClosures(closures, interval, intervalStart, closureStart, recordDate);
-      });
-      closureStart = null;
-    }
-  });
-
-  // Handle ongoing closure
-  if (closureStart !== null) {
-    Object.keys(intervals).forEach((interval) => {
-      const intervalStart = new Date(
-        currentDate.getTime() - intervals[interval] * 24 * 60 * 60 * 1000
-      );
-      updateClosures(closures, interval, intervalStart, closureStart, currentDate);
-    });
-  }
-
-  return closures;
-};
-
-const buildEmptyStatusPayload = () => ({
-  isEmpty: true,
-  currentStatus: null,
-  lastChangedDate: null,
-  effectiveLastOpenDate: null,
-  closuresInLast7Days: 0,
-  closuresInLast28Days: 0,
-  closuresInLast182Days: 0,
-  closuresInLast365Days: 0,
-});
+import { createRequestLogger } from "../../libs/api/logger";
+import { getHppStatusSnapshot } from "../../libs/services/hppStatusService";
 
 export default async function handler(req, res) {
-  const timestamp = new Date().toISOString();
+  const logger = createRequestLogger(req, "hppstatus");
   const handlers = {
     GET: async () => {
-      const { db } = await connectToDatabase();
-      const collection = await db.collection("openIndicator");
+      const { data, context } = await getHppStatusSnapshot();
 
-      const currentDate = new Date();
-      const oneYearAgo = new Date(new Date().setFullYear(currentDate.getFullYear() - 1));
-
-      const records = await collection.find({ timestamp: { $gte: oneYearAgo } }).toArray();
-      const sortedRecords = records.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-
-      if (sortedRecords.length === 0) {
-        console.warn(`[${timestamp}] No records found in hppstatus`);
-        sendApiSuccess(res, buildEmptyStatusPayload());
+      if (context.isEmpty) {
+        logger.warn("No records found in hppstatus");
+        sendApiSuccess(res, data);
         return;
       }
 
-      const closures = processRecords(sortedRecords, intervals);
-      const latestRecord = sortedRecords[sortedRecords.length - 1];
-
-      // Find the last record where value is false (i.e., closed)
-      const lastClosureRecord = [...sortedRecords].reverse().find((record) => record.value === false);
-
-      if (!lastClosureRecord) {
-        console.warn(`[${timestamp}] No closure records found in hppstatus`);
-        sendApiSuccess(res, {
-          isEmpty: false,
-          currentStatus: latestRecord?.value ?? null,
-          lastChangedDate: null,
-          effectiveLastOpenDate: null,
-          closuresInLast7Days: Math.min(closures["7"], 7),
-          closuresInLast28Days: Math.min(closures["28"], 28),
-          closuresInLast182Days: Math.min(closures["182"], 182),
-          closuresInLast365Days: Math.min(closures["365"], 365),
-        });
+      if (!context.hasClosureRecord) {
+        logger.warn("No closure records found in hppstatus");
+        sendApiSuccess(res, data);
         return;
       }
 
-      const lastChangedDate = new Date(lastClosureRecord.timestamp).toISOString();
-
-      console.log(`${timestamp} HPPSTATUS CALLED`);
-
-      sendApiSuccess(res, {
-        isEmpty: false,
-        currentStatus: latestRecord?.value ?? null,
-        lastChangedDate: lastChangedDate.slice(0, 10),
-        effectiveLastOpenDate: lastChangedDate.slice(0, 10),
-        closuresInLast7Days: Math.min(closures["7"], 7),
-        closuresInLast28Days: Math.min(closures["28"], 28),
-        closuresInLast182Days: Math.min(closures["182"], 182),
-        closuresInLast365Days: Math.min(closures["365"], 365),
-      });
+      logger.info("HPP status calculated");
+      sendApiSuccess(res, data);
     },
   };
 
@@ -131,7 +34,7 @@ export default async function handler(req, res) {
     await methodHandler();
   } catch (error) {
     const { statusCode, message } = mapApiError(error);
-    console.error(`[${timestamp}] Error in hppstatus:`, error);
+    logger.error("Error in hppstatus", error);
     sendApiError(res, statusCode, message);
   }
 }

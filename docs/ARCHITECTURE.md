@@ -21,6 +21,19 @@ Related docs:
 - SWR is used for client-side polling/caching via `libs/useFetch.js` + `libs/fetcher.js`.
 - Graph thresholds are shared through context in `libs/context/graphcontrol.js`.
 
+### Data freshness policy (balanced)
+- The app uses a **domain-driven freshness strategy**:
+   - editorial/infrequently changing content: static/ISR
+   - operational measurements and forecasts: client-side SWR
+
+| Domain | Primary source | Primitive | Refresh window | Rationale |
+|---|---|---|---:|---|
+| Events | `eventschemas` | ISR (`getStaticProps`) for home snapshot, SWR for interactive lists | ISR: **6h**; SWR: on demand/focus | Events usually change infrequently; static home snapshot reduces DB load while admin/public event views can still refresh when needed. |
+| Site banner | `sitebannerschemas` | ISR (`getStaticProps`) for home header, SWR in admin editor | ISR: **6h**; SWR: on demand/focus | Banner is editorial and low-frequency, but admin tooling should reflect recent writes quickly. |
+| HPP status | `openIndicator` | SWR client fetch (`/api/hppstatus`) | **15m** (`900000ms`) | Status is operational and should stay reasonably fresh without aggressive polling. |
+| River levels | `riverschemas` | SWR client fetch (`/api/levels`) | **15m** (`900000ms`) | Upstream level data typically updates on a 15-minute cadence. |
+| Forecast data | S3 forecast + derived APIs | SWR client fetch (`/api/s3forecast`, `/api/forecastaccuracy`) | **15m** (`900000ms`) | Forecast and related quality indicators are operational and align to the same source update interval. |
+
 ### API/application layer
 - Public and protected server handlers are in `pages/api/*`.
 - Shared route concerns are centralized in `libs/api/http.js`.
@@ -38,6 +51,7 @@ Related docs:
 ### Service layer
 - Domain logic has begun moving into service modules:
   - `libs/services/eventsService.js`
+   - `libs/services/hppStatusService.js`
   - `libs/services/siteBannerService.js`
 - These services encapsulate validation + persistence calls used by API handlers.
 
@@ -49,12 +63,21 @@ Related docs:
 - NextAuth is configured in `pages/api/auth/[...nextauth].js` using Auth0 provider.
 - Protected mutations (e.g., POST/DELETE in events, POST in site banner) rely on server session checks via shared `requireSession()`.
 - Unauthenticated protected writes return `401` with `{ message: "Unauthorized" }`.
+- Use `403` only for authenticated users lacking required permissions/roles (if/when role-based authorization is introduced).
 
 ## 2.1) API route conventions
 - Prefer `message` as the standard error response key.
 - For method mismatches, set `Allow` and return `405`.
 - Prefer domain-level throws (`HttpError`, Yup validation errors) and route-level mapping in `mapApiError()`.
 - Keep route handlers focused on orchestration; place domain validation/persistence in services where available.
+- Prefer shared request logging helpers (`libs/api/logger.js`) for consistent timestamp + context formatting.
+
+### HTTP status semantics
+- `400`: request shape/validation errors (invalid body, invalid id format, schema validation).
+- `401`: unauthenticated requests to protected endpoints.
+- `403`: authenticated but not authorized for the action.
+- `404`: resource not found (for example delete/update target does not exist).
+- `500`: unexpected/unhandled server-side failures.
 
 ### Response contract (current standard)
 - Success responses should use: `{ ok: true, data: ... }`
@@ -85,7 +108,8 @@ Related docs:
    - Feature toggles are available through `/api/featureflags`.
 
 5. **Home page static data strategy**
-   - `pages/index.js` uses `getStaticProps` with revalidation to cache events/banner and reduce load.
+   - `pages/index.js` uses `getStaticProps` with **6-hour ISR** to cache events/banner and reduce load.
+   - Operational data (levels/status/forecast) remains client-side via SWR with a **15-minute** refresh cadence.
 
 ## 4) Testing strategy
 - Jest powers both API route tests and component/unit tests under `__tests__/`.

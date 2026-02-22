@@ -13,16 +13,17 @@ import {
   sendApiError,
   sendApiSuccess,
 } from "../../libs/api/http";
+import { createRequestLogger } from "../../libs/api/logger";
 
 export default async function handler(req, res) {
-  const timestamp = new Date().toISOString();
+  const logger = createRequestLogger(req, "events");
 
   const handlers = {
     GET: async () => {
       const parsedLimit = req.query?.limit ? Number(req.query.limit) : 5;
       const limit = Number.isInteger(parsedLimit) ? parsedLimit : 5;
       const data = await fetchUpcomingEvents(limit);
-      console.log(`${timestamp} GETEVENTS CALLED`);
+      logger.info("GET events called", { limit });
       sendApiSuccess(res, data);
     },
     POST: async () => {
@@ -31,7 +32,10 @@ export default async function handler(req, res) {
       const result = await upsertEvent(parsedRequest);
 
       if (result.modifiedCount === 1 || result.upsertedCount === 1) {
-        console.log(`${timestamp} Event modified by ${session.user.email} ${parsedRequest.new_event_id}`);
+        logger.info("Event modified", {
+          actor: session.user.email,
+          eventId: parsedRequest.new_event_id,
+        });
         sendApiSuccess(res, {
           message: "Update successful",
           id: parsedRequest.new_event_id,
@@ -39,7 +43,7 @@ export default async function handler(req, res) {
         return;
       }
 
-      console.error(`${timestamp} Update unsuccessful for event ${parsedRequest.new_event_id}`);
+      logger.error("Update unsuccessful", { eventId: parsedRequest.new_event_id });
       throw new HttpError(500, "Update failed");
     },
     DELETE: async () => {
@@ -53,11 +57,11 @@ export default async function handler(req, res) {
 
       if (result.deletedCount === 1) {
         sendApiSuccess(res, { deleted: true, id });
-        console.log(`${timestamp} Event deleted by ${session.user.email} ${id}`);
+        logger.info("Event deleted", { actor: session.user.email, eventId: id });
         return;
       }
 
-      console.error(`${timestamp} Event not found for deletion: ${id}`);
+      logger.warn("Event not found for deletion", { eventId: id });
       throw new HttpError(404, "Event Not Found");
     },
   };
@@ -71,7 +75,7 @@ export default async function handler(req, res) {
     await methodHandler();
   } catch (error) {
     const { statusCode, message } = mapApiError(error);
-    console.error(`[${timestamp}] [${req.method}] Error in events:`, error);
+    logger.error("Error in events", error);
     sendApiError(res, statusCode, message);
   }
 }

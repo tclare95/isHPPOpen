@@ -41,6 +41,7 @@ Keep this file focused on actionable guardrails. If architecture behavior change
 ## Agent guardrails
 - Prefer changing service modules (`libs/services`) over duplicating logic in API routes.
 - Keep API handlers thin: validate input, authorize, delegate, shape response.
+- Use the balanced freshness policy: editorial/event content via ISR/static, operational levels/status/forecast via SWR (~15 minutes).
 - For API routes, follow the standard pattern:
 	- define `handlers` map by method
 	- dispatch with `getMethodHandler()`
@@ -48,7 +49,9 @@ Keep this file focused on actionable guardrails. If architecture behavior change
 	- map errors via `mapApiError()`
 - Preserve unauthenticated `GET` for public data endpoints unless explicitly requested otherwise.
 - Use `requireSession()` for protected writes and return `401` when unauthenticated.
+- Use `403` only for authenticated users who lack permission.
 - Prefer `{ message: "..." }` for error payloads.
+- Prefer shared request logging helpers over inline `console.*` formatting in routes.
 - If adding new API behavior, add/update a corresponding test in `__tests__/api/`.
 - When touching DB logic, keep connection reuse through `connectToDatabase()`.
 - Avoid broad refactors unless needed for the task; this repo has legacy and newer patterns co-existing.

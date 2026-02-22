@@ -11,12 +11,13 @@ import Spinner from "react-bootstrap/Spinner";
 import GraphContext from "../../../libs/context/graphcontrol";
 import Link from "next/link";
 import PropTypes from "prop-types";
+import { SWR_15_MINUTES, SWR_EDITORIAL } from "../../../libs/dataFreshness";
 
 export default function TopContent(props) {
-  const { data: levelData, isPending } = useFetch("/api/levels");
-  const { data: s3Forecast, isPending: forecastPending } = useFetch("/api/s3forecast");
-  const { data: accuracyData } = useFetch("/api/forecastaccuracy");
-  const { data: featureFlags } = useFetch("/api/featureflags");
+  const { data: levelData, isPending } = useFetch("/api/levels", SWR_15_MINUTES);
+  const { data: s3Forecast, isPending: forecastPending } = useFetch("/api/s3forecast", SWR_15_MINUTES);
+  const { data: accuracyData } = useFetch("/api/forecastaccuracy", SWR_15_MINUTES);
+  const { data: featureFlags } = useFetch("/api/featureflags", SWR_EDITORIAL);
   
   const recentEntry = !isPending && levelData.level_data?.[0];
   const [currentTime, setCurrentTime] = useState(() => new Date());

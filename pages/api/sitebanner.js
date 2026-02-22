@@ -8,9 +8,10 @@ import {
   sendApiError,
   sendApiSuccess,
 } from "../../libs/api/http";
+import { createRequestLogger } from "../../libs/api/logger";
 
 export default async function handler(req, res) {
-  const timestamp = new Date().toISOString();
+  const logger = createRequestLogger(req, "sitebanner");
 
   const handlers = {
     GET: async () => {
@@ -38,7 +39,7 @@ export default async function handler(req, res) {
     await methodHandler();
   } catch (error) {
     const { statusCode, message } = mapApiError(error);
-    console.error(`[${timestamp}] [${req.method}] Error in sitebanner:`, error);
+    logger.error("Error in sitebanner", error);
     sendApiError(res, statusCode, message);
   }
 }

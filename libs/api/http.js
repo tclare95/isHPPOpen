@@ -50,6 +50,12 @@ export async function requireSession(req, res, authOptions) {
   return session;
 }
 
+export function requirePermission(isAuthorized, message = 'Forbidden') {
+  if (!isAuthorized) {
+    throw new HttpError(403, message);
+  }
+}
+
 export function parseRequestBody(body) {
   if (typeof body === 'string') {
     return JSON.parse(body);

@@ -2,10 +2,11 @@ import useFetch from "../../libs/useFetch";
 import { useState, useMemo } from "react";
 import Event from './event';
 import Button from "react-bootstrap/Button";
+import { SWR_EDITORIAL } from "../../libs/dataFreshness";
 
 export default function Events() {
     const [limit, setLimit] = useState(3);
-    const { data: eventData, error: eventError, isPending: eventIsPending } = useFetch(`/api/events?limit=${limit}`);
+    const { data: eventData, error: eventError, isPending: eventIsPending } = useFetch(`/api/events?limit=${limit}`, SWR_EDITORIAL);
 
     // useMemo to sort only when eventData changes
     const sortedEvents = useMemo(() => {

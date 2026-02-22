@@ -1,5 +1,5 @@
 import { connectToDatabase } from "../../libs/database";
-import { getMethodHandler, mapApiError } from "../../libs/api/http";
+import { getMethodHandler, mapApiError, sendApiError, sendApiSuccess } from "../../libs/api/http";
 
 const intervals = {
   7: 7,
@@ -54,6 +54,17 @@ const processRecords = (sortedRecords, intervals) => {
   return closures;
 };
 
+const buildEmptyStatusPayload = () => ({
+  isEmpty: true,
+  currentStatus: null,
+  lastChangedDate: null,
+  effectiveLastOpenDate: null,
+  closuresInLast7Days: 0,
+  closuresInLast28Days: 0,
+  closuresInLast182Days: 0,
+  closuresInLast365Days: 0,
+});
+
 export default async function handler(req, res) {
   const timestamp = new Date().toISOString();
   const handlers = {
@@ -68,19 +79,29 @@ export default async function handler(req, res) {
       const sortedRecords = records.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
 
       if (sortedRecords.length === 0) {
-        console.error(`[${timestamp}] No records found in hppstatus`);
-        res.status(500).json({ message: "No records found in the database." });
+        console.warn(`[${timestamp}] No records found in hppstatus`);
+        sendApiSuccess(res, buildEmptyStatusPayload());
         return;
       }
 
       const closures = processRecords(sortedRecords, intervals);
+      const latestRecord = sortedRecords[sortedRecords.length - 1];
 
       // Find the last record where value is false (i.e., closed)
-      const lastClosureRecord = sortedRecords.reverse().find((record) => record.value === false);
+      const lastClosureRecord = [...sortedRecords].reverse().find((record) => record.value === false);
 
       if (!lastClosureRecord) {
-        console.error(`[${timestamp}] No closure records found in hppstatus`);
-        res.status(500).json({ message: "No closure records found." });
+        console.warn(`[${timestamp}] No closure records found in hppstatus`);
+        sendApiSuccess(res, {
+          isEmpty: false,
+          currentStatus: latestRecord?.value ?? null,
+          lastChangedDate: null,
+          effectiveLastOpenDate: null,
+          closuresInLast7Days: Math.min(closures["7"], 7),
+          closuresInLast28Days: Math.min(closures["28"], 28),
+          closuresInLast182Days: Math.min(closures["182"], 182),
+          closuresInLast365Days: Math.min(closures["365"], 365),
+        });
         return;
       }
 
@@ -88,8 +109,9 @@ export default async function handler(req, res) {
 
       console.log(`${timestamp} HPPSTATUS CALLED`);
 
-      res.status(200).json({
-        currentStatus: sortedRecords[0].value,
+      sendApiSuccess(res, {
+        isEmpty: false,
+        currentStatus: latestRecord?.value ?? null,
         lastChangedDate: lastChangedDate.slice(0, 10),
         effectiveLastOpenDate: lastChangedDate.slice(0, 10),
         closuresInLast7Days: Math.min(closures["7"], 7),
@@ -110,6 +132,6 @@ export default async function handler(req, res) {
   } catch (error) {
     const { statusCode, message } = mapApiError(error);
     console.error(`[${timestamp}] Error in hppstatus:`, error);
-    res.status(statusCode).json({ message });
+    sendApiError(res, statusCode, message);
   }
 }

@@ -1,5 +1,5 @@
 import { connectToDatabase } from "../../../../libs/database";
-import { getMethodHandler, mapApiError } from "../../../../libs/api/http";
+import { HttpError, getMethodHandler, mapApiError, sendApiError, sendApiSuccess } from "../../../../libs/api/http";
 
 export default async function handler(req, res) {
   const timestamp = new Date().toISOString();
@@ -30,11 +30,11 @@ export default async function handler(req, res) {
         };
 
         console.log(`${timestamp} CSO DATA FOR ID ${id} CALLED`);
-        res.status(200).json(response);
+        sendApiSuccess(res, response);
         return;
       }
 
-      res.status(404).json({ message: "CSO data not found" });
+      throw new HttpError(404, "CSO data not found");
     },
   };
 
@@ -48,6 +48,6 @@ export default async function handler(req, res) {
   } catch (error) {
     const { statusCode, message } = mapApiError(error);
     console.error(`[${timestamp}] Error in csoData:`, error);
-    res.status(statusCode).json({ message });
+    sendApiError(res, statusCode, message);
   }
 }

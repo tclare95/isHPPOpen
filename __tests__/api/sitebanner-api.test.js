@@ -39,7 +39,8 @@ describe('Site Banner API', () => {
 
       expect(res._getStatusCode()).toBe(200);
       const responseData = JSON.parse(res._getData());
-      expect(responseData).toEqual(mockBanners);
+      expect(responseData.ok).toBe(true);
+      expect(responseData.data).toEqual(mockBanners);
       expect(getBanners).toHaveBeenCalled();
     });
 
@@ -54,7 +55,8 @@ describe('Site Banner API', () => {
 
       expect(res._getStatusCode()).toBe(500);
       const responseData = JSON.parse(res._getData());
-      expect(responseData.message).toBe('Internal Server Error');
+      expect(responseData.ok).toBe(false);
+      expect(responseData.error.message).toBe('Internal Server Error');
     });
   });
 
@@ -71,7 +73,8 @@ describe('Site Banner API', () => {
 
       expect(res._getStatusCode()).toBe(401);
       const responseData = JSON.parse(res._getData());
-      expect(responseData.message).toBe('Unauthorized');
+      expect(responseData.ok).toBe(false);
+      expect(responseData.error.message).toBe('Unauthorized');
     });
 
     test('updates banner when authenticated', async () => {
@@ -86,6 +89,9 @@ describe('Site Banner API', () => {
       await siteBannerHandler(req, res);
 
       expect(res._getStatusCode()).toBe(200);
+      const responseData = JSON.parse(res._getData());
+      expect(responseData.ok).toBe(true);
+      expect(responseData.data.message).toBe('Banner updated');
       expect(upsertBanner).toHaveBeenCalledWith({ banner_message: 'Updated message' });
     });
 
@@ -102,7 +108,8 @@ describe('Site Banner API', () => {
 
       expect(res._getStatusCode()).toBe(400);
       const responseData = JSON.parse(res._getData());
-      expect(responseData.message).toBe('Validation failed');
+      expect(responseData.ok).toBe(false);
+      expect(responseData.error.message).toBe('Validation failed');
     });
   });
 
@@ -116,6 +123,9 @@ describe('Site Banner API', () => {
 
       expect(res._getStatusCode()).toBe(405);
       expect(res._getHeaders().allow).toEqual(['GET', 'POST']);
+      const responseData = JSON.parse(res._getData());
+      expect(responseData.ok).toBe(false);
+      expect(responseData.error.message).toContain('Method DELETE Not Allowed');
     });
   });
 });

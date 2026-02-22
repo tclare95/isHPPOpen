@@ -1,5 +1,5 @@
 import { parseCSVToStability } from '../../libs/csvParser';
-import { getMethodHandler } from '../../libs/api/http';
+import { getMethodHandler, sendApiSuccess } from '../../libs/api/http';
 
 export default async function handler(req, res) {
   const timestamp = new Date().toISOString();
@@ -10,7 +10,7 @@ export default async function handler(req, res) {
       // Return empty data if URL not configured (stability data is optional)
       if (!s3Url) {
         console.log(`[${timestamp}] S3_FORECAST_STABILITY_URL not set - returning empty stability data`);
-        res.status(200).json({ stability_data: [] });
+        sendApiSuccess(res, { stability_data: [] });
         return;
       }
 
@@ -19,7 +19,7 @@ export default async function handler(req, res) {
       // Return empty data if file doesn't exist yet (stability data is optional)
       if (!response.ok) {
         console.log(`[${timestamp}] Stability file not available (${response.status}) - returning empty data`);
-        res.status(200).json({ stability_data: [] });
+        sendApiSuccess(res, { stability_data: [] });
         return;
       }
 
@@ -28,7 +28,7 @@ export default async function handler(req, res) {
 
       console.log(`${timestamp} S3 STABILITY CALLED - ${stabilityData.length} rows`);
 
-      res.status(200).json({
+      sendApiSuccess(res, {
         stability_data: stabilityData,
       });
     },
@@ -44,6 +44,6 @@ export default async function handler(req, res) {
   } catch (error) {
     console.error(`[${timestamp}] Error in forecaststability:`, error);
     // Return empty data on error rather than failing
-    res.status(200).json({ stability_data: [] });
+    sendApiSuccess(res, { stability_data: [] });
   }
 }

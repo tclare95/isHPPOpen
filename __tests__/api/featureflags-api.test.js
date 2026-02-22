@@ -10,7 +10,9 @@ describe('/api/featureflags', () => {
     await handler(req, res);
 
     expect(res._getStatusCode()).toBe(200);
-    const data = JSON.parse(res._getData());
+    const payload = JSON.parse(res._getData());
+    expect(payload.ok).toBe(true);
+    const data = payload.data;
     expect(data).toHaveProperty('USE_S3_FORECAST');
     expect(data).toHaveProperty('SHOW_FORECAST_CONFIDENCE');
     expect(typeof data.USE_S3_FORECAST).toBe('boolean');
@@ -27,6 +29,9 @@ describe('/api/featureflags', () => {
 
       expect(res._getStatusCode()).toBe(405);
       expect(res._getHeaders().allow).toEqual(['GET']);
+      const payload = JSON.parse(res._getData());
+      expect(payload.ok).toBe(false);
+      expect(payload.error.message).toContain(`Method ${method} Not Allowed`);
     }
   });
 });

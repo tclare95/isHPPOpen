@@ -17,6 +17,8 @@
 3. **Keep public GET endpoints explicit** and lock down writes with shared `requireSession()`.
 4. **Document new env vars immediately** in `AGENTS.md` and README.
 5. **Prefer small, incremental refactors** over broad rewrites due to mixed legacy/new patterns.
+6. **Use the shared API response envelope** (`{ ok: true, data }` / `{ ok: false, error }`) to reduce frontend branching.
+7. **Return `200` with explicit empty-state payloads** for read endpoints with no data, instead of using `500` for expected empty conditions.
 
 ## API route standard (current)
 For the canonical and up-to-date route contract, see [docs/ARCHITECTURE.md](ARCHITECTURE.md).

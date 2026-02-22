@@ -49,8 +49,9 @@ describe('Levels API', () => {
 
     expect(res._getStatusCode()).toBe(200);
     const responseData = JSON.parse(res._getData());
-    expect(responseData.level_data).toEqual(mockData.level_readings);
-    expect(responseData.forecast_data).toEqual(mockData.forecast_readings);
+    expect(responseData.ok).toBe(true);
+    expect(responseData.data.level_data).toEqual(mockData.level_readings);
+    expect(responseData.data.forecast_data).toEqual(mockData.forecast_readings);
     expect(mockDb.collection).toHaveBeenCalledWith('riverschemas');
   });
 
@@ -63,6 +64,9 @@ describe('Levels API', () => {
 
     expect(res._getStatusCode()).toBe(405);
     expect(res._getHeaders().allow).toEqual(['GET']);
+    const responseData = JSON.parse(res._getData());
+    expect(responseData.ok).toBe(false);
+    expect(responseData.error.message).toContain('Method POST Not Allowed');
   });
 
   test('returns 500 on database error', async () => {
@@ -76,6 +80,7 @@ describe('Levels API', () => {
 
     expect(res._getStatusCode()).toBe(500);
     const responseData = JSON.parse(res._getData());
-    expect(responseData.message).toBe('Internal Server Error');
+    expect(responseData.ok).toBe(false);
+    expect(responseData.error.message).toBe('Internal Server Error');
   });
 });

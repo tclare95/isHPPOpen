@@ -1,5 +1,5 @@
 import { connectToDatabase } from "../../../libs/database";
-import { getMethodHandler, mapApiError } from "../../../libs/api/http";
+import { getMethodHandler, mapApiError, sendApiError, sendApiSuccess } from "../../../libs/api/http";
 
 export default async function handler(req, res) {
   const timestamp = new Date().toISOString();
@@ -36,7 +36,7 @@ export default async function handler(req, res) {
         .filter(Boolean);
 
       console.log(`${timestamp} CSODENSITY TIME SERIES CALLED`);
-      res.status(200).json(result);
+      sendApiSuccess(res, result);
     },
   };
 
@@ -50,6 +50,6 @@ export default async function handler(req, res) {
   } catch (error) {
     const { statusCode, message } = mapApiError(error);
     console.error(`[${timestamp}] Error in csodensity:`, error);
-    res.status(statusCode).json({ message });
+    sendApiError(res, statusCode, message);
   }
 }

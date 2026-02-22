@@ -1,5 +1,11 @@
 import { connectToDatabase } from "../../../../libs/database";
-import { getMethodHandler, mapApiError } from "../../../../libs/api/http";
+import {
+  HttpError,
+  getMethodHandler,
+  mapApiError,
+  sendApiError,
+  sendApiSuccess,
+} from "../../../../libs/api/http";
 
 // GET /api/waterquality/cso?ids=1,2,3
 // Returns: { csoData: { "1": { Id, Status, LatestEventStart, LatestEventEnd, DateScraped, Coordinates }, ... } }
@@ -9,8 +15,7 @@ export default async function handler(req, res) {
     GET: async () => {
       const { ids } = req.query;
       if (!ids) {
-        res.status(400).json({ message: "Missing ids query parameter" });
-        return;
+        throw new HttpError(400, "Missing ids query parameter");
       }
 
       // Normalize ids (comma separated) -> array of strings trimmed
@@ -19,8 +24,7 @@ export default async function handler(req, res) {
         : ids.split(",").map((s) => s.trim()).filter(Boolean);
 
       if (idArray.length === 0) {
-        res.status(400).json({ message: "No valid ids provided" });
-        return;
+        throw new HttpError(400, "No valid ids provided");
       }
 
       const { db } = await connectToDatabase();
@@ -94,7 +98,7 @@ export default async function handler(req, res) {
       }
 
       console.log(`${timestamp} BULK CSO DATA CALLED FOR IDS [${idArray.join(",")}]: returned ${Object.keys(response).length}`);
-      res.status(200).json({ csoData: response });
+      sendApiSuccess(res, { csoData: response });
     },
   };
 
@@ -108,6 +112,6 @@ export default async function handler(req, res) {
   } catch (error) {
     const { statusCode, message } = mapApiError(error);
     console.error(`[${timestamp}] Error in bulk csoData:`, error);
-    return res.status(statusCode).json({ message });
+    return sendApiError(res, statusCode, message);
   }
 }

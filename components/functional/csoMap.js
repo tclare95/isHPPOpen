@@ -55,7 +55,8 @@ export default function WaterQualityMap() {
           throw new Error(`Water quality request failed with status ${response.status}`);
         }
 
-        const data = await response.json();
+        const payload = await response.json();
+        const data = payload?.ok === true ? payload.data : payload;
         const latest = data?.waterQualityData ?? null;
         if (!latest) {
           throw new Error("Water quality payload missing data");
@@ -78,7 +79,8 @@ export default function WaterQualityMap() {
             throw new Error(`Bulk CSO request failed with status ${bulkRes.status}`);
           }
 
-          const bulkJson = await bulkRes.json();
+          const bulkPayload = await bulkRes.json();
+          const bulkJson = bulkPayload?.ok === true ? bulkPayload.data : bulkPayload;
           if (!ignore) {
             setCsoDetails(bulkJson?.csoData || {});
           }

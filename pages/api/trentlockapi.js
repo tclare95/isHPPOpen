@@ -1,6 +1,13 @@
 import axios from "axios";
 import { connectToDatabase } from "../../libs/database";
-import { getMethodHandler, mapApiError, parseRequestBody } from "../../libs/api/http";
+import {
+  HttpError,
+  getMethodHandler,
+  mapApiError,
+  parseJsonObjectBody,
+  sendApiError,
+  sendApiSuccess,
+} from "../../libs/api/http";
 
 const getLevelByStation = async (stationId, dateObject, delay) => {
   //takes a station id and a date object and returns the level at the station for the preceding 2 days.
@@ -40,7 +47,7 @@ export default async function handler(req, res) {
   const timestamp = new Date().toISOString();
   const handlers = {
     POST: async () => {
-      const parsedRequest = parseRequestBody(req.body);
+      const parsedRequest = parseJsonObjectBody(req.body);
       const submissionDate = new Date(parsedRequest.dateTime);
 
       // Fetch river level data from EA API
@@ -86,12 +93,12 @@ export default async function handler(req, res) {
 
       if (result.insertedId) {
         console.log(`[${timestamp}] Trentlock data saved successfully`);
-        res.status(200).json({ message: "Update successful" });
+        sendApiSuccess(res, { message: "Update successful", id: result.insertedId.toString() });
         return;
       }
 
       console.error(`[${timestamp}] Insert failed for trentlock data`);
-      res.status(500).json({ message: "Failed to save data" });
+      throw new HttpError(500, "Failed to save data");
     },
   };
 
@@ -105,6 +112,6 @@ export default async function handler(req, res) {
   } catch (error) {
     const { statusCode, message } = mapApiError(error);
     console.error(`[${timestamp}] [${req.method}] Error in trentlockapi:`, error);
-    return res.status(statusCode).json({ message });
+    return sendApiError(res, statusCode, message);
   }
 }

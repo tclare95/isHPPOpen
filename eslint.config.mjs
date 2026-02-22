@@ -1,8 +1,11 @@
-import { defineConfig, globalIgnores } from "eslint/config";
-import nextVitals from "eslint-config-next/core-web-vitals";
+import { FlatCompat } from "@eslint/eslintrc";
 
-export default defineConfig([
-  ...nextVitals,
+const compat = new FlatCompat({
+  baseDirectory: process.cwd(),
+});
+
+const config = [
+  ...compat.extends("next/core-web-vitals"),
   {
     rules: {
       "react/no-unescaped-entities": "off",
@@ -10,11 +13,15 @@ export default defineConfig([
       "react-hooks/set-state-in-effect": "off",
     },
   },
-  globalIgnores([
-    ".next/**",
-    "out/**",
-    "build/**",
-    "next-env.d.ts",
-    "node_modules/**",
-  ]),
-]);
+  {
+    ignores: [
+      ".next/**",
+      "out/**",
+      "build/**",
+      "next-env.d.ts",
+      "node_modules/**",
+    ],
+  },
+];
+
+export default config;

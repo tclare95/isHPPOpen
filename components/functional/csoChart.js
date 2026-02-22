@@ -26,7 +26,8 @@ const CsoChart = () => {
           throw new Error(`CSO density request failed with status ${response.status}`);
         }
 
-        const csoData = await response.json();
+        const payload = await response.json();
+        const csoData = payload?.ok === true ? payload.data : payload;
         const source = Array.isArray(csoData) ? csoData : [];
         const data = source
           .map((element) => {

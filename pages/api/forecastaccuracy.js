@@ -1,5 +1,5 @@
 import { parseCSVToAccuracy } from '../../libs/csvParser';
-import { getMethodHandler, HttpError, mapApiError } from '../../libs/api/http';
+import { getMethodHandler, HttpError, mapApiError, sendApiError, sendApiSuccess } from '../../libs/api/http';
 
 export default async function handler(req, res) {
   const timestamp = new Date().toISOString();
@@ -27,7 +27,7 @@ export default async function handler(req, res) {
 
       console.log(`${timestamp} S3 FORECAST ACCURACY CALLED - ${accuracyData.length} rows`);
 
-      res.status(200).json({
+      sendApiSuccess(res, {
         accuracy_data: accuracyData,
         evaluation_time: evaluationTime,
       });
@@ -44,6 +44,6 @@ export default async function handler(req, res) {
   } catch (error) {
     const { statusCode, message } = mapApiError(error);
     console.error(`[${timestamp}] Error in forecastaccuracy:`, error);
-    res.status(statusCode).json({ message });
+    sendApiError(res, statusCode, message);
   }
 }

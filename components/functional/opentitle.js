@@ -16,14 +16,26 @@ export default function OpenTitle(props) {
   if (( isPending || statusPending)  && !cachedEvents) {
     return <div>Loading</div>;
   }
-  if (!levelData || !statusData) {
+  const hasRequiredData = Boolean(levelData && statusData);
+
+  if (!hasRequiredData) {
     return <div>Loading</div>;
+  }
+
+  if (statusData.isEmpty) {
+    return (
+      <h2 className="font-weight-bold m-3">
+        HPP status is <span className="text-warning">Unknown</span>
+      </h2>
+    );
   }
 
     // Calculate days since HPP was last open
     const currentDate = new Date();
-    const lastChangedDate = new Date(statusData.effectiveLastOpenDate);
-    const daysSinceLastOpen = Math.floor((currentDate - lastChangedDate) / (1000 * 60 * 60 * 24));
+    const hasLastOpenDate = typeof statusData.effectiveLastOpenDate === "string";
+    const daysSinceLastOpen = hasLastOpenDate
+      ? Math.floor((currentDate - new Date(statusData.effectiveLastOpenDate)) / (1000 * 60 * 60 * 24))
+      : 0;
 
   //pull the event array, check if the current date falls between two events
   const isClosedForEvent = cachedEvents.some(event => {
@@ -53,9 +65,11 @@ export default function OpenTitle(props) {
         HPP is <span className="text-danger">Closed</span> because of water
         levels
       </h2>
-      <h6 className="font-weight-lighter fst-italic">
-       HPP has been closed for {daysSinceLastOpen} days due to high water levels.  <Link href="#stats">(tap to see more)</Link>
-      </h6>
+      {hasLastOpenDate ? (
+        <h6 className="font-weight-lighter fst-italic">
+         HPP has been closed for {daysSinceLastOpen} days due to high water levels.  <Link href="#stats">(tap to see more)</Link>
+        </h6>
+      ) : null}
       </>
     );
   }

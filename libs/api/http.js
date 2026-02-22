@@ -9,9 +9,23 @@ export class HttpError extends Error {
   }
 }
 
+export function sendApiSuccess(res, data, statusCode = 200) {
+  return res.status(statusCode).json({ ok: true, data });
+}
+
+export function sendApiError(res, statusCode, message, details = undefined) {
+  const errorPayload = { message };
+
+  if (details && typeof details === 'object') {
+    errorPayload.details = details;
+  }
+
+  return res.status(statusCode).json({ ok: false, error: errorPayload });
+}
+
 export function methodNotAllowed(req, res, allowedMethods) {
   res.setHeader('Allow', allowedMethods);
-  res.status(405).end(`Method ${req.method} Not Allowed`);
+  sendApiError(res, 405, `Method ${req.method} Not Allowed`);
 }
 
 export function getMethodHandler(req, res, handlers) {
@@ -52,6 +66,16 @@ export function parseRequestBody(body) {
   }
 
   return body;
+}
+
+export function parseJsonObjectBody(body) {
+  const parsedBody = parseRequestBody(body);
+
+  if (!parsedBody || typeof parsedBody !== 'object' || Array.isArray(parsedBody)) {
+    throw new HttpError(400, 'Invalid request body');
+  }
+
+  return parsedBody;
 }
 
 export function mapApiError(error) {

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useContext } from "react";
 import Row from "react-bootstrap/Row";
 import Col from "react-bootstrap/Col";
 import Button from "react-bootstrap/Button";
@@ -8,15 +8,15 @@ import VomitFactor from "../../functional/vomitfactor";
 import WeirLevels from "../../functional/weirlevels";
 import ForecastChartWithConfidence from "../../functional/forecastChart";
 import Spinner from "react-bootstrap/Spinner";
-import { useContext } from "react";
 import GraphContext from "../../../libs/context/graphcontrol";
 import Link from "next/link";
+import PropTypes from "prop-types";
 
 export default function TopContent(props) {
-  const { data: levelData, error, isPending } = useFetch("/api/levels");
+  const { data: levelData, isPending } = useFetch("/api/levels");
   const { data: s3Forecast, isPending: forecastPending } = useFetch("/api/s3forecast");
-  const { data: accuracyData, isPending: accuracyPending } = useFetch("/api/forecastaccuracy");
-  const { data: featureFlags, isPending: flagsPending } = useFetch("/api/featureflags");
+  const { data: accuracyData } = useFetch("/api/forecastaccuracy");
+  const { data: featureFlags } = useFetch("/api/featureflags");
   
   const recentEntry = !isPending && levelData.level_data?.[0];
   const [currentTime, setCurrentTime] = useState(() => new Date());
@@ -41,8 +41,9 @@ export default function TopContent(props) {
         if (!response.ok) {
           throw new Error("Failed to fetch CSO data");
         }
-        const data = await response.json();
-        setCsoData(data);
+        const payload = await response.json();
+        const data = payload?.ok === true ? payload.data : payload;
+        setCsoData(Array.isArray(data) ? data : []);
       } catch (error) {
         console.error("Error fetching CSO data:", error);
       }
@@ -143,3 +144,7 @@ export default function TopContent(props) {
     </div>
   );
 }
+
+TopContent.propTypes = {
+  cachedEvents: PropTypes.array,
+};

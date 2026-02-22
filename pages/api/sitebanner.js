@@ -1,6 +1,13 @@
 import { authOptions } from "./auth/[...nextauth]";
 import { getBanners, upsertBanner } from "../../libs/services/siteBannerService";
-import { getMethodHandler, mapApiError, requireSession } from "../../libs/api/http";
+import {
+  getMethodHandler,
+  mapApiError,
+  parseJsonObjectBody,
+  requireSession,
+  sendApiError,
+  sendApiSuccess,
+} from "../../libs/api/http";
 
 export default async function handler(req, res) {
   const timestamp = new Date().toISOString();
@@ -8,12 +15,17 @@ export default async function handler(req, res) {
   const handlers = {
     GET: async () => {
       const data = await getBanners();
-      res.status(200).json(data);
+      sendApiSuccess(res, data);
     },
     POST: async () => {
       await requireSession(req, res, authOptions);
-      const result = await upsertBanner(req.body);
-      res.status(200).json(result);
+      const payload = parseJsonObjectBody(req.body);
+      const result = await upsertBanner(payload);
+      sendApiSuccess(res, {
+        message: "Banner updated",
+        modifiedCount: result.modifiedCount,
+        upsertedCount: result.upsertedCount,
+      });
     },
   };
 
@@ -27,6 +39,6 @@ export default async function handler(req, res) {
   } catch (error) {
     const { statusCode, message } = mapApiError(error);
     console.error(`[${timestamp}] [${req.method}] Error in sitebanner:`, error);
-    res.status(statusCode).json({ message });
+    sendApiError(res, statusCode, message);
   }
 }

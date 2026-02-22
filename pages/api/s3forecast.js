@@ -1,5 +1,5 @@
 import { parseCSVToForecastWithStability } from '../../libs/csvParser';
-import { getMethodHandler, HttpError, mapApiError } from '../../libs/api/http';
+import { getMethodHandler, HttpError, mapApiError, sendApiError, sendApiSuccess } from '../../libs/api/http';
 
 export default async function handler(req, res) {
   const timestamp = new Date().toISOString();
@@ -31,7 +31,7 @@ export default async function handler(req, res) {
 
       console.log(`${timestamp} S3 FORECAST CALLED - ${forecastData.length} rows`);
 
-      res.status(200).json({
+      sendApiSuccess(res, {
         forecast_data: forecastData,
         metadata,
       });
@@ -48,6 +48,6 @@ export default async function handler(req, res) {
   } catch (error) {
     const { statusCode, message } = mapApiError(error);
     console.error(`[${timestamp}] Error in s3forecast:`, error);
-    res.status(statusCode).json({ message });
+    sendApiError(res, statusCode, message);
   }
 }

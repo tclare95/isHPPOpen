@@ -1,5 +1,5 @@
 import { getAllFlags } from '../../libs/featureFlags';
-import { getMethodHandler, mapApiError } from '../../libs/api/http';
+import { getMethodHandler, mapApiError, sendApiError, sendApiSuccess } from '../../libs/api/http';
 
 /**
  * API endpoint to expose feature flags to the frontend
@@ -9,7 +9,7 @@ export default function handler(req, res) {
   const handlers = {
     GET: async () => {
       const flags = getAllFlags();
-      res.status(200).json(flags);
+      sendApiSuccess(res, flags);
     },
   };
 
@@ -22,6 +22,6 @@ export default function handler(req, res) {
     return methodHandler();
   } catch (error) {
     const { statusCode, message } = mapApiError(error);
-    return res.status(statusCode).json({ message });
+    return sendApiError(res, statusCode, message);
   }
 }

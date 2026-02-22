@@ -8,6 +8,10 @@ const { createMocks } = require('node-mocks-http');
 const hppStatusHandler = require('../../pages/api/hppstatus').default;
 
 describe('HPP Status API', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   test('returns 405 for non-GET methods', async () => {
     const { req, res } = createMocks({
       method: 'POST',
@@ -17,6 +21,9 @@ describe('HPP Status API', () => {
 
     expect(res._getStatusCode()).toBe(405);
     expect(res._getHeaders().allow).toEqual(['GET']);
+    const responseData = JSON.parse(res._getData());
+    expect(responseData.ok).toBe(false);
+    expect(responseData.error.message).toContain('Method POST Not Allowed');
   });
 
   test('returns HPP status data', async () => {
@@ -77,11 +84,37 @@ describe('HPP Status API', () => {
 
     expect(res._getStatusCode()).toBe(200);
     const responseData = JSON.parse(res._getData());
-    expect(responseData).toHaveProperty('currentStatus');
-    expect(responseData).toHaveProperty('lastChangedDate');
-    expect(responseData).toHaveProperty('closuresInLast7Days');
-    expect(responseData).toHaveProperty('closuresInLast28Days');
-    expect(responseData).toHaveProperty('closuresInLast182Days');
-    expect(responseData).toHaveProperty('closuresInLast365Days');
+    expect(responseData.ok).toBe(true);
+    expect(responseData.data).toHaveProperty('currentStatus');
+    expect(responseData.data).toHaveProperty('lastChangedDate');
+    expect(responseData.data).toHaveProperty('closuresInLast7Days');
+    expect(responseData.data).toHaveProperty('closuresInLast28Days');
+    expect(responseData.data).toHaveProperty('closuresInLast182Days');
+    expect(responseData.data).toHaveProperty('closuresInLast365Days');
+  });
+
+  test('returns 200 empty state when there are no records', async () => {
+    const mockDb = {
+      collection: jest.fn().mockReturnValue({
+        find: jest.fn().mockReturnValue({
+          toArray: jest.fn().mockResolvedValue([]),
+        }),
+      }),
+    };
+
+    dbModule.connectToDatabase.mockResolvedValue({ db: mockDb, client: { close: jest.fn() } });
+
+    const { req, res } = createMocks({
+      method: 'GET',
+    });
+
+    await hppStatusHandler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    const responseData = JSON.parse(res._getData());
+    expect(responseData.ok).toBe(true);
+    expect(responseData.data.isEmpty).toBe(true);
+    expect(responseData.data.currentStatus).toBeNull();
+    expect(responseData.data.closuresInLast7Days).toBe(0);
   });
 });

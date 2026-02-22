@@ -42,7 +42,9 @@ describe('Forecast Stability API', () => {
 
     expect(res._getStatusCode()).toBe(200);
     
-    const data = JSON.parse(res._getData());
+    const payload = JSON.parse(res._getData());
+    expect(payload.ok).toBe(true);
+    const data = payload.data;
     
     expect(data.stability_data).toHaveLength(2);
     expect(data.stability_data[0]).toMatchObject({
@@ -65,7 +67,9 @@ describe('Forecast Stability API', () => {
     await forecaststabilityHandler(req, res);
 
     expect(res._getStatusCode()).toBe(200);
-    const data = JSON.parse(res._getData());
+    const payload = JSON.parse(res._getData());
+    expect(payload.ok).toBe(true);
+    const data = payload.data;
     expect(data.stability_data).toEqual([]);
   });
 
@@ -84,7 +88,9 @@ describe('Forecast Stability API', () => {
     await forecaststabilityHandler(req, res);
 
     expect(res._getStatusCode()).toBe(200);
-    const data = JSON.parse(res._getData());
+    const payload = JSON.parse(res._getData());
+    expect(payload.ok).toBe(true);
+    const data = payload.data;
     expect(data.stability_data).toEqual([]);
   });
 
@@ -96,5 +102,7 @@ describe('Forecast Stability API', () => {
     await forecaststabilityHandler(req, res);
 
     expect(res._getStatusCode()).toBe(405);
+    const payload = JSON.parse(res._getData());
+    expect(payload.ok).toBe(false);
   });
 });

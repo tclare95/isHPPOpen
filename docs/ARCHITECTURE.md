@@ -56,6 +56,13 @@ Related docs:
 - Prefer domain-level throws (`HttpError`, Yup validation errors) and route-level mapping in `mapApiError()`.
 - Keep route handlers focused on orchestration; place domain validation/persistence in services where available.
 
+### Response contract (current standard)
+- Success responses should use: `{ ok: true, data: ... }`
+- Error responses should use: `{ ok: false, error: { message: string } }`
+- `405` should return JSON in the same error shape and include `Allow`.
+- Frontend fetch helpers should unwrap `{ ok: true, data }` to keep consumer code simple.
+- For empty-state reads (e.g. `hppstatus` with no records), prefer `200` with explicit empty payload metadata over `500`.
+
 ## 3) Important functionality
 
 1. **Open/closed status insights**

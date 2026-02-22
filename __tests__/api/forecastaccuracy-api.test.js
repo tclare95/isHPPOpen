@@ -45,7 +45,9 @@ describe('Forecast Accuracy API', () => {
 
     expect(res._getStatusCode()).toBe(200);
     
-    const data = JSON.parse(res._getData());
+    const payload = JSON.parse(res._getData());
+    expect(payload.ok).toBe(true);
+    const data = payload.data;
     
     expect(data.accuracy_data).toHaveLength(5);
     expect(data.evaluation_time).toBe('2025-12-05T14:00:00+00:00');
@@ -83,7 +85,9 @@ describe('Forecast Accuracy API', () => {
 
     expect(res._getStatusCode()).toBe(200);
     
-    const data = JSON.parse(res._getData());
+    const payload = JSON.parse(res._getData());
+    expect(payload.ok).toBe(true);
+    const data = payload.data;
     
     // 72h horizon has no data
     const row72h = data.accuracy_data.find(r => r.horizon_hours === 72);
@@ -104,7 +108,8 @@ describe('Forecast Accuracy API', () => {
 
     expect(res._getStatusCode()).toBe(500);
     const data = JSON.parse(res._getData());
-    expect(data.message).toBe('Forecast accuracy URL not configured');
+    expect(data.ok).toBe(false);
+    expect(data.error.message).toBe('Forecast accuracy URL not configured');
   });
 
   test('GET returns 502 when S3 fetch fails', async () => {
@@ -123,7 +128,8 @@ describe('Forecast Accuracy API', () => {
 
     expect(res._getStatusCode()).toBe(502);
     const data = JSON.parse(res._getData());
-    expect(data.message).toBe('Failed to fetch forecast accuracy data');
+    expect(data.ok).toBe(false);
+    expect(data.error.message).toBe('Failed to fetch forecast accuracy data');
   });
 
   test('POST method not allowed', async () => {
@@ -134,6 +140,8 @@ describe('Forecast Accuracy API', () => {
     await forecastAccuracyHandler(req, res);
 
     expect(res._getStatusCode()).toBe(405);
+    const data = JSON.parse(res._getData());
+    expect(data.ok).toBe(false);
   });
 
   test('handles empty CSV gracefully', async () => {
@@ -151,7 +159,9 @@ describe('Forecast Accuracy API', () => {
     await forecastAccuracyHandler(req, res);
 
     expect(res._getStatusCode()).toBe(200);
-    const data = JSON.parse(res._getData());
+    const payload = JSON.parse(res._getData());
+    expect(payload.ok).toBe(true);
+    const data = payload.data;
     expect(data.accuracy_data).toHaveLength(0);
     expect(data.evaluation_time).toBeNull();
   });

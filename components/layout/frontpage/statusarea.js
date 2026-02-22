@@ -97,7 +97,7 @@ const getDaysAgo = (dateInput) => {
 export default function StatusArea() {
   const { data: statusData, error: statusError, isPending: statusPending } = useFetch("/api/hppstatus");
 
-  if (statusPending || !statusData) {
+  if (statusPending || statusData === undefined || statusData === null) {
     return (
       <div className="mt-4 text-white text-center" id="stats" aria-live="polite">
         <Spinner animation="border" role="status" size="sm" className="mr-2" />
@@ -116,7 +116,16 @@ export default function StatusArea() {
     );
   }
 
-  const currentStatus = statusData.currentStatus ? "Open" : "Closed";
+  const hasStatus = typeof statusData.currentStatus === "boolean";
+  let currentStatus = "Unknown";
+
+  if (hasStatus) {
+    if (statusData.currentStatus === true) {
+      currentStatus = "Open";
+    } else {
+      currentStatus = "Closed";
+    }
+  }
   const lastOpenDate = statusData.lastChangedDate;
   const lastOpenDaysAgo = getDaysAgo(lastOpenDate);
   let lastOpenAgoText = "";
@@ -144,10 +153,15 @@ export default function StatusArea() {
         <p>
           Current status: <span className="font-weight-bold">{currentStatus}</span>
         </p>
+        {statusData.isEmpty && (
+          <Alert variant="info" className="text-center mb-0">
+            No historical closure records are available yet.
+          </Alert>
+        )}
         <p>Note: this only accounts for river level - not any other closures</p>
       </Row>
       <Row className="justify-content-center">
-        {statusData.currentStatus ? null : (
+        {statusData.currentStatus === false && !statusData.isEmpty && (
           <p>
             HPP was last open on: {formatDisplayDate(lastOpenDate)}
             {lastOpenAgoText}

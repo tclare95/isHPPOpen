@@ -44,7 +44,9 @@ describe('S3 Forecast API', () => {
 
     expect(res._getStatusCode()).toBe(200);
     
-    const data = JSON.parse(res._getData());
+    const payload = JSON.parse(res._getData());
+    expect(payload.ok).toBe(true);
+    const data = payload.data;
     
     expect(data.forecast_data).toHaveLength(4);
     expect(data.forecast_data[0]).toMatchObject({
@@ -70,7 +72,8 @@ describe('S3 Forecast API', () => {
 
     expect(res._getStatusCode()).toBe(500);
     const data = JSON.parse(res._getData());
-    expect(data.message).toBe('Forecast URL not configured');
+    expect(data.ok).toBe(false);
+    expect(data.error.message).toBe('Forecast URL not configured');
   });
 
   test('GET returns 502 when S3 fetch fails', async () => {
@@ -89,7 +92,8 @@ describe('S3 Forecast API', () => {
 
     expect(res._getStatusCode()).toBe(502);
     const data = JSON.parse(res._getData());
-    expect(data.message).toBe('Failed to fetch forecast data');
+    expect(data.ok).toBe(false);
+    expect(data.error.message).toBe('Failed to fetch forecast data');
   });
 
   test('POST method not allowed', async () => {
@@ -100,6 +104,8 @@ describe('S3 Forecast API', () => {
     await s3forecastHandler(req, res);
 
     expect(res._getStatusCode()).toBe(405);
+    const data = JSON.parse(res._getData());
+    expect(data.ok).toBe(false);
   });
 
   test('handles empty CSV gracefully', async () => {
@@ -117,7 +123,9 @@ describe('S3 Forecast API', () => {
     await s3forecastHandler(req, res);
 
     expect(res._getStatusCode()).toBe(200);
-    const data = JSON.parse(res._getData());
+    const payload = JSON.parse(res._getData());
+    expect(payload.ok).toBe(true);
+    const data = payload.data;
     expect(data.forecast_data).toHaveLength(0);
     expect(data.metadata).toBeNull();
   });
@@ -142,7 +150,9 @@ invalid,row,data,not_a_number,here,bad
     await s3forecastHandler(req, res);
 
     expect(res._getStatusCode()).toBe(200);
-    const data = JSON.parse(res._getData());
+    const payload = JSON.parse(res._getData());
+    expect(payload.ok).toBe(true);
+    const data = payload.data;
     expect(data.forecast_data).toHaveLength(2); // Invalid row filtered out
   });
 });

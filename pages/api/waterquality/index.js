@@ -1,5 +1,5 @@
 import { connectToDatabase } from "../../../libs/database";
-import { getMethodHandler, mapApiError } from "../../../libs/api/http";
+import { getMethodHandler, mapApiError, sendApiError, sendApiSuccess } from "../../../libs/api/http";
 
 async function getActiveCSOs(csoDataCollection, startTime, scrapeTimestamp) {
   return csoDataCollection
@@ -98,7 +98,7 @@ export default async function handler(req, res) {
       }
 
       console.log(`${timestamp} WATERQUALITY MOST RECENT CALLED`);
-      res.status(200).json({
+      sendApiSuccess(res, {
         waterQualityData,
       });
     },
@@ -114,6 +114,6 @@ export default async function handler(req, res) {
   } catch (error) {
     const { statusCode, message } = mapApiError(error);
     console.error(`[${timestamp}] Error in waterquality:`, error);
-    return res.status(statusCode).json({ message });
+    return sendApiError(res, statusCode, message);
   }
 }

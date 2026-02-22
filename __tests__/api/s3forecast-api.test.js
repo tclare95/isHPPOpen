@@ -1,5 +1,4 @@
-const { createMocks } = require('node-mocks-http');
-const s3forecastHandler = require('../../pages/api/s3forecast').default;
+const { GET } = require('../../app/api/s3forecast/route');
 
 // Sample CSV data matching the format from S3 (with stability_std column)
 const mockCSVData = `forecast_time,target_time,horizon_hours,predicted_level,current_level,stability_std
@@ -8,7 +7,7 @@ const mockCSVData = `forecast_time,target_time,horizon_hours,predicted_level,cur
 2025-12-02T13:00:00+00:00,2025-12-02T13:45:00+00:00,0.75,1.563,2.58,
 2025-12-02T13:00:00+00:00,2025-12-02T14:00:00+00:00,1.0,1.563,2.58,0.025`;
 
-describe('S3 Forecast API', () => {
+describe('S3 Forecast API route handler', () => {
   const originalEnv = process.env;
   const originalConsoleLog = console.log;
   const originalConsoleError = console.error;
@@ -18,7 +17,7 @@ describe('S3 Forecast API', () => {
     process.env = { ...originalEnv };
     console.log = jest.fn();
     console.error = jest.fn();
-    global.fetch = jest.fn();
+    globalThis.fetch = jest.fn();
   });
 
   afterEach(() => {
@@ -31,20 +30,14 @@ describe('S3 Forecast API', () => {
   test('GET returns parsed forecast data', async () => {
     process.env.S3_FORECAST_URL = 'https://test-bucket.s3.amazonaws.com/forecast.csv';
     
-    global.fetch.mockResolvedValue({
+    globalThis.fetch.mockResolvedValue({
       ok: true,
       text: () => Promise.resolve(mockCSVData),
     });
 
-    const { req, res } = createMocks({
-      method: 'GET',
-    });
-
-    await s3forecastHandler(req, res);
-
-    expect(res._getStatusCode()).toBe(200);
-    
-    const payload = JSON.parse(res._getData());
+    const res = await GET();
+    expect(res.status).toBe(200);
+    const payload = await res.json();
     expect(payload.ok).toBe(true);
     const data = payload.data;
     
@@ -64,14 +57,9 @@ describe('S3 Forecast API', () => {
   test('GET returns 500 when S3_FORECAST_URL not set', async () => {
     delete process.env.S3_FORECAST_URL;
 
-    const { req, res } = createMocks({
-      method: 'GET',
-    });
-
-    await s3forecastHandler(req, res);
-
-    expect(res._getStatusCode()).toBe(500);
-    const data = JSON.parse(res._getData());
+    const res = await GET();
+    expect(res.status).toBe(500);
+    const data = await res.json();
     expect(data.ok).toBe(false);
     expect(data.error.message).toBe('Forecast URL not configured');
   });
@@ -79,51 +67,29 @@ describe('S3 Forecast API', () => {
   test('GET returns 502 when S3 fetch fails', async () => {
     process.env.S3_FORECAST_URL = 'https://test-bucket.s3.amazonaws.com/forecast.csv';
     
-    global.fetch.mockResolvedValue({
+    globalThis.fetch.mockResolvedValue({
       ok: false,
       status: 404,
     });
 
-    const { req, res } = createMocks({
-      method: 'GET',
-    });
-
-    await s3forecastHandler(req, res);
-
-    expect(res._getStatusCode()).toBe(502);
-    const data = JSON.parse(res._getData());
+    const res = await GET();
+    expect(res.status).toBe(502);
+    const data = await res.json();
     expect(data.ok).toBe(false);
     expect(data.error.message).toBe('Failed to fetch forecast data');
-  });
-
-  test('POST method not allowed', async () => {
-    const { req, res } = createMocks({
-      method: 'POST',
-    });
-
-    await s3forecastHandler(req, res);
-
-    expect(res._getStatusCode()).toBe(405);
-    const data = JSON.parse(res._getData());
-    expect(data.ok).toBe(false);
   });
 
   test('handles empty CSV gracefully', async () => {
     process.env.S3_FORECAST_URL = 'https://test-bucket.s3.amazonaws.com/forecast.csv';
     
-    global.fetch.mockResolvedValue({
+    globalThis.fetch.mockResolvedValue({
       ok: true,
       text: () => Promise.resolve('forecast_time,target_time,horizon_hours,predicted_level,current_level,stability_std'),
     });
 
-    const { req, res } = createMocks({
-      method: 'GET',
-    });
-
-    await s3forecastHandler(req, res);
-
-    expect(res._getStatusCode()).toBe(200);
-    const payload = JSON.parse(res._getData());
+    const res = await GET();
+    expect(res.status).toBe(200);
+    const payload = await res.json();
     expect(payload.ok).toBe(true);
     const data = payload.data;
     expect(data.forecast_data).toHaveLength(0);
@@ -138,19 +104,14 @@ describe('S3 Forecast API', () => {
 invalid,row,data,not_a_number,here,bad
 2025-12-02T13:00:00+00:00,2025-12-02T13:30:00+00:00,0.5,1.563,2.58,0.02`;
 
-    global.fetch.mockResolvedValue({
+    globalThis.fetch.mockResolvedValue({
       ok: true,
       text: () => Promise.resolve(csvWithInvalidRow),
     });
 
-    const { req, res } = createMocks({
-      method: 'GET',
-    });
-
-    await s3forecastHandler(req, res);
-
-    expect(res._getStatusCode()).toBe(200);
-    const payload = JSON.parse(res._getData());
+    const res = await GET();
+    expect(res.status).toBe(200);
+    const payload = await res.json();
     expect(payload.ok).toBe(true);
     const data = payload.data;
     expect(data.forecast_data).toHaveLength(2); // Invalid row filtered out

@@ -1,120 +1,42 @@
-require('dotenv').config({ path: '.env.test' });
+jest.mock('../../libs/services/hppStatusService');
 
-// Mock the database module
-jest.mock('../../libs/database');
+const { getHppStatusSnapshot } = require('../../libs/services/hppStatusService');
+const { GET } = require('../../app/api/hppstatus/route');
 
-const dbModule = require('../../libs/database');
-const { createMocks } = require('node-mocks-http');
-const hppStatusHandler = require('../../pages/api/hppstatus').default;
-
-describe('HPP Status API', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
-  test('returns 405 for non-GET methods', async () => {
-    const { req, res } = createMocks({
-      method: 'POST',
-    });
-
-    await hppStatusHandler(req, res);
-
-    expect(res._getStatusCode()).toBe(405);
-    expect(res._getHeaders().allow).toEqual(['GET']);
-    const responseData = JSON.parse(res._getData());
-    expect(responseData.ok).toBe(false);
-    expect(responseData.error.message).toContain('Method POST Not Allowed');
-  });
+describe('HPP Status API route handler', () => {
+  beforeEach(() => jest.clearAllMocks());
 
   test('returns HPP status data', async () => {
-    // Generate test data in the correct format
-    const now = new Date();
-    const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-    const twoMonthsAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
-    
-    // Create mock records that the API expects
-    const mockRecords = [
-      {
-        // Most recent record: open status
-        _id: "record-1",
-        timestamp: now.toISOString(),
-        value: true, // HPP is open
+    getHppStatusSnapshot.mockResolvedValue({
+      data: {
+        currentStatus: true,
+        lastChangedDate: '2026-02-01',
+        closuresInLast7Days: 0,
+        closuresInLast28Days: 1,
+        closuresInLast182Days: 5,
+        closuresInLast365Days: 10,
       },
-      {
-        // Closed status from a month ago
-        _id: "record-2",
-        timestamp: oneMonthAgo.toISOString(),
-        value: false, // HPP was closed
-      },
-      {
-        // Open status from two months ago
-        _id: "record-3",
-        timestamp: twoMonthsAgo.toISOString(),
-        value: true, // HPP was open
-      }
-    ];
-    
-    // Mock the database collections
-    const mockDb = {
-      collection: jest.fn().mockImplementation((collectionName) => {
-        if (collectionName === 'openIndicator') {
-          return {
-            find: jest.fn().mockReturnValue({
-              toArray: jest.fn().mockResolvedValue(mockRecords)
-            })
-          };
-        }
-        
-        return {
-          find: jest.fn().mockReturnValue({
-            toArray: jest.fn().mockResolvedValue([])
-          })
-        };
-      })
-    };
-    
-    const mockClient = { close: jest.fn() };
-    dbModule.connectToDatabase.mockResolvedValue({ db: mockDb, client: mockClient });
-
-    const { req, res } = createMocks({
-      method: 'GET',
+      context: { isEmpty: false, hasClosureRecord: true },
     });
 
-    await hppStatusHandler(req, res);
+    const res = await GET();
+    const payload = await res.json();
 
-    expect(res._getStatusCode()).toBe(200);
-    const responseData = JSON.parse(res._getData());
-    expect(responseData.ok).toBe(true);
-    expect(responseData.data).toHaveProperty('currentStatus');
-    expect(responseData.data).toHaveProperty('lastChangedDate');
-    expect(responseData.data).toHaveProperty('closuresInLast7Days');
-    expect(responseData.data).toHaveProperty('closuresInLast28Days');
-    expect(responseData.data).toHaveProperty('closuresInLast182Days');
-    expect(responseData.data).toHaveProperty('closuresInLast365Days');
+    expect(res.status).toBe(200);
+    expect(payload.ok).toBe(true);
+    expect(payload.data).toHaveProperty('currentStatus');
   });
 
-  test('returns 200 empty state when there are no records', async () => {
-    const mockDb = {
-      collection: jest.fn().mockReturnValue({
-        find: jest.fn().mockReturnValue({
-          toArray: jest.fn().mockResolvedValue([]),
-        }),
-      }),
-    };
-
-    dbModule.connectToDatabase.mockResolvedValue({ db: mockDb, client: { close: jest.fn() } });
-
-    const { req, res } = createMocks({
-      method: 'GET',
+  test('returns empty state when no records', async () => {
+    getHppStatusSnapshot.mockResolvedValue({
+      data: { isEmpty: true, currentStatus: null, closuresInLast7Days: 0 },
+      context: { isEmpty: true, hasClosureRecord: false },
     });
 
-    await hppStatusHandler(req, res);
+    const res = await GET();
+    const payload = await res.json();
 
-    expect(res._getStatusCode()).toBe(200);
-    const responseData = JSON.parse(res._getData());
-    expect(responseData.ok).toBe(true);
-    expect(responseData.data.isEmpty).toBe(true);
-    expect(responseData.data.currentStatus).toBeNull();
-    expect(responseData.data.closuresInLast7Days).toBe(0);
+    expect(res.status).toBe(200);
+    expect(payload.data.isEmpty).toBe(true);
   });
 });

@@ -6,15 +6,19 @@ Related docs:
 - Historical pitfalls and rationale: [docs/LESSONS_LEARNED.md](LESSONS_LEARNED.md)
 
 ## 1) Runtime and framework
-- The app is a **Next.js Pages Router** application.
-- Server-rendered/static page entry points live in `pages/`.
-- API endpoints are implemented as Next.js API routes in `pages/api/`.
+- The app is now in a **hybrid migration state**: App Router + Pages Router.
+- The root route (`/`) is served by App Router from `app/page.js`.
+- Legacy/non-migrated UI routes continue to live in `pages/`.
+- API endpoints currently exist in both:
+   - legacy Pages API routes in `pages/api/`
+   - migrated Route Handlers under `app/api/v2/`
 
 ## 2) High-level layers
 
 ### Presentation layer
 - UI is composed from reusable React components in `components/`.
-- Page composition is primarily in `pages/index.js` and additional feature pages like `pages/forecastinfo.js`, `pages/trentweirs.js`, and admin pages under `pages/admin/`.
+- Root page composition is in `app/page.js` (server) + `components/pages/HomePageClient.js` (client).
+- Additional feature pages remain in `pages/` (for example `pages/forecastinfo.js`, `pages/trentweirs.js`, and admin pages under `pages/admin/`).
 - Bootstrap + React-Bootstrap are used for layout and widgets.
 
 ### Client data access
@@ -28,15 +32,16 @@ Related docs:
 
 | Domain | Primary source | Primitive | Refresh window | Rationale |
 |---|---|---|---:|---|
-| Events | `eventschemas` | ISR (`getStaticProps`) for home snapshot, SWR for interactive lists | ISR: **6h**; SWR: on demand/focus | Events usually change infrequently; static home snapshot reduces DB load while admin/public event views can still refresh when needed. |
-| Site banner | `sitebannerschemas` | ISR (`getStaticProps`) for home header, SWR in admin editor | ISR: **6h**; SWR: on demand/focus | Banner is editorial and low-frequency, but admin tooling should reflect recent writes quickly. |
+| Events | `eventschemas` | App Router ISR (`app/page.js` + `revalidate`) for home snapshot, SWR for interactive lists | ISR: **6h**; SWR: on demand/focus | Events usually change infrequently; static home snapshot reduces DB load while admin/public event views can still refresh when needed. |
+| Site banner | `sitebannerschemas` | App Router ISR (`app/page.js` + `revalidate`) for home header, SWR in admin editor | ISR: **6h**; SWR: on demand/focus | Banner is editorial and low-frequency, but admin tooling should reflect recent writes quickly. |
 | HPP status | `openIndicator` | SWR client fetch (`/api/hppstatus`) | **15m** (`900000ms`) | Status is operational and should stay reasonably fresh without aggressive polling. |
 | River levels | `riverschemas` | SWR client fetch (`/api/levels`) | **15m** (`900000ms`) | Upstream level data typically updates on a 15-minute cadence. |
 | Forecast data | S3 forecast + derived APIs | SWR client fetch (`/api/s3forecast`, `/api/forecastaccuracy`) | **15m** (`900000ms`) | Forecast and related quality indicators are operational and align to the same source update interval. |
 
 ### API/application layer
-- Public and protected server handlers are in `pages/api/*`.
+- Public and protected server handlers are in both `pages/api/*` (legacy) and `app/api/v2/*` (migrated path).
 - Shared route concerns are centralized in `libs/api/http.js`.
+- App Router helpers are centralized in `libs/api/httpApp.js`.
 - Current standard route pattern is:
    - define a small per-method handler map (`handlers`)
    - dispatch methods via shared `getMethodHandler()`
@@ -46,6 +51,9 @@ Related docs:
   - `pages/api/events.js`: read/update/delete events.
   - `pages/api/sitebanner.js`: get/update banner messages.
   - `pages/api/hppstatus.js`: computes closure days over time windows.
+   - `app/api/v2/events/route.js`: App Router route-handler equivalent for events CRUD.
+   - `app/api/v2/sitebanner/route.js`: App Router route-handler equivalent for banner read/update.
+   - `app/api/v2/hppstatus/route.js`: App Router route-handler equivalent for status snapshot.
 
 ### Service layer
 - Domain logic has begun moving into service modules:
@@ -59,8 +67,9 @@ Related docs:
 - It uses a global cached promise/connection pattern to avoid reconnecting on every request.
 
 ### AuthN/AuthZ
-- NextAuth is configured in `pages/api/auth/[...nextauth].js` using Auth0 provider.
+- NextAuth is configured in `pages/api/auth/[...nextauth].js` using shared options from `libs/auth/authOptions.js`.
 - Protected mutations (e.g., POST/DELETE in events, POST in site banner) rely on server session checks via shared `requireSession()`.
+- App Router route handlers use `requireRouteSession()` from `libs/api/httpApp.js`.
 - Unauthenticated protected writes return `401` with `{ message: "Unauthorized" }`.
 - Use `403` only for authenticated users lacking required permissions/roles (if/when role-based authorization is introduced).
 
@@ -106,8 +115,19 @@ Related docs:
    - Forecast pages compare data sources and surface quality metrics.
 
 5. **Home page static data strategy**
-   - `pages/index.js` uses `getStaticProps` with **6-hour ISR** to cache events/banner and reduce load.
-   - Operational data (levels/status/forecast) remains client-side via SWR with a **15-minute** refresh cadence.
+    - `app/page.js` uses App Router ISR (`export const revalidate = 21600`) to cache events/banner and reduce load.
+    - Data assembly for the home snapshot lives in `libs/services/homePageService.js`.
+    - Operational data (levels/status/forecast) remains client-side via SWR with a **15-minute** refresh cadence.
+
+## 6) App Router migration status
+- Completed in this phase:
+   - Root route moved to App Router (`app/page.js` + `app/layout.js` + `app/providers.js`).
+   - Shared NextAuth options extracted to `libs/auth/authOptions.js`.
+   - Initial Route Handlers added under `app/api/v2/*` for events/sitebanner/hppstatus/levels/featureflags.
+- Remaining migration work:
+   - Move non-admin pages from `pages/` to `app/` route segments.
+   - Decide cutover strategy for `/api/*` from legacy Pages API routes to App Router Route Handlers.
+   - Introduce cache tags/revalidation (`revalidateTag`) where admin mutations should invalidate static snapshots immediately.
 
 ## 4) Testing strategy
 - Jest powers both API route tests and component/unit tests under `__tests__/`.

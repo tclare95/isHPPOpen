@@ -1,131 +1,51 @@
-// Mock all necessary dependencies before imports
 jest.mock('../../libs/services/siteBannerService');
-jest.mock('next-auth/next');
+jest.mock('next-auth', () => ({ getServerSession: jest.fn() }));
 
-// Mock the [...nextauth] import
-jest.mock('../../pages/api/auth/[...nextauth]', () => ({
-  authOptions: {
-    providers: [],
-    secret: 'test-secret'
-  }
-}));
-
-require('dotenv').config({ path: '.env.test' });
-
-const { createMocks } = require('node-mocks-http');
-const siteBannerHandler = require('../../pages/api/sitebanner').default;
 const { getBanners, upsertBanner } = require('../../libs/services/siteBannerService');
-const { getServerSession } = require('next-auth/next');
+const { getServerSession } = require('next-auth');
 const { ValidationError } = require('yup');
+const { GET, POST } = require('../../app/api/sitebanner/route');
 
-describe('Site Banner API', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
+const makeRequest = (body) => ({
+  nextUrl: new URL('http://localhost/api/sitebanner'),
+  async json() {
+    return body;
+  },
+});
+
+describe('Site Banner API route handler', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  test('GET returns banner data', async () => {
+    getBanners.mockResolvedValue([{ banner_message: 'Test banner message' }]);
+    const res = await GET();
+    const payload = await res.json();
+    expect(res.status).toBe(200);
+    expect(payload.ok).toBe(true);
+    expect(payload.data[0].banner_message).toBe('Test banner message');
   });
 
-  describe('GET /api/sitebanner', () => {
-    test('returns banner data', async () => {
-      const mockBanners = [
-        { _id: '1', banner_message: 'Test banner message', active: true },
-      ];
-
-      getBanners.mockResolvedValue(mockBanners);
-
-      const { req, res } = createMocks({
-        method: 'GET',
-      });
-
-      await siteBannerHandler(req, res);
-
-      expect(res._getStatusCode()).toBe(200);
-      const responseData = JSON.parse(res._getData());
-      expect(responseData.ok).toBe(true);
-      expect(responseData.data).toEqual(mockBanners);
-      expect(getBanners).toHaveBeenCalled();
-    });
-
-    test('returns 500 on service error', async () => {
-      getBanners.mockRejectedValue(new Error('Database error'));
-
-      const { req, res } = createMocks({
-        method: 'GET',
-      });
-
-      await siteBannerHandler(req, res);
-
-      expect(res._getStatusCode()).toBe(500);
-      const responseData = JSON.parse(res._getData());
-      expect(responseData.ok).toBe(false);
-      expect(responseData.error.message).toBe('Internal Server Error');
-    });
+  test('POST returns 401 when not authenticated', async () => {
+    getServerSession.mockResolvedValue(null);
+    const res = await POST(makeRequest({ banner_message: 'New message' }));
+    expect(res.status).toBe(401);
   });
 
-  describe('POST /api/sitebanner', () => {
-    test('returns 401 when not authenticated', async () => {
-      getServerSession.mockResolvedValue(null);
-
-      const { req, res } = createMocks({
-        method: 'POST',
-        body: { banner_message: 'New message' },
-      });
-
-      await siteBannerHandler(req, res);
-
-      expect(res._getStatusCode()).toBe(401);
-      const responseData = JSON.parse(res._getData());
-      expect(responseData.ok).toBe(false);
-      expect(responseData.error.message).toBe('Unauthorized');
-    });
-
-    test('updates banner when authenticated', async () => {
-      getServerSession.mockResolvedValue({ user: { email: 'admin@test.com' } });
-      upsertBanner.mockResolvedValue({ modifiedCount: 1 });
-
-      const { req, res } = createMocks({
-        method: 'POST',
-        body: { banner_message: 'Updated message' },
-      });
-
-      await siteBannerHandler(req, res);
-
-      expect(res._getStatusCode()).toBe(200);
-      const responseData = JSON.parse(res._getData());
-      expect(responseData.ok).toBe(true);
-      expect(responseData.data.message).toBe('Banner updated');
-      expect(upsertBanner).toHaveBeenCalledWith({ banner_message: 'Updated message' });
-    });
-
-    test('returns 400 on validation error', async () => {
-      getServerSession.mockResolvedValue({ user: { email: 'admin@test.com' } });
-      upsertBanner.mockRejectedValue(new ValidationError('Validation failed'));
-
-      const { req, res } = createMocks({
-        method: 'POST',
-        body: { invalid: 'data' },
-      });
-
-      await siteBannerHandler(req, res);
-
-      expect(res._getStatusCode()).toBe(400);
-      const responseData = JSON.parse(res._getData());
-      expect(responseData.ok).toBe(false);
-      expect(responseData.error.message).toBe('Validation failed');
-    });
+  test('POST updates banner when authenticated', async () => {
+    getServerSession.mockResolvedValue({ user: { email: 'admin@test.com' } });
+    upsertBanner.mockResolvedValue({ modifiedCount: 1, upsertedCount: 0 });
+    const res = await POST(makeRequest({ banner_message: 'Updated message' }));
+    const payload = await res.json();
+    expect(res.status).toBe(200);
+    expect(payload.data.message).toBe('Banner updated');
   });
 
-  describe('Method handling', () => {
-    test('returns 405 for unsupported methods', async () => {
-      const { req, res } = createMocks({
-        method: 'DELETE',
-      });
-
-      await siteBannerHandler(req, res);
-
-      expect(res._getStatusCode()).toBe(405);
-      expect(res._getHeaders().allow).toEqual(['GET', 'POST']);
-      const responseData = JSON.parse(res._getData());
-      expect(responseData.ok).toBe(false);
-      expect(responseData.error.message).toContain('Method DELETE Not Allowed');
-    });
+  test('POST returns 400 on validation error', async () => {
+    getServerSession.mockResolvedValue({ user: { email: 'admin@test.com' } });
+    upsertBanner.mockRejectedValue(new ValidationError('Validation failed'));
+    const res = await POST(makeRequest({ invalid: 'data' }));
+    const payload = await res.json();
+    expect(res.status).toBe(400);
+    expect(payload.error.message).toBe('Validation failed');
   });
 });

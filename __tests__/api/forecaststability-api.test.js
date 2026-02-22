@@ -1,12 +1,11 @@
-const { createMocks } = require('node-mocks-http');
-const forecaststabilityHandler = require('../../pages/api/forecaststability').default;
+const { GET } = require('../../app/api/forecaststability/route');
 
 // Sample stability CSV data
 const mockStabilityCSV = `target_time,forecast_current,forecast_1h_ago,forecast_2h_ago,forecast_3h_ago,forecast_4h_ago,forecast_5h_ago,forecast_6h_ago,forecast_7h_ago,forecast_8h_ago,forecast_9h_ago,forecast_10h_ago,forecast_11h_ago,forecast_12h_ago,stability_std,stability_range,revision_trend
 2025-12-06T12:00:00Z,1.45,1.44,1.43,1.42,1.41,1.40,1.39,1.38,1.37,1.36,1.35,1.34,1.33,0.035,0.12,0.008
 2025-12-06T14:00:00Z,1.50,1.49,1.48,1.47,1.46,1.45,1.44,1.43,1.42,1.41,1.40,1.39,1.38,0.040,0.12,-0.005`;
 
-describe('Forecast Stability API', () => {
+describe('Forecast Stability API route handler', () => {
   const originalEnv = process.env;
   const originalConsoleLog = console.log;
   const originalConsoleError = console.error;
@@ -16,7 +15,7 @@ describe('Forecast Stability API', () => {
     process.env = { ...originalEnv };
     console.log = jest.fn();
     console.error = jest.fn();
-    global.fetch = jest.fn();
+    globalThis.fetch = jest.fn();
   });
 
   afterEach(() => {
@@ -29,20 +28,14 @@ describe('Forecast Stability API', () => {
   test('GET returns parsed stability data', async () => {
     process.env.S3_FORECAST_STABILITY_URL = 'https://test-bucket.s3.amazonaws.com/stability.csv';
     
-    global.fetch.mockResolvedValue({
+    globalThis.fetch.mockResolvedValue({
       ok: true,
       text: () => Promise.resolve(mockStabilityCSV),
     });
 
-    const { req, res } = createMocks({
-      method: 'GET',
-    });
-
-    await forecaststabilityHandler(req, res);
-
-    expect(res._getStatusCode()).toBe(200);
-    
-    const payload = JSON.parse(res._getData());
+    const res = await GET();
+    expect(res.status).toBe(200);
+    const payload = await res.json();
     expect(payload.ok).toBe(true);
     const data = payload.data;
     
@@ -60,14 +53,9 @@ describe('Forecast Stability API', () => {
   test('GET returns empty array when S3_FORECAST_STABILITY_URL not set', async () => {
     delete process.env.S3_FORECAST_STABILITY_URL;
 
-    const { req, res } = createMocks({
-      method: 'GET',
-    });
-
-    await forecaststabilityHandler(req, res);
-
-    expect(res._getStatusCode()).toBe(200);
-    const payload = JSON.parse(res._getData());
+    const res = await GET();
+    expect(res.status).toBe(200);
+    const payload = await res.json();
     expect(payload.ok).toBe(true);
     const data = payload.data;
     expect(data.stability_data).toEqual([]);
@@ -76,33 +64,20 @@ describe('Forecast Stability API', () => {
   test('GET returns empty array when S3 fetch fails', async () => {
     process.env.S3_FORECAST_STABILITY_URL = 'https://test-bucket.s3.amazonaws.com/stability.csv';
     
-    global.fetch.mockResolvedValue({
+    globalThis.fetch.mockResolvedValue({
       ok: false,
       status: 404,
     });
 
-    const { req, res } = createMocks({
-      method: 'GET',
-    });
-
-    await forecaststabilityHandler(req, res);
-
-    expect(res._getStatusCode()).toBe(200);
-    const payload = JSON.parse(res._getData());
+    const res = await GET();
+    expect(res.status).toBe(200);
+    const payload = await res.json();
     expect(payload.ok).toBe(true);
     const data = payload.data;
     expect(data.stability_data).toEqual([]);
   });
 
-  test('POST method not allowed', async () => {
-    const { req, res } = createMocks({
-      method: 'POST',
-    });
-
-    await forecaststabilityHandler(req, res);
-
-    expect(res._getStatusCode()).toBe(405);
-    const payload = JSON.parse(res._getData());
-    expect(payload.ok).toBe(false);
+  test('route exposes GET handler', async () => {
+    expect(typeof GET).toBe('function');
   });
 });

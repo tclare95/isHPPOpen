@@ -26,9 +26,7 @@ describe('/api/featureflags', () => {
       await handler(req, res);
 
       expect(res._getStatusCode()).toBe(405);
-      expect(JSON.parse(res._getData())).toEqual({
-        error: `Method ${method} Not Allowed`,
-      });
+      expect(res._getHeaders().allow).toEqual(['GET']);
     }
   });
 });

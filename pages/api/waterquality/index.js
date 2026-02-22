@@ -1,4 +1,5 @@
 import { connectToDatabase } from "../../../libs/database";
+import { getMethodHandler, mapApiError } from "../../../libs/api/http";
 
 async function getActiveCSOs(csoDataCollection, startTime, scrapeTimestamp) {
   return csoDataCollection
@@ -69,43 +70,50 @@ function toWaterQualityResponse(sourceData, activeCSOs, totalDischargeTime) {
 
 export default async function handler(req, res) {
   const timestamp = new Date().toISOString();
-  if (req.method !== "GET") {
-    res.setHeader("Allow", ["GET"]);
-    return res.status(405).end(`Method ${req.method} Not Allowed`);
-  }
+  const handlers = {
+    GET: async () => {
+      const { db } = await connectToDatabase();
+      const collection = await db.collection("waterQuality");
+      const csoDataCollection = await db.collection("csoData");
+
+      const cursor = await collection
+        .find()
+        .sort({ scrape_timestamp: -1 })
+        .limit(1);
+
+      const latestWaterQuality = await cursor.next();
+      let waterQualityData = null;
+
+      if (latestWaterQuality) {
+        const scrapeTimestamp = new Date(latestWaterQuality.scrape_timestamp);
+        const startTime = new Date(scrapeTimestamp.getTime() - 48 * 60 * 60 * 1000);
+        const activeCSOs = await getActiveCSOs(csoDataCollection, startTime, scrapeTimestamp);
+        const totalDischargeHours = getTotalDischargeHours(activeCSOs);
+
+        waterQualityData = toWaterQualityResponse(
+          latestWaterQuality,
+          activeCSOs,
+          totalDischargeHours
+        );
+      }
+
+      console.log(`${timestamp} WATERQUALITY MOST RECENT CALLED`);
+      res.status(200).json({
+        waterQualityData,
+      });
+    },
+  };
 
   try {
-    const { db } = await connectToDatabase();
-    const collection = await db.collection("waterQuality");
-    const csoDataCollection = await db.collection("csoData");
-
-    const cursor = await collection
-      .find()
-      .sort({ scrape_timestamp: -1 })
-      .limit(1);
-
-    const latestWaterQuality = await cursor.next();
-    let waterQualityData = null;
-
-    if (latestWaterQuality) {
-      const scrapeTimestamp = new Date(latestWaterQuality.scrape_timestamp);
-      const startTime = new Date(scrapeTimestamp.getTime() - 48 * 60 * 60 * 1000);
-      const activeCSOs = await getActiveCSOs(csoDataCollection, startTime, scrapeTimestamp);
-      const totalDischargeHours = getTotalDischargeHours(activeCSOs);
-
-      waterQualityData = toWaterQualityResponse(
-        latestWaterQuality,
-        activeCSOs,
-        totalDischargeHours
-      );
+    const methodHandler = getMethodHandler(req, res, handlers);
+    if (!methodHandler) {
+      return;
     }
 
-    console.log(`${timestamp} WATERQUALITY MOST RECENT CALLED`);
-    return res.status(200).json({
-      waterQualityData,
-    });
+    await methodHandler();
   } catch (error) {
+    const { statusCode, message } = mapApiError(error);
     console.error(`[${timestamp}] Error in waterquality:`, error);
-    return res.status(500).json({ message: "Internal Server Error" });
+    return res.status(statusCode).json({ message });
   }
 }

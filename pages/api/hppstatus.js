@@ -1,4 +1,5 @@
 import { connectToDatabase } from "../../libs/database";
+import { getMethodHandler, mapApiError } from "../../libs/api/http";
 
 const intervals = {
   7: 7,
@@ -11,7 +12,7 @@ const calculateDaysBetween = (startDate, endDate) =>
   Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
 
 const updateClosures = (closures, interval, intervalStart, closureStart, recordDate) => {
-  const overlapStart = closureStart < intervalStart ? intervalStart : closureStart;
+  const overlapStart = new Date(Math.max(closureStart.getTime(), intervalStart.getTime()));
   const overlapEnd = recordDate;
   const overlapDays = calculateDaysBetween(overlapStart, overlapEnd);
 
@@ -55,46 +56,60 @@ const processRecords = (sortedRecords, intervals) => {
 
 export default async function handler(req, res) {
   const timestamp = new Date().toISOString();
+  const handlers = {
+    GET: async () => {
+      const { db } = await connectToDatabase();
+      const collection = await db.collection("openIndicator");
+
+      const currentDate = new Date();
+      const oneYearAgo = new Date(new Date().setFullYear(currentDate.getFullYear() - 1));
+
+      const records = await collection.find({ timestamp: { $gte: oneYearAgo } }).toArray();
+      const sortedRecords = records.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+      if (sortedRecords.length === 0) {
+        console.error(`[${timestamp}] No records found in hppstatus`);
+        res.status(500).json({ message: "No records found in the database." });
+        return;
+      }
+
+      const closures = processRecords(sortedRecords, intervals);
+
+      // Find the last record where value is false (i.e., closed)
+      const lastClosureRecord = sortedRecords.reverse().find((record) => record.value === false);
+
+      if (!lastClosureRecord) {
+        console.error(`[${timestamp}] No closure records found in hppstatus`);
+        res.status(500).json({ message: "No closure records found." });
+        return;
+      }
+
+      const lastChangedDate = new Date(lastClosureRecord.timestamp).toISOString();
+
+      console.log(`${timestamp} HPPSTATUS CALLED`);
+
+      res.status(200).json({
+        currentStatus: sortedRecords[0].value,
+        lastChangedDate: lastChangedDate.slice(0, 10),
+        effectiveLastOpenDate: lastChangedDate.slice(0, 10),
+        closuresInLast7Days: Math.min(closures["7"], 7),
+        closuresInLast28Days: Math.min(closures["28"], 28),
+        closuresInLast182Days: Math.min(closures["182"], 182),
+        closuresInLast365Days: Math.min(closures["365"], 365),
+      });
+    },
+  };
+
   try {
-    const { db } = await connectToDatabase();
-    const collection = await db.collection("openIndicator");
-
-    const currentDate = new Date();
-    const oneYearAgo = new Date(new Date().setFullYear(currentDate.getFullYear() - 1));
-
-    const records = await collection.find({ timestamp: { $gte: oneYearAgo } }).toArray();
-    const sortedRecords = records.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-
-    if (sortedRecords.length === 0) {
-      console.error(`[${timestamp}] No records found in hppstatus`);
-      return res.status(500).json({ error: "No records found in the database." });
+    const methodHandler = getMethodHandler(req, res, handlers);
+    if (!methodHandler) {
+      return;
     }
 
-    const closures = processRecords(sortedRecords, intervals);
-
-    // Find the last record where value is false (i.e., closed)
-    const lastClosureRecord = sortedRecords.reverse().find((record) => record.value === false);
-
-    if (!lastClosureRecord) {
-      console.error(`[${timestamp}] No closure records found in hppstatus`);
-      return res.status(500).json({ error: "No closure records found." });
-    }
-
-    const lastChangedDate = new Date(lastClosureRecord.timestamp).toISOString();
-    
-    console.log(`${timestamp} HPPSTATUS CALLED`);
-
-    res.status(200).json({
-      currentStatus: sortedRecords[0].value,
-      lastChangedDate: lastChangedDate.slice(0, 10),
-      effectiveLastOpenDate: lastChangedDate.slice(0, 10),
-      closuresInLast7Days: closures["7"] > 7 ? 7 : closures["7"],
-      closuresInLast28Days: closures["28"] > 28 ? 28 : closures["28"],
-      closuresInLast182Days: closures["182"] > 182 ? 182 : closures["182"],
-      closuresInLast365Days: closures["365"] > 365 ? 365 : closures["365"],
-    });
+    await methodHandler();
   } catch (error) {
+    const { statusCode, message } = mapApiError(error);
     console.error(`[${timestamp}] Error in hppstatus:`, error);
-    res.status(500).json({ message: "Internal Server Error" });
+    res.status(statusCode).json({ message });
   }
 }

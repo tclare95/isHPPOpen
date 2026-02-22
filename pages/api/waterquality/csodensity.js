@@ -1,12 +1,12 @@
 import { connectToDatabase } from "../../../libs/database";
+import { getMethodHandler, mapApiError } from "../../../libs/api/http";
 
 export default async function handler(req, res) {
   const timestamp = new Date().toISOString();
   const parsedHours = Number(req.query.hours);
   const hours = Number.isFinite(parsedHours) ? parsedHours : 120;
-
-  if (req.method === "GET") {
-    try {
+  const handlers = {
+    GET: async () => {
       const { db } = await connectToDatabase();
       const collection = await db.collection("waterQuality");
 
@@ -21,15 +21,15 @@ export default async function handler(req, res) {
 
       const result = timeSeriesData
         .map((data) => {
-          const timestamp = data?.scrape_timestamp;
+          const rowTimestamp = data?.scrape_timestamp;
           const numberCSOsPerKm2 = Number(data?.water_quality?.number_CSOs_per_km2);
 
-          if (!timestamp || !Number.isFinite(numberCSOsPerKm2)) {
+          if (!rowTimestamp || !Number.isFinite(numberCSOsPerKm2)) {
             return null;
           }
 
           return {
-            timestamp,
+            timestamp: rowTimestamp,
             numberCSOsPerKm2,
           };
         })
@@ -37,13 +37,19 @@ export default async function handler(req, res) {
 
       console.log(`${timestamp} CSODENSITY TIME SERIES CALLED`);
       res.status(200).json(result);
-    } catch (error) {
-      console.error(`[${timestamp}] Error in csodensity:`, error);
-      res.status(500).json({ message: "Internal Server Error" });
+    },
+  };
+
+  try {
+    const methodHandler = getMethodHandler(req, res, handlers);
+    if (!methodHandler) {
+      return;
     }
-  } else {
-    // Handle any other HTTP method
-    res.setHeader("Allow", ["GET"]);
-    res.status(405).end(`Method ${req.method} Not Allowed`);
+
+    await methodHandler();
+  } catch (error) {
+    const { statusCode, message } = mapApiError(error);
+    console.error(`[${timestamp}] Error in csodensity:`, error);
+    res.status(statusCode).json({ message });
   }
 }

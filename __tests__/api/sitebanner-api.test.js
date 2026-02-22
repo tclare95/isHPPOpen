@@ -16,6 +16,7 @@ const { createMocks } = require('node-mocks-http');
 const siteBannerHandler = require('../../pages/api/sitebanner').default;
 const { getBanners, upsertBanner } = require('../../libs/services/siteBannerService');
 const { getServerSession } = require('next-auth/next');
+const { ValidationError } = require('yup');
 
 describe('Site Banner API', () => {
   beforeEach(() => {
@@ -58,7 +59,7 @@ describe('Site Banner API', () => {
   });
 
   describe('POST /api/sitebanner', () => {
-    test('returns 403 when not authenticated', async () => {
+    test('returns 401 when not authenticated', async () => {
       getServerSession.mockResolvedValue(null);
 
       const { req, res } = createMocks({
@@ -68,7 +69,7 @@ describe('Site Banner API', () => {
 
       await siteBannerHandler(req, res);
 
-      expect(res._getStatusCode()).toBe(403);
+      expect(res._getStatusCode()).toBe(401);
       const responseData = JSON.parse(res._getData());
       expect(responseData.message).toBe('Unauthorized');
     });
@@ -90,7 +91,7 @@ describe('Site Banner API', () => {
 
     test('returns 400 on validation error', async () => {
       getServerSession.mockResolvedValue({ user: { email: 'admin@test.com' } });
-      upsertBanner.mockRejectedValue(new Error('Validation failed'));
+      upsertBanner.mockRejectedValue(new ValidationError('Validation failed'));
 
       const { req, res } = createMocks({
         method: 'POST',

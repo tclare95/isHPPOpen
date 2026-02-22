@@ -1,7 +1,6 @@
 import axios from "axios";
 import { connectToDatabase } from "../../libs/database";
-
-const ALLOWED_METHODS = ['POST'];
+import { getMethodHandler, mapApiError, parseRequestBody } from "../../libs/api/http";
 
 const getLevelByStation = async (stationId, dateObject, delay) => {
   //takes a station id and a date object and returns the level at the station for the preceding 2 days.
@@ -38,76 +37,74 @@ const getLevelByStation = async (stationId, dateObject, delay) => {
 };
 
 export default async function handler(req, res) {
-  if (!ALLOWED_METHODS.includes(req.method)) {
-    res.setHeader('Allow', ALLOWED_METHODS);
-    return res.status(405).end(`Method ${req.method} Not Allowed`);
-  }
-
   const timestamp = new Date().toISOString();
-  try {
-    const { body } = req;
-    let submissionDate;
-    let parsedRequest;
-    
-    // Parse the request body
-    try {
-      parsedRequest = JSON.parse(Object.keys(body)[0]);
-      submissionDate = new Date(parsedRequest.dateTime);
-    } catch (parseError) {
-      console.error(`[${timestamp}] [${req.method}] JSON parse error:`, parseError);
-      return res.status(400).json({ message: "Error parsing request body" });
-    }
+  const handlers = {
+    POST: async () => {
+      const parsedRequest = parseRequestBody(req.body);
+      const submissionDate = new Date(parsedRequest.dateTime);
 
-    // Fetch river level data from EA API
-    const levelStations = [
-      ["colwick", 4009, 0],
-      ["clifton", 4126, 2000],
-      ["shardlow", 4007, 4000],
-      ["churchWilne", 4067, 6000],
-      ["kegworth", 4074, 8000],
-    ];
+      // Fetch river level data from EA API
+      const levelStations = [
+        ["colwick", 4009, 0],
+        ["clifton", 4126, 2000],
+        ["shardlow", 4007, 4000],
+        ["churchWilne", 4067, 6000],
+        ["kegworth", 4074, 8000],
+      ];
 
-    let levels = {};
-    let levelsFetchFailed = false;
-
-    try {
+      const levels = {};
       const levelData = levelStations.map((station) =>
         getLevelByStation(station[1], submissionDate, station[2])
       );
+      const values = await Promise.allSettled(levelData);
 
-      const values = await Promise.all(levelData);
-      values.forEach((value, index) => {
-        levels[levelStations[index][0]] = value;
+      const levelsFetchFailed = values.some((result) => result.status === "rejected");
+      if (levelsFetchFailed) {
+        console.error(`[${timestamp}] Error getting levels, saving basic data`);
+      }
+
+      values.forEach((result, index) => {
+        if (result.status === "fulfilled") {
+          levels[levelStations[index][0]] = result.value;
+        }
       });
-    } catch (error) {
-      console.error(`[${timestamp}] Error getting levels, saving basic data`);
-      levelsFetchFailed = true;
-    }
 
-    // Save to database
-    const { db } = await connectToDatabase();
-    const collection = db.collection("trentlockdata");
+      // Save to database
+      const { db } = await connectToDatabase();
+      const collection = db.collection("trentlockdata");
 
-    const documentToInsert = {
-      date: parsedRequest.dateTime,
-      dateCreated: new Date(),
-      userRange: parsedRequest.range,
-      userComment: levelsFetchFailed ? parsedRequest.comment : parsedRequest.comments,
-      userBoat: levelsFetchFailed ? parsedRequest.boat : parsedRequest.boatType,
-      recordedLevels: levelsFetchFailed ? null : levels,
-    };
+      const documentToInsert = {
+        date: parsedRequest.dateTime,
+        dateCreated: new Date(),
+        userRange: parsedRequest.range,
+        userComment: levelsFetchFailed ? parsedRequest.comment : parsedRequest.comments,
+        userBoat: levelsFetchFailed ? parsedRequest.boat : parsedRequest.boatType,
+        recordedLevels: levelsFetchFailed ? null : levels,
+      };
 
-    const result = await collection.insertOne(documentToInsert);
+      const result = await collection.insertOne(documentToInsert);
 
-    if (result.insertedId) {
-      console.log(`[${timestamp}] Trentlock data saved successfully`);
-      return res.status(200).json({ message: "Update successful" });
-    } else {
+      if (result.insertedId) {
+        console.log(`[${timestamp}] Trentlock data saved successfully`);
+        res.status(200).json({ message: "Update successful" });
+        return;
+      }
+
       console.error(`[${timestamp}] Insert failed for trentlock data`);
-      return res.status(500).json({ message: "Failed to save data" });
+      res.status(500).json({ message: "Failed to save data" });
+    },
+  };
+
+  try {
+    const methodHandler = getMethodHandler(req, res, handlers);
+    if (!methodHandler) {
+      return;
     }
+
+    await methodHandler();
   } catch (error) {
+    const { statusCode, message } = mapApiError(error);
     console.error(`[${timestamp}] [${req.method}] Error in trentlockapi:`, error);
-    return res.status(500).json({ message: "Internal Server Error" });
+    return res.status(statusCode).json({ message });
   }
 }

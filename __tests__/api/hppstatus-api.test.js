@@ -8,6 +8,17 @@ const { createMocks } = require('node-mocks-http');
 const hppStatusHandler = require('../../pages/api/hppstatus').default;
 
 describe('HPP Status API', () => {
+  test('returns 405 for non-GET methods', async () => {
+    const { req, res } = createMocks({
+      method: 'POST',
+    });
+
+    await hppStatusHandler(req, res);
+
+    expect(res._getStatusCode()).toBe(405);
+    expect(res._getHeaders().allow).toEqual(['GET']);
+  });
+
   test('returns HPP status data', async () => {
     // Generate test data in the correct format
     const now = new Date();

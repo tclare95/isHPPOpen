@@ -12,8 +12,6 @@ import { useContext } from "react";
 import GraphContext from "../../../libs/context/graphcontrol";
 import Link from "next/link";
 
-const currentTime = new Date();
-
 export default function TopContent(props) {
   const { data: levelData, error, isPending } = useFetch("/api/levels");
   const { data: s3Forecast, isPending: forecastPending } = useFetch("/api/s3forecast");
@@ -21,11 +19,20 @@ export default function TopContent(props) {
   const { data: featureFlags, isPending: flagsPending } = useFetch("/api/featureflags");
   
   const recentEntry = !isPending && levelData.level_data?.[0];
-  const readingTime = recentEntry ? new Date(recentEntry.reading_date) : new Date();
+  const [currentTime, setCurrentTime] = useState(() => new Date());
+  const readingTime = recentEntry?.reading_date ? new Date(recentEntry.reading_date) : currentTime;
   const recentLevel = recentEntry ? recentEntry.reading_level : 0;
   const { lowerBound, upperBound, updateBounds } = useContext(GraphContext);
 
   const [csoData, setCsoData] = useState([]);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 60 * 1000);
+
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     async function fetchCsoData() {
@@ -43,6 +50,11 @@ export default function TopContent(props) {
 
     fetchCsoData();
   }, []);
+
+  const readingTimeValue = readingTime.getTime();
+  const hoursOld = Number.isNaN(readingTimeValue)
+    ? 0
+    : Math.floor((currentTime.getTime() - readingTimeValue) / 1000 / 60 / 60);
 
   return (
     <div className="text-white text-center">
@@ -80,11 +92,7 @@ export default function TopContent(props) {
       <Row className="justify-content-center ">
         <p>
           The river level data is{" "}
-          {isPending
-            ? "Loading"
-            : Math.floor(
-                (currentTime.getTime() - readingTime.getTime()) / 1000 / 60 / 60
-              )}{" "}
+          {isPending ? "Loading" : hoursOld}{" "}
           hours old. Generally HPP white water course is open below 2.2 meters
           on the gauge. Check the graph below for trends and a 36 hour river
           level forecast.

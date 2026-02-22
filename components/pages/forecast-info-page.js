@@ -1,5 +1,5 @@
+'use client';
 import { useState, useContext } from "react";
-import Head from "next/head";
 import Link from "next/link";
 import Container from "react-bootstrap/Container";
 import Row from "react-bootstrap/Row";
@@ -11,10 +11,10 @@ import Button from "react-bootstrap/Button";
 import ButtonGroup from "react-bootstrap/ButtonGroup";
 import Form from "react-bootstrap/Form";
 import Spinner from "react-bootstrap/Spinner";
-import useFetch from "../libs/useFetch";
-import ForecastChartWithConfidence from "../components/functional/forecastChart";
-import StabilityChart from "../components/functional/stabilityChart";
-import GraphContext from "../libs/context/graphcontrol";
+import useFetch from "../../libs/useFetch";
+import ForecastChartWithConfidence from "../functional/forecastChart";
+import StabilityChart from "../functional/stabilityChart";
+import GraphContext from "../../libs/context/graphcontrol";
 
 // Helper to format numbers to fixed decimals, handling nulls
 const formatMetric = (value, decimals = 3) => {
@@ -95,16 +95,16 @@ function getRainfallRating(rainMm) {
   return { label: "Heavy", color: "danger", icon: "⛈" };
 }
 
-export default function ForecastInfo() {
+export default function ForecastInfoPage({ initialData = {} }) {
   const [forecastSource, setForecastSource] = useState("s3");
   const [showConfidence, setShowConfidence] = useState(true);
   const [showStats, setShowStats] = useState(false);
   const [showStability, setShowStability] = useState(false);
   
-  const { data: levelData, isPending: levelPending } = useFetch("/api/levels");
-  const { data: s3Data, isPending: s3Pending } = useFetch("/api/s3forecast");
-  const { data: accuracyData, isPending: accuracyPending } = useFetch("/api/forecastaccuracy");
-  const { data: stabilityData, isPending: stabilityPending } = useFetch("/api/forecaststability");
+  const { data: levelData, isPending: levelPending } = useFetch("/api/levels", { fallbackData: initialData.levelData });
+  const { data: s3Data, isPending: s3Pending } = useFetch("/api/s3forecast", { fallbackData: initialData.s3Data });
+  const { data: accuracyData, isPending: accuracyPending } = useFetch("/api/forecastaccuracy", { fallbackData: initialData.accuracyData });
+  const { data: stabilityData, isPending: stabilityPending } = useFetch("/api/forecaststability", { fallbackData: initialData.stabilityData });
   
   const { lowerBound, upperBound, updateBounds } = useContext(GraphContext);
 
@@ -116,15 +116,7 @@ export default function ForecastInfo() {
     : s3Data?.forecast_data || [];
 
   return (
-    <>
-      <Head>
-        <title>River Level Forecast | isHPPOpen</title>
-        <meta
-          name="description"
-          content="River level forecast for Holme Pierrepont - view predictions, accuracy metrics, and compare forecast sources"
-        />
-      </Head>
-      <Container fluid className="bg-dark min-vh-100">
+    <Container fluid className="bg-dark min-vh-100">
         <Container className="text-white py-4">
           <Row className="mb-4">
             <Col className="text-center">
@@ -703,6 +695,5 @@ export default function ForecastInfo() {
           </Row>
         </Container>
       </Container>
-    </>
   );
 }

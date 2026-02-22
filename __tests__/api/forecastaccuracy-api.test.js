@@ -60,6 +60,10 @@ describe('Forecast Accuracy API route handler', () => {
       horizon_hours: 24,
       bias: -0.0806,
     });
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      'https://test-bucket.s3.amazonaws.com/accuracy.csv',
+      { next: { revalidate: 900 } }
+    );
   });
 
   test('handles row with no data (null metrics)', async () => {

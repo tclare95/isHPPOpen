@@ -7,6 +7,8 @@ import {
   sendRouteSuccess,
 } from "../../../libs/api/httpApp";
 import { createRequestLogger } from "../../../libs/api/logger";
+import { revalidateTagsSafe } from "../../../libs/cache/revalidate";
+import { CACHE_TAGS } from "../../../libs/cache/tags";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +30,10 @@ export async function POST(request) {
     await requireRouteSession();
     const payload = await parseJsonObjectBody(request);
     const result = await upsertBanner(payload);
+    await revalidateTagsSafe([CACHE_TAGS.SITE_BANNER, CACHE_TAGS.HOME_SNAPSHOT], {
+      logger,
+      context: "sitebanner-post",
+    });
     return sendRouteSuccess({
       message: "Banner updated",
       modifiedCount: result.modifiedCount,

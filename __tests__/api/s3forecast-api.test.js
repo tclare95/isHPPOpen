@@ -52,6 +52,10 @@ describe('S3 Forecast API route handler', () => {
       forecast_time: '2025-12-02T13:00:00+00:00',
       current_level: 2.58,
     });
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      'https://test-bucket.s3.amazonaws.com/forecast.csv',
+      { next: { revalidate: 900 } }
+    );
   });
 
   test('GET returns 500 when S3_FORECAST_URL not set', async () => {

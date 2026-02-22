@@ -2,8 +2,7 @@ import { getHppStatusSnapshot } from "../../../libs/services/hppStatusService";
 import { mapApiError } from "../../../libs/api/http";
 import { sendRouteError, sendRouteSuccess } from "../../../libs/api/httpApp";
 import { createRequestLogger } from "../../../libs/api/logger";
-
-export const dynamic = "force-dynamic";
+export { API_OPERATIONAL_REVALIDATE_SECONDS as revalidate } from "../../../libs/dataFreshness";
 
 export async function GET() {
   const logger = createRequestLogger({ method: "GET" }, "api/hppstatus");

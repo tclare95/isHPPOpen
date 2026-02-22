@@ -7,6 +7,7 @@ Related docs:
 
 ## 1) Runtime and framework
 - The app runs on the **App Router**.
+- Runtime baseline is **Node 20.19+**.
 - The root route (`/`) is served from `app/page.js`.
 - Feature pages are implemented under `app/` route segments.
 - API endpoints are implemented as Route Handlers under `app/api/`.
@@ -30,11 +31,14 @@ Related docs:
 
 | Domain | Primary source | Primitive | Refresh window | Rationale |
 |---|---|---|---:|---|
-| Events | `eventschemas` | App Router ISR (`app/page.js` + `revalidate`) for home snapshot, SWR for interactive lists | ISR: **6h**; SWR: on demand/focus | Events usually change infrequently; static home snapshot reduces DB load while admin/public event views can still refresh when needed. |
-| Site banner | `sitebannerschemas` | App Router ISR (`app/page.js` + `revalidate`) for home header, SWR in admin editor | ISR: **6h**; SWR: on demand/focus | Banner is editorial and low-frequency, but admin tooling should reflect recent writes quickly. |
-| HPP status | `openIndicator` | SWR client fetch (`/api/hppstatus`) | **15m** (`900000ms`) | Status is operational and should stay reasonably fresh without aggressive polling. |
-| River levels | `riverschemas` | SWR client fetch (`/api/levels`) | **15m** (`900000ms`) | Upstream level data typically updates on a 15-minute cadence. |
-| Forecast data | S3 forecast + derived APIs | SWR client fetch (`/api/s3forecast`, `/api/forecastaccuracy`) | **15m** (`900000ms`) | Forecast and related quality indicators are operational and align to the same source update interval. |
+| Events | `eventschemas` | App Router `unstable_cache` + tags for home snapshot, SWR for interactive lists | Cache: **6h** + write-triggered `revalidateTag`; SWR: on demand/focus | Events usually change infrequently; cached home snapshot reduces DB load and admin writes invalidate snapshot tags immediately. |
+| Site banner | `sitebannerschemas` | App Router `unstable_cache` + tags for home header, SWR in admin editor | Cache: **6h** + write-triggered `revalidateTag`; SWR: on demand/focus | Banner is editorial and low-frequency, with immediate tag invalidation after admin writes. |
+| HPP status | `openIndicator` | Route Handler `revalidate` (15m) + SWR client fetch (`/api/hppstatus`) | **15m** (`900000ms`) | Status is operational and should stay reasonably fresh without aggressive polling while reducing repeated backend computation. |
+| River levels | `riverschemas` | Route Handler `revalidate` (15m) + SWR client fetch (`/api/levels`) | **15m** (`900000ms`) | Upstream level data typically updates on a 15-minute cadence; server-side revalidation smooths request bursts. |
+| Forecast data | S3 forecast + derived APIs | Route Handler `revalidate` (15m) + SWR client fetch (`/api/s3forecast`, `/api/forecastaccuracy`) | **15m** (`900000ms`) | Forecast and related quality indicators are operational and align to the same source update interval. |
+
+For forecast handlers that call S3, `fetch()` is configured with explicit `next.revalidate = 900` to align upstream request caching with route-level revalidation.
+The shared helper `libs/api/fetchWithRevalidate.js` keeps this upstream fetch policy consistent across forecast endpoints.
 
 ### API/application layer
 - Public and protected server handlers are Route Handlers in `app/api/*`.
@@ -109,9 +113,10 @@ Related docs:
    - Forecast pages compare data sources and surface quality metrics.
 
 5. **Home page static data strategy**
-    - `app/page.js` uses App Router ISR (`export const revalidate = 21600`) to cache events/banner and reduce load.
+   - `app/page.js` uses App Router `unstable_cache` (`revalidate = 21600`) with tags (`home-snapshot`, `events`, `site-banner`) to cache events/banner and reduce load.
     - Data assembly for the home snapshot lives in `libs/services/homePageService.js`.
-    - Operational data (levels/status/forecast) remains client-side via SWR with a **15-minute** refresh cadence.
+   - Admin writes in `app/api/events/route.js` and `app/api/sitebanner/route.js` trigger `revalidateTag` for immediate snapshot refresh.
+   - Operational data (levels/status/forecast/water quality) uses Route Handler `revalidate` at **15 minutes** and remains client-side via SWR at the same cadence.
 
 ## 6) App Router status
 - Completed:
@@ -119,7 +124,7 @@ Related docs:
    - NextAuth route uses App Router (`app/api/auth/[...nextauth]/route.js`).
    - API endpoints are implemented as Route Handlers under `app/api/*`.
 - Remaining enhancements:
-   - Introduce cache tags/revalidation (`revalidateTag`) where admin mutations should invalidate static snapshots immediately.
+   - Extend tag-based invalidation to any new editorial snapshot domains beyond events/site banner.
    - Continue extracting reusable domain logic into `libs/services/*` as endpoints evolve.
 
 ## 4) Testing strategy

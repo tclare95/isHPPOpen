@@ -8,6 +8,7 @@ This file helps coding agents work safely and effectively in this repository.
 - Run lint: `npm run lint`
 - Run tests: `npm test`
 - Run coverage: `npm run test:coverage`
+- Node runtime baseline: **20.19+**
 
 ## Environment variables
 Create `.env.local` with values for:
@@ -42,7 +43,7 @@ Keep this file focused on actionable guardrails. If architecture behavior change
 ## Agent guardrails
 - Prefer changing service modules (`libs/services`) over duplicating logic in API routes.
 - Keep API handlers thin: validate input, authorize, delegate, shape response.
-- Use the balanced freshness policy: editorial/event content via ISR/static, operational levels/status/forecast via SWR (~15 minutes).
+- Use the balanced freshness policy: editorial/event content via ISR/static + tags, operational levels/status/forecast via Route Handler revalidate + SWR (~15 minutes).
 - For App Router route handlers, export per-method handlers (`GET`, `POST`, etc), keep one route-level `try/catch`, and map errors via `mapApiError()`.
 - Preserve unauthenticated `GET` for public data endpoints unless explicitly requested otherwise.
 - Use `requireRouteSession()` for protected writes and return `401` when unauthenticated.

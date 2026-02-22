@@ -4,9 +4,12 @@ import { sendRouteError, sendRouteSuccess } from "../../../../../libs/api/httpAp
 
 export const dynamic = "force-dynamic";
 
-export async function GET(_request, { params }) {
+export async function GET(_request, context) {
   try {
+    const params = await context?.params;
     const id = params?.id;
+    if (!id) throw new HttpError(400, "Missing id parameter");
+
     const { db } = await connectToDatabase();
     const csoDataCollection = db.collection("csoData");
 

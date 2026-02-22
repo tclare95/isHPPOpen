@@ -48,6 +48,10 @@ describe('Forecast Stability API route handler', () => {
       revision_trend: 0.008,
     });
     expect(data.stability_data[0].historical_forecasts).toHaveLength(12);
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      'https://test-bucket.s3.amazonaws.com/stability.csv',
+      { next: { revalidate: 900 } }
+    );
   });
 
   test('GET returns empty array when S3_FORECAST_STABILITY_URL not set', async () => {

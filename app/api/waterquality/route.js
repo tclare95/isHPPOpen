@@ -2,7 +2,7 @@ import { connectToDatabase } from "../../../libs/database";
 import { mapApiError } from "../../../libs/api/http";
 import { sendRouteError, sendRouteSuccess } from "../../../libs/api/httpApp";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 900;
 
 async function getActiveCSOs(csoDataCollection, startTime, scrapeTimestamp) {
   return csoDataCollection

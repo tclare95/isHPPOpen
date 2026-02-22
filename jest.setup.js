@@ -1,4 +1,13 @@
 require('@testing-library/jest-dom');
+const { TextEncoder, TextDecoder } = require('util');
+
+if (typeof globalThis.TextEncoder === 'undefined') {
+  globalThis.TextEncoder = TextEncoder;
+}
+
+if (typeof globalThis.TextDecoder === 'undefined') {
+  globalThis.TextDecoder = TextDecoder;
+}
 
 require('dotenv').config({ path: '.env.test' });
 

@@ -11,6 +11,8 @@ import {
   sendRouteSuccess,
 } from "../../../libs/api/httpApp";
 import { createRequestLogger } from "../../../libs/api/logger";
+import { revalidateTagsSafe } from "../../../libs/cache/revalidate";
+import { CACHE_TAGS } from "../../../libs/cache/tags";
 
 export const dynamic = "force-dynamic";
 
@@ -38,6 +40,10 @@ export async function POST(request) {
     const result = await upsertEvent(payload);
 
     if (result.modifiedCount === 1 || result.upsertedCount === 1) {
+      await revalidateTagsSafe([CACHE_TAGS.EVENTS, CACHE_TAGS.HOME_SNAPSHOT], {
+        logger,
+        context: "events-post",
+      });
       logger.info("Event modified", { actor: session?.user?.email, eventId: payload.new_event_id });
       return sendRouteSuccess({ message: "Update successful", id: payload.new_event_id });
     }
@@ -60,6 +66,10 @@ export async function DELETE(request) {
     const result = await deleteEventById(id);
 
     if (result.deletedCount === 1) {
+      await revalidateTagsSafe([CACHE_TAGS.EVENTS, CACHE_TAGS.HOME_SNAPSHOT], {
+        logger,
+        context: "events-delete",
+      });
       logger.info("Event deleted", { actor: session?.user?.email, eventId: id });
       return sendRouteSuccess({ deleted: true, id });
     }

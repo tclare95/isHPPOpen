@@ -1,8 +1,8 @@
 # isHPPOpen
 
-A Next.js application powering ishppopen.co.uk.
+A Next.js App Router application powering ishppopen.co.uk.
 
-The site provides a quick way to check if the Holme Pierrepont whitewater course is open. Water level data, events and status updates are stored in MongoDB and served through Next.js API routes. React Bootstrap components power the UI and SWR hooks fetch data in near real time. An admin section lets authorised users manage events and messages.
+The site provides a quick way to check if the Holme Pierrepont whitewater course is open. Water level data, events and status updates are stored in MongoDB and served through App Router Route Handlers under `app/api`. React Bootstrap components power the UI and SWR hooks fetch data in near real time. An admin section lets authorised users manage events and messages.
 
 ## Local development
 

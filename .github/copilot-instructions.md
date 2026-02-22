@@ -6,13 +6,13 @@ Next.js 15 application for Holme Pierrepont whitewater course status. Displays w
 ## Architecture
 
 ### Data Flow
-1. **API Routes** (`pages/api/`) → query MongoDB via `libs/database.js`
+1. **Route Handlers** (`app/api/`) → query MongoDB via `libs/database.js`
 2. **Service Layer** (`libs/services/`) → encapsulates business logic with Yup validation (see `eventsService.js`)
 3. **Frontend** → uses `libs/useFetch.js` (SWR wrapper) for data fetching with automatic revalidation
 
 ### External Integrations
-- **S3 Forecast**: River level predictions fetched from S3 bucket via `pages/api/s3forecast.js` (CSV format, parsed to JSON)
-- **Water Level Data**: Stored in `riverschemas` collection, served via `pages/api/levels.js`
+- **S3 Forecast**: River level predictions fetched from S3 bucket via `app/api/s3forecast/route.js` (CSV format, parsed to JSON)
+- **Water Level Data**: Stored in `riverschemas` collection, served via `app/api/levels/route.js`
 
 ### MongoDB Collections
 | Collection | Purpose |
@@ -23,8 +23,8 @@ Next.js 15 application for Holme Pierrepont whitewater course status. Displays w
 
 ### Key Patterns
 - **Database Connection**: Uses singleton pattern with global caching in `libs/database.js` - always import `connectToDatabase` from there
-- **API Routes**: Use handler maps + `getMethodHandler()` with one route-level `try/catch`; centralize shared concerns in `libs/api/http.js`
-- **Auth Protection**: Use shared `requireSession()` for protected endpoints (wraps `getServerSession(req, res, authOptions)`). Admin access controlled via Auth0 configuration.
+- **API Routes**: Export per-method handlers (`GET`, `POST`, `DELETE`, etc.) with one route-level `try/catch`; centralize shared concerns in `libs/api/httpApp.js` and `libs/api/http.js`.
+- **Auth Protection**: Use shared `requireRouteSession()` for protected endpoints in Route Handlers. Admin access controlled via Auth0 configuration.
 - **Form Validation**: Yup schemas in service layer (`libs/services/`) and Formik forms (`components/functional/eventsform.js`)
 
 ### Documentation source of truth
@@ -51,10 +51,10 @@ npm run build  # Production build (runs on Vercel)
 ## Testing Patterns
 
 ### API Route Tests
-- Use `node-mocks-http` for request/response mocking
+- Invoke Route Handler exports (`GET`, `POST`, etc.) directly
 - Mock database via `jest.mock('../../libs/database')` 
 - Mock services via `jest.mock('../../libs/services/eventsService')`
-- Mock NextAuth: `jest.mock('next-auth/next')` and mock `pages/api/auth/[...nextauth]`
+- Mock NextAuth: `jest.mock('next-auth')` with `getServerSession` stubs
 - Test files in `__tests__/api/` follow pattern `{route}-api.test.js`
 
 ### Component Tests  
@@ -79,8 +79,8 @@ Required in `.env.local` (and Vercel):
 - `libs/database.js` - MongoDB connection singleton
 - `libs/useFetch.js` - SWR-based data fetching hook
 - `libs/services/eventsService.js` - Events CRUD with validation
-- `pages/api/events.js` - Full CRUD API example with auth
-- `pages/api/s3forecast.js` - S3 forecast integration with CSV parsing
-- `pages/api/hppstatus.js` - Closure statistics from openIndicator collection
+- `app/api/events/route.js` - Full CRUD API example with auth
+- `app/api/s3forecast/route.js` - S3 forecast integration with CSV parsing
+- `app/api/hppstatus/route.js` - Closure statistics from openIndicator collection
 - `components/functional/chart.js` - Google Charts integration pattern
 - `libs/context/graphcontrol.js` - React Context for chart bounds

@@ -21,9 +21,9 @@ Create `.env.local` with values for:
 Without MongoDB env vars, imports from `libs/database.js` throw immediately.
 
 ## Architecture map
-- **Hybrid router app**: root route in `app/page.js`, remaining legacy UI routes in `pages/`, shared UI in `components/`.
-- **API layer**: legacy handlers in `pages/api/*` plus App Router route handlers in `app/api/v2/*`.
-- **API shared helpers**: `libs/api/http.js` centralizes method dispatch, session enforcement, request-body parsing, and error mapping.
+- **App Router app**: UI routes in `app/`, shared UI in `components/`.
+- **API layer**: App Router route handlers in `app/api/*`.
+- **API shared helpers**: `libs/api/http.js` provides shared error primitives/mapping used by route handlers.
 - **App Router helpers**: `libs/api/httpApp.js` centralizes `NextResponse` envelopes, JSON body parsing, and route-handler session checks.
 - **Service layer**: business logic extracted in `libs/services/*` for events and site banner operations.
 - **Data layer**: `libs/database.js` manages a cached singleton Mongo client.
@@ -43,20 +43,15 @@ Keep this file focused on actionable guardrails. If architecture behavior change
 - Prefer changing service modules (`libs/services`) over duplicating logic in API routes.
 - Keep API handlers thin: validate input, authorize, delegate, shape response.
 - Use the balanced freshness policy: editorial/event content via ISR/static, operational levels/status/forecast via SWR (~15 minutes).
-- For API routes, follow the standard pattern:
-	- define `handlers` map by method
-	- dispatch with `getMethodHandler()`
-	- use one route-level `try/catch`
-	- map errors via `mapApiError()`
-- For App Router route handlers, follow the same envelope/error semantics using helpers in `libs/api/httpApp.js`.
+- For App Router route handlers, export per-method handlers (`GET`, `POST`, etc), keep one route-level `try/catch`, and map errors via `mapApiError()`.
 - Preserve unauthenticated `GET` for public data endpoints unless explicitly requested otherwise.
-- Use `requireSession()` for protected writes and return `401` when unauthenticated.
+- Use `requireRouteSession()` for protected writes and return `401` when unauthenticated.
 - Use `403` only for authenticated users who lack permission.
 - Prefer `{ message: "..." }` for error payloads.
 - Prefer shared request logging helpers over inline `console.*` formatting in routes.
 - If adding new API behavior, add/update a corresponding test in `__tests__/api/`.
 - When touching DB logic, keep connection reuse through `connectToDatabase()`.
-- Avoid broad refactors unless needed for the task; this repo has legacy and newer patterns co-existing.
+- Avoid broad refactors unless needed for the task.
 
 ## Definition of done for agent PRs
 1. Code/documentation changes complete.

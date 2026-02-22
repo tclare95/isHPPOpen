@@ -6,19 +6,17 @@ Related docs:
 - Historical pitfalls and rationale: [docs/LESSONS_LEARNED.md](LESSONS_LEARNED.md)
 
 ## 1) Runtime and framework
-- The app is now in a **hybrid migration state**: App Router + Pages Router.
-- The root route (`/`) is served by App Router from `app/page.js`.
-- Legacy/non-migrated UI routes continue to live in `pages/`.
-- API endpoints currently exist in both:
-   - legacy Pages API routes in `pages/api/`
-   - migrated Route Handlers under `app/api/v2/`
+- The app runs on the **App Router**.
+- The root route (`/`) is served from `app/page.js`.
+- Feature pages are implemented under `app/` route segments.
+- API endpoints are implemented as Route Handlers under `app/api/`.
 
 ## 2) High-level layers
 
 ### Presentation layer
 - UI is composed from reusable React components in `components/`.
 - Root page composition is in `app/page.js` (server) + `components/pages/HomePageClient.js` (client).
-- Additional feature pages remain in `pages/` (for example `pages/forecastinfo.js`, `pages/trentweirs.js`, and admin pages under `pages/admin/`).
+- Additional feature pages are implemented in App Router segments (for example `app/forecastinfo/page.js`, `app/trentweirs/page.js`, and admin pages under `app/admin/`).
 - Bootstrap + React-Bootstrap are used for layout and widgets.
 
 ### Client data access
@@ -39,21 +37,17 @@ Related docs:
 | Forecast data | S3 forecast + derived APIs | SWR client fetch (`/api/s3forecast`, `/api/forecastaccuracy`) | **15m** (`900000ms`) | Forecast and related quality indicators are operational and align to the same source update interval. |
 
 ### API/application layer
-- Public and protected server handlers are in both `pages/api/*` (legacy) and `app/api/v2/*` (migrated path).
-- Shared route concerns are centralized in `libs/api/http.js`.
+- Public and protected server handlers are Route Handlers in `app/api/*`.
+- Shared error primitives/mapping are centralized in `libs/api/http.js`.
 - App Router helpers are centralized in `libs/api/httpApp.js`.
 - Current standard route pattern is:
-   - define a small per-method handler map (`handlers`)
-   - dispatch methods via shared `getMethodHandler()`
+   - export per-method handlers (`GET`, `POST`, `DELETE`, etc.)
    - keep one route-level `try/catch` boundary
    - map errors with shared `mapApiError()`
 - Examples:
-  - `pages/api/events.js`: read/update/delete events.
-  - `pages/api/sitebanner.js`: get/update banner messages.
-  - `pages/api/hppstatus.js`: computes closure days over time windows.
-   - `app/api/v2/events/route.js`: App Router route-handler equivalent for events CRUD.
-   - `app/api/v2/sitebanner/route.js`: App Router route-handler equivalent for banner read/update.
-   - `app/api/v2/hppstatus/route.js`: App Router route-handler equivalent for status snapshot.
+  - `app/api/events/route.js`: read/update/delete events.
+  - `app/api/sitebanner/route.js`: get/update banner messages.
+  - `app/api/hppstatus/route.js`: computes closure days over time windows.
 
 ### Service layer
 - Domain logic has begun moving into service modules:
@@ -67,8 +61,8 @@ Related docs:
 - It uses a global cached promise/connection pattern to avoid reconnecting on every request.
 
 ### AuthN/AuthZ
-- NextAuth is configured in `pages/api/auth/[...nextauth].js` using shared options from `libs/auth/authOptions.js`.
-- Protected mutations (e.g., POST/DELETE in events, POST in site banner) rely on server session checks via shared `requireSession()`.
+- NextAuth is configured in `app/api/auth/[...nextauth]/route.js` using shared options from `libs/auth/authOptions.js`.
+- Protected mutations (e.g., POST/DELETE in events, POST in site banner) rely on server session checks via shared `requireRouteSession()`.
 - App Router route handlers use `requireRouteSession()` from `libs/api/httpApp.js`.
 - Unauthenticated protected writes return `401` with `{ message: "Unauthorized" }`.
 - Use `403` only for authenticated users lacking required permissions/roles (if/when role-based authorization is introduced).
@@ -97,7 +91,7 @@ Related docs:
 ## 3) Important functionality
 
 1. **Open/closed status insights**
-   - `pages/api/hppstatus.js` processes historical status records and returns:
+   - `app/api/hppstatus/route.js` processes historical status records and returns:
      - current status
      - effective last open date
      - closure-day counts for 7/28/182/365 day windows
@@ -119,15 +113,14 @@ Related docs:
     - Data assembly for the home snapshot lives in `libs/services/homePageService.js`.
     - Operational data (levels/status/forecast) remains client-side via SWR with a **15-minute** refresh cadence.
 
-## 6) App Router migration status
-- Completed in this phase:
-   - Root route moved to App Router (`app/page.js` + `app/layout.js` + `app/providers.js`).
-   - Shared NextAuth options extracted to `libs/auth/authOptions.js`.
-   - Initial Route Handlers added under `app/api/v2/*` for events/sitebanner/hppstatus/levels/featureflags.
-- Remaining migration work:
-   - Move non-admin pages from `pages/` to `app/` route segments.
-   - Decide cutover strategy for `/api/*` from legacy Pages API routes to App Router Route Handlers.
+## 6) App Router status
+- Completed:
+   - Root route and feature pages use App Router (`app/page.js` + route segments).
+   - NextAuth route uses App Router (`app/api/auth/[...nextauth]/route.js`).
+   - API endpoints are implemented as Route Handlers under `app/api/*`.
+- Remaining enhancements:
    - Introduce cache tags/revalidation (`revalidateTag`) where admin mutations should invalidate static snapshots immediately.
+   - Continue extracting reusable domain logic into `libs/services/*` as endpoints evolve.
 
 ## 4) Testing strategy
 - Jest powers both API route tests and component/unit tests under `__tests__/`.
@@ -137,6 +130,6 @@ Related docs:
   - `npm run lint`
 
 ## 5) Known architectural characteristics
-- The codebase is in a transition state: some logic is still in route handlers while newer behavior uses `libs/services`.
+- Some logic remains in route handlers while newer behavior uses `libs/services`.
 - Some endpoints still accept legacy body shapes; `parseRequestBody()` exists to smooth migration.
 - Continued value: move remaining domain logic from handlers to `libs/services` while preserving the shared route contract.

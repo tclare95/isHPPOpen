@@ -54,6 +54,7 @@ Keep this file focused on actionable guardrails. If architecture behavior change
 - Prefer shared request logging helpers over inline `console.*` formatting in routes.
 - If adding new API behavior, add/update a corresponding test in `__tests__/api/`.
 - When touching DB logic, keep connection reuse through `connectToDatabase()`.
+- Prefer readable, high-quality, DRY code over clever abstractions; add helpers when they remove duplication and improve clarity, not just to increase indirection.
 - Avoid broad refactors unless needed for the task.
 
 ## Definition of done for agent PRs

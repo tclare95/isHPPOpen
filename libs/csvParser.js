@@ -1,9 +1,45 @@
 /**
  * CSV Parser utilities for parsing S3 forecast data
- * 
+ *
  * Provides reusable CSV parsing functions to reduce duplication
  * across forecast-related API routes.
  */
+
+const normalizeCsvText = (csvText) => csvText.trim();
+
+const splitCsvLines = (csvText) => normalizeCsvText(csvText).split(/\r?\n/);
+
+const splitCsvRow = (line) => line.split(',').map((part) => part.trim());
+
+const getDataLines = (lines) => lines.slice(1).filter((line) => line.trim() !== '');
+
+const parseNullableFloat = (value) => {
+  if (value === undefined || value === null) {
+    return null;
+  }
+
+  const normalizedValue = value.trim();
+  if (normalizedValue === '') {
+    return null;
+  }
+
+  const parsedValue = Number.parseFloat(normalizedValue);
+  return Number.isNaN(parsedValue) ? null : parsedValue;
+};
+
+const parseNullableInt = (value) => {
+  if (value === undefined || value === null) {
+    return null;
+  }
+
+  const normalizedValue = value.trim();
+  if (normalizedValue === '') {
+    return null;
+  }
+
+  const parsedValue = Number.parseInt(normalizedValue, 10);
+  return Number.isNaN(parsedValue) ? null : parsedValue;
+};
 
 /**
  * Generic CSV parser that splits CSV text into rows and applies a row parser
@@ -12,17 +48,21 @@
  * @returns {Array} Array of parsed objects, filtered to remove invalid entries
  */
 export function parseCSV(csvText, rowParser) {
-  const lines = csvText.trim().split('\n');
-  
+  const trimmedCsvText = normalizeCsvText(csvText);
+  if (!trimmedCsvText) {
+    return [];
+  }
+
+  const lines = splitCsvLines(trimmedCsvText);
   if (lines.length < 2) {
     return [];
   }
 
   // Skip header row
-  const dataLines = lines.slice(1);
+  const dataLines = getDataLines(lines);
 
   return dataLines
-    .map(rowParser)
+    .map((line) => rowParser(line))
     .filter(Boolean);
 }
 
@@ -32,10 +72,12 @@ export function parseCSV(csvText, rowParser) {
  * @returns {Object|null} Parsed forecast object or null if invalid
  */
 export function parseForecastRow(line) {
-  const [forecast_time, target_time, horizon_hours, predicted_level, current_level] = line.split(',');
-  
-  const forecast_reading = parseFloat(predicted_level);
-  if (isNaN(forecast_reading)) {
+  const [forecast_time, target_time, horizon_hours, predicted_level, current_level] = splitCsvRow(line);
+
+  const forecast_reading = parseNullableFloat(predicted_level);
+  const parsedHorizonHours = parseNullableFloat(horizon_hours);
+
+  if (forecast_reading === null || parsedHorizonHours === null) {
     return null;
   }
 
@@ -43,8 +85,8 @@ export function parseForecastRow(line) {
     forecast_date: target_time,
     forecast_reading,
     forecast_time,
-    horizon_hours: parseFloat(horizon_hours),
-    current_level: parseFloat(current_level),
+    horizon_hours: parsedHorizonHours,
+    current_level: parseNullableFloat(current_level),
   };
 }
 
@@ -63,10 +105,12 @@ export function parseAccuracyRow(line) {
     rmse,
     bias,
     max_error
-  ] = line.split(',');
-  
-  const parsedHorizon = parseInt(horizon_hours, 10);
-  if (isNaN(parsedHorizon)) {
+  ] = splitCsvRow(line);
+
+  const parsedHorizon = parseNullableInt(horizon_hours);
+  const parsedPredictionsCompared = parseNullableInt(predictions_compared);
+
+  if (parsedHorizon === null || parsedPredictionsCompared === null) {
     return null;
   }
 
@@ -74,11 +118,11 @@ export function parseAccuracyRow(line) {
     evaluation_time,
     horizon_hours: parsedHorizon,
     forecast_made_at,
-    predictions_compared: parseInt(predictions_compared, 10),
-    mae: mae ? parseFloat(mae) : null,
-    rmse: rmse ? parseFloat(rmse) : null,
-    bias: bias ? parseFloat(bias) : null,
-    max_error: max_error ? parseFloat(max_error) : null,
+    predictions_compared: parsedPredictionsCompared,
+    mae: parseNullableFloat(mae),
+    rmse: parseNullableFloat(rmse),
+    bias: parseNullableFloat(bias),
+    max_error: parseNullableFloat(max_error),
   };
 }
 
@@ -107,31 +151,24 @@ export function parseCSVToAccuracy(csvText) {
  * @returns {Object|null} Parsed forecast object with stability or null if invalid
  */
 export function parseForecastRowWithStability(line) {
-  const parts = line.split(',');
+  const parts = splitCsvRow(line);
   const [forecast_time, target_time, horizon_hours, predicted_level, current_level] = parts;
   const stability_std = parts[5]; // May be undefined if column doesn't exist
-  
-  const forecast_reading = parseFloat(predicted_level);
-  if (isNaN(forecast_reading)) {
-    return null;
-  }
 
-  // Handle stability_std: could be undefined, empty string, or a number
-  let parsedStability = null;
-  if (stability_std !== undefined && stability_std !== '') {
-    const parsed = parseFloat(stability_std);
-    if (!isNaN(parsed)) {
-      parsedStability = parsed;
-    }
+  const forecast_reading = parseNullableFloat(predicted_level);
+  const parsedHorizonHours = parseNullableFloat(horizon_hours);
+
+  if (forecast_reading === null || parsedHorizonHours === null) {
+    return null;
   }
 
   return {
     forecast_date: target_time,
     forecast_reading,
     forecast_time,
-    horizon_hours: parseFloat(horizon_hours),
-    current_level: parseFloat(current_level),
-    stability_std: parsedStability,
+    horizon_hours: parsedHorizonHours,
+    current_level: parseNullableFloat(current_level),
+    stability_std: parseNullableFloat(stability_std),
   };
 }
 
@@ -142,17 +179,15 @@ export function parseForecastRowWithStability(line) {
  * @returns {Object|null} Parsed stability object or null if invalid
  */
 function parseStabilityRowWithHeaders(line, columnIndices) {
-  const parts = line.split(',');
-  
+  const parts = splitCsvRow(line);
+
   const getValue = (colName) => {
     const idx = columnIndices[colName];
     if (idx === undefined || idx >= parts.length) return null;
     const val = parts[idx];
-    if (val === undefined || val === '') return null;
-    const parsed = parseFloat(val);
-    return isNaN(parsed) ? null : parsed;
+    return parseNullableFloat(val);
   };
-  
+
   const getStringValue = (colName) => {
     const idx = columnIndices[colName];
     if (idx === undefined || idx >= parts.length) return null;
@@ -199,22 +234,24 @@ export function parseCSVToForecastWithStability(csvText) {
  * @returns {Array} Array of stability data objects
  */
 export function parseCSVToStability(csvText) {
-  const lines = csvText.trim().split('\n');
-  
+  const trimmedCsvText = normalizeCsvText(csvText);
+  if (!trimmedCsvText) {
+    return [];
+  }
+
+  const lines = splitCsvLines(trimmedCsvText);
   if (lines.length < 2) {
     return [];
   }
 
   // Parse header to get column indices
-  const headers = lines[0].split(',');
-  const columnIndices = {};
-  headers.forEach((header, index) => {
-    columnIndices[header.trim()] = index;
-  });
+  const columnIndices = Object.fromEntries(
+    splitCsvRow(lines[0]).map((header, index) => [header, index]),
+  );
 
   // Parse data rows
-  const dataLines = lines.slice(1);
+  const dataLines = getDataLines(lines);
   return dataLines
-    .map(line => parseStabilityRowWithHeaders(line, columnIndices))
+    .map((line) => parseStabilityRowWithHeaders(line, columnIndices))
     .filter(Boolean);
 }

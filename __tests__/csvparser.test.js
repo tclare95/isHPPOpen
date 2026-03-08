@@ -19,6 +19,10 @@ describe('CSV Parser', () => {
       expect(parseCSV('header1,header2', (row) => row)).toEqual([]);
     });
 
+    test('returns empty array for whitespace-only CSV', () => {
+      expect(parseCSV('   \n  \n', (row) => row)).toEqual([]);
+    });
+
     test('parses CSV and applies row parser', () => {
       const csv = 'col1,col2\nvalue1,value2\nvalue3,value4';
       const rowParser = (row) => {
@@ -41,6 +45,20 @@ describe('CSV Parser', () => {
       expect(result).toEqual([
         { value: 'valid' },
         { value: 'valid2' },
+      ]);
+    });
+
+    test('ignores blank data lines', () => {
+      const csv = 'col1,col2\nvalue1,value2\n\nvalue3,value4\n';
+
+      const result = parseCSV(csv, (row) => {
+        const [a, b] = row.split(',');
+        return { a, b };
+      });
+
+      expect(result).toEqual([
+        { a: 'value1', b: 'value2' },
+        { a: 'value3', b: 'value4' },
       ]);
     });
   });
@@ -98,6 +116,25 @@ describe('CSV Parser', () => {
       expect(result.bias).toBeNull();
       expect(result.max_error).toBeNull();
     });
+
+    test('treats malformed optional numeric fields as null', () => {
+      const row = '2025-12-06T10:00:00Z,6,2025-12-06T04:00:00Z,100,not-a-number,0.08, ,oops';
+      const result = parseAccuracyRow(row);
+
+      expect(result).toMatchObject({
+        mae: null,
+        rmse: 0.08,
+        bias: null,
+        max_error: null,
+      });
+    });
+
+    test('returns null for invalid predictions compared', () => {
+      const row = '2025-12-06T10:00:00Z,6,2025-12-06T04:00:00Z,invalid,0.05,0.08,0.02,0.15';
+      const result = parseAccuracyRow(row);
+
+      expect(result).toBeNull();
+    });
   });
 
   describe('parseCSVToForecast', () => {
@@ -111,6 +148,21 @@ describe('CSV Parser', () => {
       expect(result).toHaveLength(2);
       expect(result[0].forecast_reading).toBe(1.45);
       expect(result[1].forecast_reading).toBe(1.48);
+    });
+
+    test('skips malformed rows while preserving valid rows', () => {
+      const csv = `forecast_time,target_time,horizon_hours,predicted_level,current_level
+2025-12-06T10:00:00Z,2025-12-06T12:00:00Z,2,1.45,1.42
+2025-12-06T10:00:00Z,2025-12-06T14:00:00Z,invalid,1.48,1.42
+2025-12-06T10:00:00Z,2025-12-06T16:00:00Z,6,1.52,1.42`;
+
+      const result = parseCSVToForecast(csv);
+
+      expect(result).toHaveLength(2);
+      expect(result.map((entry) => entry.forecast_date)).toEqual([
+        '2025-12-06T12:00:00Z',
+        '2025-12-06T16:00:00Z',
+      ]);
     });
   });
 
@@ -177,6 +229,16 @@ describe('CSV Parser', () => {
       expect(result[0].stability_std).toBe(0.015);
       expect(result[1].stability_std).toBe(0.025);
     });
+
+    test('treats malformed stability values as null', () => {
+      const csv = `forecast_time,target_time,horizon_hours,predicted_level,current_level,stability_std
+2025-12-06T10:00:00Z,2025-12-06T12:00:00Z,2,1.45,1.42,invalid`;
+
+      const result = parseCSVToForecastWithStability(csv);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].stability_std).toBeNull();
+    });
   });
 
   describe('parseCSVToStability', () => {
@@ -193,7 +255,7 @@ describe('CSV Parser', () => {
       expect(result[0].revision_trend).toBe(0.008);
       expect(result[0].rain_forecast_mm).toBe(5.5);
       expect(result[0].historical_forecasts[0]).toBe(1.44);
-      expect(result[1].forecast_current).toBe(1.50);
+      expect(result[1].forecast_current).toBe(1.5);
       expect(result[1].revision_trend).toBe(-0.005);
       expect(result[1].rain_forecast_mm).toBe(8.2);
     });
@@ -220,6 +282,40 @@ describe('CSV Parser', () => {
       expect(result).toHaveLength(1);
       expect(result[0].forecast_current).toBe(1.45);
       expect(result[0].rain_forecast_mm).toBeNull();
+    });
+
+    test('returns empty array for whitespace-only stability CSV', () => {
+      expect(parseCSVToStability(' \n \n ')).toEqual([]);
+    });
+
+    test('treats malformed optional stability metrics as null', () => {
+      const csv = `target_time,forecast_current,forecast_1h_ago,forecast_2h_ago,stability_std,stability_range,revision_trend,rain_forecast_mm
+2025-12-06T12:00:00Z,1.45,invalid,1.43,nope,bad,,oops`;
+
+      const result = parseCSVToStability(csv);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].historical_forecasts[0]).toBeNull();
+      expect(result[0].historical_forecasts[1]).toBe(1.43);
+      expect(result[0].stability_std).toBeNull();
+      expect(result[0].stability_range).toBeNull();
+      expect(result[0].revision_trend).toBeNull();
+      expect(result[0].rain_forecast_mm).toBeNull();
+    });
+
+    test('skips invalid stability rows but keeps valid rows', () => {
+      const csv = `target_time,forecast_current,forecast_1h_ago,forecast_2h_ago,stability_std
+2025-12-06T12:00:00Z,1.45,1.44,1.43,0.035
+2025-12-06T14:00:00Z,invalid,1.49,1.48,0.040
+2025-12-06T16:00:00Z,1.55,1.54,1.53,0.045`;
+
+      const result = parseCSVToStability(csv);
+
+      expect(result).toHaveLength(2);
+      expect(result.map((entry) => entry.target_time)).toEqual([
+        '2025-12-06T12:00:00Z',
+        '2025-12-06T16:00:00Z',
+      ]);
     });
   });
 });

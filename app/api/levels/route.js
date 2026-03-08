@@ -1,20 +1,15 @@
-import { connectToDatabase } from "../../../libs/database";
 import { mapApiError } from "../../../libs/api/http";
 import { sendRouteError, sendRouteSuccess } from "../../../libs/api/httpApp";
 import { createRequestLogger } from "../../../libs/api/logger";
+import { getLatestLevelsSnapshot } from "../../../libs/services/levelsService";
 
 export const revalidate = 900;
 
 export async function GET() {
   const logger = createRequestLogger({ method: "GET" }, "api/levels");
   try {
-    const { db } = await connectToDatabase();
-    const collection = db.collection("riverschemas");
-    const data = await collection.find().sort({ _id: -1 }).limit(1).next();
-    return sendRouteSuccess({
-      level_data: data?.level_readings ?? [],
-      forecast_data: data?.forecast_readings ?? [],
-    });
+    const data = await getLatestLevelsSnapshot();
+    return sendRouteSuccess(data);
   } catch (error) {
     const { statusCode, message } = mapApiError(error);
     logger.error("Error in levels", error);

@@ -69,6 +69,7 @@ The shared helper `libs/api/fetchWithRevalidate.js` keeps this upstream fetch po
 ### Data layer
 - MongoDB connectivity is centralized in `libs/database.js`.
 - It uses a global cached promise/connection pattern to avoid reconnecting on every request.
+- Failed connection attempts are cleared from the cache so later requests can retry after transient Mongo outages.
 
 ### AuthN/AuthZ
 - NextAuth is configured in `app/api/auth/[...nextauth]/route.js` using shared options from `libs/auth/authOptions.js`.
@@ -97,6 +98,7 @@ The shared helper `libs/api/fetchWithRevalidate.js` keeps this upstream fetch po
 - `405` should return JSON in the same error shape and include `Allow`.
 - Frontend fetch helpers should unwrap `{ ok: true, data }` to keep consumer code simple.
 - For empty-state reads (e.g. `hppstatus` with no records), prefer `200` with explicit empty payload metadata over `500`.
+- For homepage-critical operational reads (currently `hppstatus` and `levels`), prefer `200` with intentional fallback payloads during transient Mongo outages so the SPA can degrade gracefully instead of crashing.
 
 ## 3) Important functionality
 
@@ -133,6 +135,7 @@ The shared helper `libs/api/fetchWithRevalidate.js` keeps this upstream fetch po
 7. **Home page static data strategy**
    - `app/page.js` uses App Router `unstable_cache` (`revalidate = 21600`) with tags (`home-snapshot`, `events`, `site-banner`) to cache events/banner and reduce load.
     - Data assembly for the home snapshot lives in `libs/services/homePageService.js`.
+   - Home snapshot assembly tolerates partial Mongo-backed failures so banner and events can fall back independently.
    - Admin writes in `app/api/events/route.js` and `app/api/sitebanner/route.js` trigger `revalidateTag` for immediate snapshot refresh.
    - Operational data (levels/status/forecast/water quality) uses Route Handler `revalidate` at **15 minutes** and remains client-side via SWR at the same cadence.
 

@@ -46,6 +46,7 @@ Keep this file focused on actionable guardrails. If architecture behavior change
 - Follow the newer route pattern used by levels, water quality, and Trent Lock endpoints: keep DB/query/transformation logic in services, not handlers.
 - Use the balanced freshness policy: editorial/event content via ISR/static + tags, operational levels/status/forecast via Route Handler revalidate + SWR (~15 minutes).
 - For App Router route handlers, export per-method handlers (`GET`, `POST`, etc), keep one route-level `try/catch`, and map errors via `mapApiError()`.
+- For homepage-critical operational `GET` endpoints, prefer intentional fallback payloads over hard failures during transient Mongo outages when that avoids client breakage.
 - Preserve unauthenticated `GET` for public data endpoints unless explicitly requested otherwise.
 - Use `requireRouteSession()` for protected writes and return `401` when unauthenticated.
 - Use `403` only for authenticated users who lack permission.

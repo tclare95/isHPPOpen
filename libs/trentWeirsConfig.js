@@ -15,6 +15,8 @@ export const TRENT_DASHBOARD_STATIONS = [
     group: "Nottingham reach",
     summary: "Useful downstream city reference with a broad comparison role.",
     comparisonEnabled: true,
+    alertingEnabled: true,
+    forecastAvailable: true,
   },
   {
     stationId: 4126,

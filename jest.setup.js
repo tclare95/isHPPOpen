@@ -26,6 +26,18 @@ jest.mock('next/server', () => ({
         },
       };
     },
+    redirect(url, init = {}) {
+      return {
+        status: init.status || 307,
+        headers: {
+          Location: typeof url === 'string' ? url : url.toString(),
+          ...(init.headers || {}),
+        },
+        async json() {
+          return null;
+        },
+      };
+    },
   },
 }));
 

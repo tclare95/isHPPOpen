@@ -1,5 +1,6 @@
 import PropTypes from "prop-types";
 import { useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Alert from "react-bootstrap/Alert";
 import Badge from "react-bootstrap/Badge";
 import Button from "react-bootstrap/Button";
@@ -15,6 +16,7 @@ import {
   TRENT_CHART_STATIONS,
   TRENT_WEIR_BLOCKS,
 } from "../../libs/trentWeirsConfig";
+import AlertManagementAccess from "./alertManagementAccess";
 import MultiMeasureChart from "./multimeasurechart";
 import TrentWeirBlock from "./trentWeir";
 
@@ -35,11 +37,20 @@ function getAllComparisonKeys() {
 }
 
 export default function TrentDashboard({ initialViewMode = "level" }) {
+  const searchParams = useSearchParams();
   const [numDays, setNumDays] = useState(3);
   const [viewMode, setViewMode] = useState(initialViewMode);
   const [selectedKeys, setSelectedKeys] = useState(getAllComparisonKeys);
   const [overviewHidden, setOverviewHidden] = useState(false);
   const { data, error, isPending } = useFetch("/api/trentweirs", SWR_15_MINUTES);
+  const alertStatus = searchParams?.get("alertStatus");
+  const alertMessage = searchParams?.get("alertMessage");
+
+  const dashboardAlertVariant = alertStatus === "error"
+    ? "danger"
+    : alertStatus === "unsubscribed"
+      ? "secondary"
+      : "success";
 
   const selectedStations = useMemo(
     () => TRENT_CHART_STATIONS.filter((station) => selectedKeys.includes(getTrentStationKey(station))),
@@ -86,10 +97,14 @@ export default function TrentDashboard({ initialViewMode = "level" }) {
                 <Badge bg="secondary">{selectionCount} selected</Badge>
               </Stack>
               <div className="text-secondary small">Pick gauges here, then review the comparison workspace below.</div>
+              <div className="text-secondary small">Colwick now also supports live and forecast email alerts.</div>
             </div>
           </Col>
           <Col lg={7}>
-            <Stack direction="horizontal" className="gap-2 flex-wrap justify-content-center justify-content-lg-end">
+            <Stack direction="horizontal" className="gap-2 flex-wrap justify-content-center justify-content-lg-end align-items-start">
+              <div style={{ minWidth: "260px" }}>
+                <AlertManagementAccess compact />
+              </div>
               <Button size="sm" variant="outline-light" href="#trent-compare">
                 Jump to comparison
               </Button>
@@ -217,6 +232,11 @@ export default function TrentDashboard({ initialViewMode = "level" }) {
 
   return (
     <>
+      {alertStatus && alertMessage ? (
+        <Alert variant={dashboardAlertVariant} className="mb-4">
+          {alertMessage}
+        </Alert>
+      ) : null}
       {controlsSection}
       {overviewHidden ? null : summarySection}
       {comparisonSection}

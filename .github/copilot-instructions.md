@@ -84,3 +84,4 @@ Required in `.env.local` (and Vercel):
 - `app/api/hppstatus/route.js` - Closure statistics from openIndicator collection
 - `components/functional/chart.js` - Google Charts integration pattern
 - `libs/context/graphcontrol.js` - React Context for chart bounds
+

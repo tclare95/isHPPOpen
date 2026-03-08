@@ -1,7 +1,8 @@
 import { parseCSVToStability } from "../../../libs/csvParser";
 import { sendRouteSuccess } from "../../../libs/api/httpApp";
 import { fetchWithOperationalRevalidate } from "../../../libs/api/fetchWithRevalidate";
-export { API_OPERATIONAL_REVALIDATE_SECONDS as revalidate } from "../../../libs/dataFreshness";
+
+export const revalidate = 900;
 
 export async function GET() {
   try {

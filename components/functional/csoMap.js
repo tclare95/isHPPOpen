@@ -1,6 +1,8 @@
 import dynamic from "next/dynamic";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Badge from "react-bootstrap/Badge";
+import useFetch from "../../libs/useFetch";
+import { SWR_15_MINUTES } from "../../libs/dataFreshness";
 
 const MapContainer = dynamic(() => import("react-leaflet").then(mod => mod.MapContainer), { ssr: false });
 const TileLayer = dynamic(() => import("react-leaflet").then(mod => mod.TileLayer), { ssr: false });
@@ -9,15 +11,54 @@ const Popup = dynamic(() => import("react-leaflet").then(mod => mod.Popup), { ss
 
 const center = [52.94576790782451, -1.0907147684529286];
 
+function csoLocation(csoDetails, csoId) {
+  const location = csoDetails[csoId]?.Coordinates;
+  return location ? [location.y, location.x] : center;
+}
+
+function calculateActiveTime(details) {
+  if (!details) return "N/A";
+  const start = new Date(details.LatestEventStart);
+  const end = details.LatestEventEnd ? new Date(details.LatestEventEnd) : new Date();
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    return "N/A";
+  }
+  const diffMs = end - start;
+  const diffMins = Math.round(diffMs / (1000 * 60));
+  const hours = Math.floor(diffMins / 60);
+  const minutes = diffMins % 60;
+  return `${hours} hrs ${minutes} mins`;
+}
+
+function formatTimestamp(timestamp) {
+  if (!timestamp) return "N/A";
+  const date = new Date(timestamp);
+  return Number.isNaN(date.getTime()) ? "N/A" : date.toLocaleString();
+}
+
 export default function WaterQualityMap() {
-  const [waterQualityData, setWaterQualityData] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [csoDetails, setCsoDetails] = useState({});
   const [icons, setIcons] = useState({
     active: null,
     inactive: null,
   });
+  const { data, error: waterQualityError, isPending: waterQualityPending } = useFetch(
+    "/api/waterquality",
+    SWR_15_MINUTES
+  );
+  const waterQualityData = data?.waterQualityData ?? null;
+  const csoIds = useMemo(
+    () => (Array.isArray(waterQualityData?.WaterQuality?.CSOIds) ? waterQualityData.WaterQuality.CSOIds.filter(Boolean) : []),
+    [waterQualityData]
+  );
+  const shouldFetchCsoDetails = csoIds.length > 0;
+  const csoDetailsPath = shouldFetchCsoDetails
+    ? `/api/waterquality/cso?ids=${csoIds.join(",")}`
+    : null;
+  const {
+    data: csoDetailsData,
+    isPending: csoDetailsPending,
+  } = useFetch(csoDetailsPath, SWR_15_MINUTES);
+  const csoDetails = csoDetailsData?.csoData ?? {};
 
   useEffect(() => {
     let ignore = false;
@@ -41,78 +82,28 @@ export default function WaterQualityMap() {
             iconAnchor: [12, 25],
           }),
         });
-      } catch (iconError) {
+      } catch {
         if (!ignore) {
-          console.error("Failed to initialize map icons", iconError);
-        }
-      }
-    };
-
-    const fetchWaterQualityData = async () => {
-      try {
-        const response = await fetch("/api/waterquality");
-        if (!response.ok) {
-          throw new Error(`Water quality request failed with status ${response.status}`);
-        }
-
-        const payload = await response.json();
-        const data = payload?.ok === true ? payload.data : payload;
-        const latest = data?.waterQualityData ?? null;
-        if (!latest) {
-          throw new Error("Water quality payload missing data");
-        }
-
-        if (ignore) return;
-        setWaterQualityData(latest);
-
-        const ids = Array.isArray(latest?.WaterQuality?.CSOIds)
-          ? latest.WaterQuality.CSOIds.filter(Boolean)
-          : [];
-
-        if (!ids.length) {
-          return;
-        }
-
-        try {
-          const bulkRes = await fetch(`/api/waterquality/cso?ids=${ids.join(",")}`);
-          if (!bulkRes.ok) {
-            throw new Error(`Bulk CSO request failed with status ${bulkRes.status}`);
-          }
-
-          const bulkPayload = await bulkRes.json();
-          const bulkJson = bulkPayload?.ok === true ? bulkPayload.data : bulkPayload;
-          if (!ignore) {
-            setCsoDetails(bulkJson?.csoData || {});
-          }
-        } catch (bulkError) {
-          console.error("Failed to fetch bulk CSO data", bulkError);
-        }
-      } catch (fetchError) {
-        if (!ignore) {
-          console.error("Failed to fetch map water quality data", fetchError);
-          setError("Unable to load map data right now.");
-        }
-      } finally {
-        if (!ignore) {
-          setIsLoading(false);
+          setIcons({ active: null, inactive: null });
         }
       }
     };
 
     initializeIcons();
-    fetchWaterQualityData();
 
     return () => {
       ignore = true;
     };
   }, []);
 
+  const isLoading = waterQualityPending || (shouldFetchCsoDetails && csoDetailsPending);
+
   if (isLoading) {
     return <p>Loading map data...</p>;
   }
 
-  if (error) {
-    return <p>{error}</p>;
+  if (waterQualityError) {
+    return <p>Unable to load map data right now.</p>;
   }
 
   if (!waterQualityData) {
@@ -120,9 +111,6 @@ export default function WaterQualityMap() {
   }
 
   const activeCSOs = new Set(Array.isArray(waterQualityData.ActiveCSOIds) ? waterQualityData.ActiveCSOIds : []);
-  const csoIds = Array.isArray(waterQualityData?.WaterQuality?.CSOIds)
-    ? waterQualityData.WaterQuality.CSOIds
-    : [];
 
   if (!csoIds.length) {
     return <p>No recent CSO locations found.</p>;
@@ -140,7 +128,7 @@ export default function WaterQualityMap() {
       />
 
       {csoIds.map((id) => {
-        const position = csoLocation(id);
+        const position = csoLocation(csoDetails, id);
         const activeTime = calculateActiveTime(csoDetails[id]);
         return (
           <Marker
@@ -173,29 +161,4 @@ export default function WaterQualityMap() {
       })}
     </MapContainer>
   );
-
-  function csoLocation(csoId) {
-    const location = csoDetails[csoId]?.Coordinates;
-    return location ? [location.y, location.x] : center; // fallback to center
-  }
-
-  function calculateActiveTime(details) {
-    if (!details) return "N/A";
-    const start = new Date(details.LatestEventStart);
-    const end = details.LatestEventEnd ? new Date(details.LatestEventEnd) : new Date();
-    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
-      return "N/A";
-    }
-    const diffMs = end - start;
-    const diffMins = Math.round(diffMs / (1000 * 60));
-    const hours = Math.floor(diffMins / 60);
-    const minutes = diffMins % 60;
-    return `${hours} hrs ${minutes} mins`;
-  }
-
-  function formatTimestamp(timestamp) {
-    if (!timestamp) return "N/A";
-    const date = new Date(timestamp);
-    return Number.isNaN(date.getTime()) ? "N/A" : date.toLocaleString();
-  }
 }

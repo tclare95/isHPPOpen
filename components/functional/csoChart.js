@@ -1,5 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo } from 'react';
 import dynamic from 'next/dynamic';
+import useFetch from '../../libs/useFetch';
+import { SWR_15_MINUTES } from '../../libs/dataFreshness';
 
 const Chart = dynamic(
   () => import('react-google-charts').then((mod) => mod.Chart),
@@ -12,65 +14,32 @@ const chartArrayHeader = [
 ];
 
 const CsoChart = () => {
-  const [chartData, setChartData] = useState([chartArrayHeader]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
+  const { data, error, isPending } = useFetch('/api/waterquality/csodensity', SWR_15_MINUTES);
 
-  useEffect(() => {
-    let ignore = false;
+  const chartData = useMemo(() => {
+    const source = Array.isArray(data) ? data : [];
+    const rows = source
+      .map((element) => {
+        const dateConvert = new Date(Date.parse(element?.timestamp));
+        const numberPerKm2 = Number(element?.numberCSOsPerKm2);
 
-    const fetchData = async () => {
-      try {
-        const response = await fetch('/api/waterquality/csodensity');
-        if (!response.ok) {
-          throw new Error(`CSO density request failed with status ${response.status}`);
+        if (Number.isNaN(dateConvert.getTime()) || !Number.isFinite(numberPerKm2)) {
+          return null;
         }
 
-        const payload = await response.json();
-        const csoData = payload?.ok === true ? payload.data : payload;
-        const source = Array.isArray(csoData) ? csoData : [];
-        const data = source
-          .map((element) => {
-            const dateConvert = new Date(Date.parse(element?.timestamp));
-            const numberPerKm2 = Number(element?.numberCSOsPerKm2);
+        return [dateConvert, numberPerKm2];
+      })
+      .filter(Boolean);
 
-            if (Number.isNaN(dateConvert.getTime()) || !Number.isFinite(numberPerKm2)) {
-              return null;
-            }
+    return [chartArrayHeader, ...rows];
+  }, [data]);
 
-            return [dateConvert, numberPerKm2];
-          })
-          .filter(Boolean);
-
-        // Set chart data with header
-        if (!ignore) {
-          setChartData([chartArrayHeader, ...data]);
-        }
-      } catch (error) {
-        console.error('Error fetching CSO data:', error);
-        if (!ignore) {
-          setError('Unable to load chart data right now.');
-        }
-      } finally {
-        if (!ignore) {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    fetchData();
-
-    return () => {
-      ignore = true;
-    };
-  }, []); // Empty dependency array to run only once on mount
-
-  if (isLoading) {
+  if (isPending) {
     return <div>Loading chart...</div>;
   }
 
   if (error) {
-    return <div>{error}</div>;
+    return <div>Unable to load chart data right now.</div>;
   }
 
   if (chartData.length <= 1) {

@@ -54,18 +54,17 @@ describe('Forecast Stability API route handler', () => {
     );
   });
 
-  test('GET returns empty array when S3_FORECAST_STABILITY_URL not set', async () => {
+  test('GET returns 500 when S3_FORECAST_STABILITY_URL is not set', async () => {
     delete process.env.S3_FORECAST_STABILITY_URL;
 
     const res = await GET();
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(500);
     const payload = await res.json();
-    expect(payload.ok).toBe(true);
-    const data = payload.data;
-    expect(data.stability_data).toEqual([]);
+    expect(payload.ok).toBe(false);
+    expect(payload.error.message).toBe('Forecast stability source is not configured');
   });
 
-  test('GET returns empty array when S3 fetch fails', async () => {
+  test('GET returns 502 when S3 fetch fails', async () => {
     process.env.S3_FORECAST_STABILITY_URL = 'https://test-bucket.s3.amazonaws.com/stability.csv';
     
     globalThis.fetch.mockResolvedValue({
@@ -74,11 +73,40 @@ describe('Forecast Stability API route handler', () => {
     });
 
     const res = await GET();
+    expect(res.status).toBe(502);
+    const payload = await res.json();
+    expect(payload.ok).toBe(false);
+    expect(payload.error.message).toBe('Unable to fetch forecast stability data');
+  });
+
+  test('GET returns 502 when the stability payload is invalid', async () => {
+    process.env.S3_FORECAST_STABILITY_URL = 'https://test-bucket.s3.amazonaws.com/stability.csv';
+
+    globalThis.fetch.mockResolvedValue({
+      ok: true,
+      text: () => Promise.resolve('target_time,forecast_current\n2025-12-06T12:00:00Z,not-a-number'),
+    });
+
+    const res = await GET();
+    expect(res.status).toBe(502);
+    const payload = await res.json();
+    expect(payload.ok).toBe(false);
+    expect(payload.error.message).toBe('Invalid forecast stability payload');
+  });
+
+  test('GET returns empty array for a true empty dataset', async () => {
+    process.env.S3_FORECAST_STABILITY_URL = 'https://test-bucket.s3.amazonaws.com/stability.csv';
+
+    globalThis.fetch.mockResolvedValue({
+      ok: true,
+      text: () => Promise.resolve('target_time,forecast_current'),
+    });
+
+    const res = await GET();
     expect(res.status).toBe(200);
     const payload = await res.json();
     expect(payload.ok).toBe(true);
-    const data = payload.data;
-    expect(data.stability_data).toEqual([]);
+    expect(payload.data.stability_data).toEqual([]);
   });
 
   test('route exposes GET handler', async () => {

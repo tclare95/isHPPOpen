@@ -17,7 +17,7 @@ Create `.env.local` with values for:
 - `AUTH0_CLIENT_ID`
 - `AUTH0_CLIENT_SECRET`
 - `AUTH0_DOMAIN`
-- `NEXTAUTH_SECRET` (or legacy `SECRET` fallback)
+- `NEXTAUTH_SECRET` (preferred; legacy `SECRET` fallback should be treated as temporary)
 
 Without MongoDB env vars, imports from `libs/database.js` throw immediately.
 

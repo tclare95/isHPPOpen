@@ -51,6 +51,17 @@ export default function OpenTitle(props) {
     );
   }
 
+  const latestLevelReading = levelData?.level_data?.[0];
+  const latestLevel = latestLevelReading?.reading_level;
+
+  if (!Number.isFinite(latestLevel)) {
+    return (
+      <h2 className="font-weight-bold m-3">
+        HPP status is <span className="text-warning">Unknown</span>
+      </h2>
+    );
+  }
+
     // Calculate days since HPP was last open
     const currentDate = new Date();
     const lastOpenReference = statusData.effectiveLastOpenAt ?? statusData.effectiveLastOpenDate;
@@ -78,7 +89,7 @@ export default function OpenTitle(props) {
     );
   }
   //check if the most recent recorded river level is >2.2m
-  if (levelData.level_data[0].reading_level > 2.2) {
+  if (latestLevel > 2.2) {
     return (
       <>
       <h2 className="font-weight-bold m-3">

@@ -1,11 +1,11 @@
 require('@testing-library/jest-dom');
-const { TextEncoder, TextDecoder } = require('util');
+const { TextEncoder, TextDecoder } = require('node:util');
 
-if (typeof globalThis.TextEncoder === 'undefined') {
+if (globalThis.TextEncoder === undefined) {
   globalThis.TextEncoder = TextEncoder;
 }
 
-if (typeof globalThis.TextDecoder === 'undefined') {
+if (globalThis.TextDecoder === undefined) {
   globalThis.TextDecoder = TextDecoder;
 }
 
@@ -29,7 +29,7 @@ jest.mock('next/server', () => ({
   },
 }));
 
-if (typeof globalThis.Request === 'undefined') {
+if (globalThis.Request === undefined) {
   globalThis.Request = class Request {
     constructor(url, init = {}) {
       this.url = url;
@@ -44,7 +44,7 @@ if (typeof globalThis.Request === 'undefined') {
   };
 }
 
-global.console = {
+globalThis.console = {
   ...console,
   log: jest.fn(),
   error: jest.fn(),

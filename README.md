@@ -15,6 +15,7 @@ The site provides a quick way to check if the Holme Pierrepont whitewater course
    - `AUTH0_CLIENT_SECRET`
    - `AUTH0_DOMAIN`
    - `NEXTAUTH_SECRET` (`SECRET` is legacy-only fallback during migration)
+   - `NEXTAUTH_URL` (for local development use `http://localhost:3000` including the scheme)
 3. Run the app:
    - `npm run dev`
 
@@ -25,6 +26,10 @@ The site provides a quick way to check if the Holme Pierrepont whitewater course
 - `npm test` - run Jest tests
 - `npm run test:coverage` - run tests with coverage
 - `npm run lint` - run ESLint
+
+## Admin workflows
+- Events admin supports create, edit, delete, reset, and clear success/error confirmation states.
+- Site banner admin supports title, message, visibility toggle, scheduled start/end, immediate-start banners, and open-ended banners.
 
 ## API route conventions
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) (API/application layer + API route conventions) for the canonical, maintained standard.

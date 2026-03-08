@@ -115,7 +115,14 @@ The shared helper `libs/api/fetchWithRevalidate.js` keeps this upstream fetch po
 
 3. **Site banner management**
    - Public endpoint exposes current banner entries.
-   - Authenticated admin updates banner content and scheduling.
+   - Authenticated admin updates banner title, content, visibility, and scheduling.
+   - Homepage rendering respects the saved `banner_enabled` flag while preserving draft message/title content in storage.
+   - Banner scheduling supports optional start/end dates, enabling both immediate banners and open-ended banners that remain visible until explicitly hidden.
+
+8. **Admin editing experience**
+   - Admin pages now use a more consistent editing pattern across events and site banner workflows.
+   - Event management uses a focused list-and-editor flow with consistent save/reset/delete feedback.
+   - Banner management includes preview, visibility toggle, scheduling controls, and clearer loading/success/error states.
 
 4. **Forecasting and analysis views**
    - Forecast pages compare data sources and surface quality metrics.

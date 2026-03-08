@@ -41,7 +41,7 @@ describe('Events API route handler', () => {
 
   test('POST updates event when authenticated', async () => {
     getServerSession.mockResolvedValue({ user: { email: 'admin@test.com' } });
-    eventsService.upsertEvent.mockResolvedValue({ modifiedCount: 1, upsertedCount: 0 });
+    eventsService.upsertEvent.mockResolvedValue({ acknowledged: true, modifiedCount: 1, matchedCount: 1, upsertedCount: 0 });
 
     const res = await POST(makeRequest('http://localhost/api/events', {
       new_event_id: 'evt-1',
@@ -57,6 +57,22 @@ describe('Events API route handler', () => {
     expect(payload.data.id).toBe('evt-1');
   });
 
+  test('POST returns success when event content is unchanged', async () => {
+    getServerSession.mockResolvedValue({ user: { email: 'admin@test.com' } });
+    eventsService.upsertEvent.mockResolvedValue({ acknowledged: true, modifiedCount: 0, matchedCount: 1, upsertedCount: 0 });
+
+    const res = await POST(makeRequest('http://localhost/api/events', {
+      new_event_id: 'evt-1',
+      new_event_name: 'Race',
+      new_event_start_date: '2026-02-20',
+      new_event_end_date: '2026-02-21',
+      new_event_details: 'Details',
+    }));
+    const payload = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(payload.data.message).toBe('Event updated');
+  });
   test('POST returns 400 on validation error', async () => {
     getServerSession.mockResolvedValue({ user: { email: 'admin@test.com' } });
     eventsService.upsertEvent.mockRejectedValue(new ValidationError('Validation failed'));

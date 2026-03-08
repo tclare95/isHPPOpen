@@ -15,7 +15,9 @@ describe('homePageService', () => {
     getBanners.mockResolvedValue([
       {
         _id: { toString: () => 'banner-1' },
+        banner_title: 'Important update',
         banner_message: 'Banner message',
+        banner_enabled: true,
         banner_update_date: '2026-03-08T10:00:00Z',
       },
     ]);
@@ -24,6 +26,8 @@ describe('homePageService', () => {
 
     expect(result.events).toEqual([]);
     expect(result.message.banner_message).toBe('Banner message');
+    expect(result.message.banner_title).toBe('Important update');
+    expect(result.message.banner_enabled).toBe(true);
   });
 
   test('returns events even when banner fetching fails', async () => {
@@ -44,5 +48,43 @@ describe('homePageService', () => {
 
     expect(result.events).toHaveLength(1);
     expect(result.message.banner_message).toBe('');
+    expect(result.message.banner_enabled).toBe(false);
+  });
+
+  test('preserves a null banner end date for open-ended banners', async () => {
+    fetchUpcomingEvents.mockResolvedValue({ eventsArray: [] });
+    getBanners.mockResolvedValue([
+      {
+        _id: { toString: () => 'banner-2' },
+        banner_title: 'Open ended',
+        banner_message: 'No planned end',
+        banner_enabled: true,
+        banner_start_date: '2026-03-08T10:00:00Z',
+        banner_end_date: null,
+      },
+    ]);
+
+    const result = await fetchHomePageSnapshot();
+
+    expect(result.message.banner_end_date).toBeNull();
+  });
+
+  test('preserves a null banner start date for immediate banners', async () => {
+    fetchUpcomingEvents.mockResolvedValue({ eventsArray: [] });
+    getBanners.mockResolvedValue([
+      {
+        _id: { toString: () => 'banner-3' },
+        banner_title: 'Immediate',
+        banner_message: 'Go live now',
+        banner_enabled: true,
+        banner_start_date: null,
+        banner_end_date: null,
+      },
+    ]);
+
+    const result = await fetchHomePageSnapshot();
+
+    expect(result.message.banner_start_date).toBeNull();
+    expect(result.message.banner_end_date).toBeNull();
   });
 });

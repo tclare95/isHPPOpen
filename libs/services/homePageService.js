@@ -2,6 +2,10 @@ import { fetchUpcomingEvents } from "./eventsService";
 import { getBanners } from "./siteBannerService";
 
 function toIsoStringOrNull(value) {
+  if (value === null || value === undefined || value === '') {
+    return null;
+  }
+
   const parsed = value instanceof Date ? value : new Date(value);
   return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
 }
@@ -19,7 +23,11 @@ function normalizeEvent(event) {
 function normalizeBanner(banner) {
   return {
     _id: banner?._id?.toString?.() ?? "",
+    banner_title: banner?.banner_title ?? "",
     banner_message: banner?.banner_message ?? "",
+    banner_enabled: typeof banner?.banner_enabled === "boolean"
+      ? banner.banner_enabled
+      : Boolean(banner?.banner_message),
     banner_start_date: toIsoStringOrNull(banner?.banner_start_date),
     banner_end_date: toIsoStringOrNull(banner?.banner_end_date),
     banner_update_date: toIsoStringOrNull(banner?.banner_update_date),
@@ -37,7 +45,7 @@ export async function fetchHomePageSnapshot(limit = 5) {
 
   const bannerMessage = Array.isArray(banners) && banners.length > 0
     ? normalizeBanner(banners[0])
-    : normalizeBanner({ banner_message: "" });
+    : normalizeBanner({ banner_title: "", banner_message: "", banner_enabled: false });
 
   const normalizedEvents = Array.isArray(eventsPayload?.eventsArray)
     ? eventsPayload.eventsArray.map(normalizeEvent)

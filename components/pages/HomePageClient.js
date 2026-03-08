@@ -13,7 +13,7 @@ import Footer from "../layout/frontpage/footer";
 export default function HomePageClient({ events, message }) {
   return (
     <Container fluid>
-      <Header message={message?.banner_message ?? ""} />
+      <Header message={message} />
       <Container>
         <TopContent cachedEvents={events} />
         <EventsArea />
@@ -29,7 +29,9 @@ export default function HomePageClient({ events, message }) {
 HomePageClient.propTypes = {
   events: PropTypes.arrayOf(PropTypes.object),
   message: PropTypes.shape({
+    banner_title: PropTypes.string,
     banner_message: PropTypes.string,
+    banner_enabled: PropTypes.bool,
   }),
 };
 

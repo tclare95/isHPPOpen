@@ -7,11 +7,15 @@ import EventsTable from "../../../components/functional/eventstable";
 
 export default function AdminEventsPage() {
   return (
-    <Container fluid className="bg-dark text-light">
+    <Container fluid className="bg-dark text-light min-vh-100">
       <AdminBar />
       <AdminBody>
-        <h2>Is HPP Open Events Admin</h2>
-        <h6 className="mb-3">Add, edit and delete events. Deleting events is final, so be careful.</h6>
+        <div className="mb-4">
+          <h1 className="mb-2">Events</h1>
+          <p className="text-secondary mb-0">
+            Select an existing event to edit it, or start a new one. Deletes require confirmation.
+          </p>
+        </div>
         <EventsTable />
       </AdminBody>
     </Container>

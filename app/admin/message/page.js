@@ -7,10 +7,15 @@ import MessageEditor from "../../../components/functional/messageeditor";
 
 export default function AdminMessagePage() {
   return (
-    <Container fluid className="bg-dark">
+    <Container fluid className="bg-dark min-vh-100">
       <AdminBar />
       <AdminBody>
-        <h2 className="text-light">Is HPP Open Admin panel - Message Admin</h2>
+        <div className="text-light mb-4">
+          <h1 className="mb-2">Site banner</h1>
+          <p className="text-secondary mb-0">
+            Manage the homepage message, title, schedule, and visibility with consistent save feedback.
+          </p>
+        </div>
         <MessageEditor />
       </AdminBody>
     </Container>

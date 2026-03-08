@@ -27,7 +27,9 @@ export async function upsertEvent(eventData) {
   const parsed = await eventSchema.validate(eventData);
   const { db } = await connectToDatabase();
   const collection = db.collection('eventschemas');
-  const query = { event_name: parsed.new_event_name };
+  const query = parsed.new_event_id && ObjectId.isValid(parsed.new_event_id)
+    ? { _id: new ObjectId(parsed.new_event_id) }
+    : { event_name: parsed.new_event_name };
   const update = {
     $set: {
       event_name: parsed.new_event_name,

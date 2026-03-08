@@ -17,7 +17,7 @@ describe('Site Banner API route handler', () => {
   beforeEach(() => jest.clearAllMocks());
 
   test('GET returns banner data', async () => {
-    getBanners.mockResolvedValue([{ banner_message: 'Test banner message' }]);
+    getBanners.mockResolvedValue([{ banner_title: 'Important', banner_message: 'Test banner message', banner_enabled: true }]);
     const res = await GET();
     const payload = await res.json();
     expect(res.status).toBe(200);
@@ -27,14 +27,56 @@ describe('Site Banner API route handler', () => {
 
   test('POST returns 401 when not authenticated', async () => {
     getServerSession.mockResolvedValue(null);
-    const res = await POST(makeRequest({ banner_message: 'New message' }));
+    const res = await POST(makeRequest({
+      banner_title: 'Update',
+      banner_message: 'New message',
+      banner_enabled: true,
+      banner_start_date: '2026-03-08T10:00:00.000Z',
+      banner_end_date: '2026-03-09T10:00:00.000Z',
+    }));
     expect(res.status).toBe(401);
   });
 
   test('POST updates banner when authenticated', async () => {
     getServerSession.mockResolvedValue({ user: { email: 'admin@test.com' } });
     upsertBanner.mockResolvedValue({ modifiedCount: 1, upsertedCount: 0 });
-    const res = await POST(makeRequest({ banner_message: 'Updated message' }));
+    const res = await POST(makeRequest({
+      banner_title: 'Update',
+      banner_message: 'Updated message',
+      banner_enabled: true,
+      banner_start_date: '2026-03-08T10:00:00.000Z',
+      banner_end_date: '2026-03-09T10:00:00.000Z',
+    }));
+    const payload = await res.json();
+    expect(res.status).toBe(200);
+    expect(payload.data.message).toBe('Banner updated');
+  });
+
+  test('POST supports an open-ended banner when authenticated', async () => {
+    getServerSession.mockResolvedValue({ user: { email: 'admin@test.com' } });
+    upsertBanner.mockResolvedValue({ modifiedCount: 1, upsertedCount: 0 });
+    const res = await POST(makeRequest({
+      banner_title: 'Update',
+      banner_message: 'Updated message',
+      banner_enabled: true,
+      banner_start_date: '2026-03-08T10:00:00.000Z',
+      banner_end_date: null,
+    }));
+    const payload = await res.json();
+    expect(res.status).toBe(200);
+    expect(payload.data.message).toBe('Banner updated');
+  });
+
+  test('POST supports a banner that starts immediately when authenticated', async () => {
+    getServerSession.mockResolvedValue({ user: { email: 'admin@test.com' } });
+    upsertBanner.mockResolvedValue({ modifiedCount: 1, upsertedCount: 0 });
+    const res = await POST(makeRequest({
+      banner_title: 'Update',
+      banner_message: 'Updated message',
+      banner_enabled: true,
+      banner_start_date: null,
+      banner_end_date: null,
+    }));
     const payload = await res.json();
     expect(res.status).toBe(200);
     expect(payload.data.message).toBe('Banner updated');

@@ -38,14 +38,18 @@ export async function POST(request) {
     const payload = await parseJsonObjectBody(request);
     const session = await requireRouteSession();
     const result = await upsertEvent(payload);
+    const savedId = payload.new_event_id || result.upsertedId?.toString?.() || null;
 
-    if (result.modifiedCount === 1 || result.upsertedCount === 1) {
+    if (result.acknowledged && (result.modifiedCount === 1 || result.upsertedCount === 1 || result.matchedCount === 1)) {
       await revalidateTagsSafe([CACHE_TAGS.EVENTS, CACHE_TAGS.HOME_SNAPSHOT], {
         logger,
         context: "events-post",
       });
       logger.info("Event modified", { actor: session?.user?.email, eventId: payload.new_event_id });
-      return sendRouteSuccess({ message: "Update successful", id: payload.new_event_id });
+      return sendRouteSuccess({
+        message: payload.new_event_id ? "Event updated" : "Event created",
+        id: savedId,
+      });
     }
 
     throw new HttpError(500, "Update failed");

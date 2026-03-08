@@ -1,42 +1,51 @@
-import { signIn, signOut, useSession } from 'next-auth/react'
-import Spinner from 'react-bootstrap/Spinner'
-import Row from 'react-bootstrap/Row'
+import { signIn, useSession } from 'next-auth/react'
+import Alert from 'react-bootstrap/Alert'
 import Button from 'react-bootstrap/Button'
+import Card from 'react-bootstrap/Card'
 import Container from 'react-bootstrap/Container'
+import Spinner from 'react-bootstrap/Spinner'
 
 export default function AdminBody (props) {
     const { data: session, status } = useSession()
+
     if (status === 'loading') {
         return (
-            <Spinner animation="border" role="status">
-                <span className="sr-only">Loading...</span>
-            </Spinner>
+            <Container fluid="lg" className="pb-5">
+                <Card bg="dark" text="light" border="secondary" className="text-center py-5">
+                    <Card.Body>
+                        <Spinner animation="border" role="status" className="mb-3" />
+                        <div>Checking your session…</div>
+                    </Card.Body>
+                </Card>
+            </Container>
         )
     }
 
     if (!session) {
         return (
-            <Container>
-            <Row className="text-light justify-content-center">
-                <h1>Please Log In</h1>            
-            </Row>
-            <Row className="text-light justify-content-center">
-            <Button onClick={signIn}>Sign In</Button>
-            </Row>
-            </Container>    
+            <Container fluid="lg" className="pb-5">
+                <Card bg="dark" text="light" border="secondary" className="text-center py-5 shadow-sm">
+                    <Card.Body>
+                        <Card.Title className="mb-3">Admin sign-in required</Card.Title>
+                        <Card.Text className="text-secondary mb-4">
+                            Sign in to manage events and update the site banner.
+                        </Card.Text>
+                        <Button onClick={signIn}>Sign in</Button>
+                    </Card.Body>
+                </Card>
+            </Container>
         )
     }
 
-    if(session) {
+    if (session) {
         return (
-            <Container fluid="sm">
+            <Container fluid="lg" className="pb-5">
                 {props.children}
             </Container>
         )
     }
-    return(
-        <div className="text-light">
-            Admin Body - unknown issue
-        </div>
+
+    return (
+        <Alert variant="danger">Unable to load the admin area.</Alert>
     )
 }

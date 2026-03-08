@@ -27,10 +27,13 @@ function normalizeBanner(banner) {
 }
 
 export async function fetchHomePageSnapshot(limit = 5) {
-  const [eventsPayload, banners] = await Promise.all([
+  const [eventsResult, bannersResult] = await Promise.allSettled([
     fetchUpcomingEvents(limit),
     getBanners(),
   ]);
+
+  const eventsPayload = eventsResult.status === "fulfilled" ? eventsResult.value : null;
+  const banners = bannersResult.status === "fulfilled" ? bannersResult.value : [];
 
   const bannerMessage = Array.isArray(banners) && banners.length > 0
     ? normalizeBanner(banners[0])

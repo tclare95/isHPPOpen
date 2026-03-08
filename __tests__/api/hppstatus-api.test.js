@@ -1,6 +1,6 @@
 jest.mock('../../libs/services/hppStatusService');
 
-const { getHppStatusSnapshot } = require('../../libs/services/hppStatusService');
+const { buildEmptyStatusPayload, getHppStatusSnapshot } = require('../../libs/services/hppStatusService');
 const { GET } = require('../../app/api/hppstatus/route');
 
 describe('HPP Status API route handler', () => {
@@ -38,5 +38,31 @@ describe('HPP Status API route handler', () => {
 
     expect(res.status).toBe(200);
     expect(payload.data.isEmpty).toBe(true);
+  });
+
+  test('returns empty fallback payload when the status service fails', async () => {
+    buildEmptyStatusPayload.mockReturnValue({
+      isEmpty: true,
+      currentStatus: null,
+      closuresInLast7Days: 0,
+      closuresInLast28Days: 0,
+      closuresInLast182Days: 0,
+      closuresInLast365Days: 0,
+    });
+    getHppStatusSnapshot.mockRejectedValue(new Error('Mongo unavailable'));
+
+    const res = await GET();
+    const payload = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(payload.ok).toBe(true);
+    expect(payload.data).toMatchObject({
+      isEmpty: true,
+      currentStatus: null,
+      closuresInLast7Days: 0,
+      closuresInLast28Days: 0,
+      closuresInLast182Days: 0,
+      closuresInLast365Days: 0,
+    });
   });
 });

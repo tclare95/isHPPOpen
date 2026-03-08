@@ -21,4 +21,15 @@ describe('Levels API route handler', () => {
     expect(payload.data.forecast_data).toEqual([{ forecast_date: '2025-12-06T12:00:00Z', forecast_reading: 1.48 }]);
     expect(getLatestLevelsSnapshot).toHaveBeenCalledTimes(1);
   });
+
+  test('GET returns empty arrays when the levels service fails', async () => {
+    getLatestLevelsSnapshot.mockRejectedValue(new Error('Mongo unavailable'));
+
+    const res = await GET();
+    const payload = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(payload.ok).toBe(true);
+    expect(payload.data).toEqual({ level_data: [], forecast_data: [] });
+  });
 });

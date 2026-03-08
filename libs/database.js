@@ -14,10 +14,10 @@ if (!MONGODB_DB) {
   )
 }
 
-let cached = global.mongo
+let cached = globalThis.mongo
 
 if (!cached) {
-  cached = global.mongo = { conn: null, promise: null }
+  cached = globalThis.mongo = { conn: null, promise: null }
 }
 
 export async function connectToDatabase() {
@@ -27,10 +27,17 @@ export async function connectToDatabase() {
 
   if (!cached.promise) {
     const client = new MongoClient(MONGODB_URI)
-    cached.promise = client.connect().then((connectedClient) => ({
-      client: connectedClient,
-      db: connectedClient.db(MONGODB_DB),
-    }))
+    cached.promise = client
+      .connect()
+      .then((connectedClient) => ({
+        client: connectedClient,
+        db: connectedClient.db(MONGODB_DB),
+      }))
+      .catch((error) => {
+        cached.promise = null
+        cached.conn = null
+        throw error
+      })
   }
 
   cached.conn = await cached.promise

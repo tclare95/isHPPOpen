@@ -1,79 +1,146 @@
-import useSWR from 'swr';
-import { useState } from 'react';
-import { Chart } from 'react-google-charts';
-import { Card, Col, Dropdown } from 'react-bootstrap';
-import { fetcher } from '../../libs/fetcher';
+import PropTypes from "prop-types";
+import { Chart } from "react-google-charts";
+import { Badge, Button, Card, Col, Stack } from "react-bootstrap";
 
-export default function TrentWeirBlock({ gaugeName, gaugeId = 4126, measureType = 'level' }) {
-  const [numDays, setNumDays] = useState(7);
-  const { data, error } = useSWR(
-    `https://environment.data.gov.uk/flood-monitoring/id/stations/${gaugeId}/readings?_sorted&_limit=672`,
-    fetcher
-  );
-
-  const isPending = !data && !error;
-
-  let measureData = [];
-  let chartData = [['Time', measureType]];
-
-  let levelData = { level: 0, rateOfChangeHour: 0, rateOfChangeDay: 0 };
-
-  if (data && data.items) {
-    measureData = data.items.filter(item => item.measure.includes(measureType));
-    const latestReading = measureData[0]?.value || 0;
-    const readingOneHourAgo = measureData[4]?.value || latestReading;
-    const readingOneDayAgo = measureData[96]?.value || latestReading;
-    levelData = {
-      level: latestReading,
-      rateOfChangeHour: ((latestReading - readingOneHourAgo) * (measureType === 'level'? 100 : 1)).toFixed(1),
-      rateOfChangeDay: ((latestReading - readingOneDayAgo) * (measureType === 'level'? 100 : 1)).toFixed(1)
-    };
-    const dataPointsToShow = numDays === 7 ? 672 : numDays === 3 ? 288 : 96;
-    chartData.push(
-      ...measureData.slice(0, dataPointsToShow).reverse().map(item => [new Date(item.dateTime).toLocaleTimeString(), item.value])
-    );
+function getDataPointsToShow(numDays) {
+  if (numDays === 7) {
+    return 672;
   }
 
+  if (numDays === 3) {
+    return 288;
+  }
+
+  return 96;
+}
+
+function formatCurrentValue(value, measureType) {
+  if (typeof value !== "number") {
+    return "Unavailable";
+  }
+
+  if (measureType === "flow") {
+    return `${value.toFixed(1)} cumecs`;
+  }
+
+  return `${value.toFixed(2)} m`;
+}
+
+function formatChange(value, measureType, intervalLabel) {
+  if (typeof value !== "number") {
+    return `${intervalLabel}: unavailable`;
+  }
+
+  const prefix = value > 0 ? "+" : "";
+  const unit = measureType === "flow" ? "cumecs" : "cm";
+  return `${intervalLabel}: ${prefix}${value.toFixed(1)} ${unit}`;
+}
+
+function buildChartData(measureSnapshot, numDays, measureType) {
+  const dataPointsToShow = getDataPointsToShow(numDays);
+  const readings = measureSnapshot?.readings ?? [];
+
+  return [
+    ["Time", measureType],
+    ...readings
+      .slice(0, dataPointsToShow)
+      .reverse()
+      .map((item) => [new Date(item.dateTime), item.value]),
+  ];
+}
+
+export default function TrentWeirBlock({
+  station,
+  measureSnapshot,
+  numDays,
+  isSelected,
+  onSelect,
+}) {
+  const chartData = buildChartData(measureSnapshot, numDays, station.measureType);
+  const selectionLabel = isSelected ? "Included in compare" : "Compare on chart";
+
   return (
-    <Col md={6}>
-      <Card className="mb-4">
-        <Card.Body>
-          <Card.Title>
-            {gaugeName}
-            <Dropdown className="float-right">
-              <Dropdown.Toggle variant="secondary">
-                {numDays} Day{numDays > 1 ? 's' : ''}
-              </Dropdown.Toggle>
-              <Dropdown.Menu>
-                <Dropdown.Item onClick={() => setNumDays(1)}>1 Day</Dropdown.Item>
-                <Dropdown.Item onClick={() => setNumDays(3)}>3 Days</Dropdown.Item>
-                <Dropdown.Item onClick={() => setNumDays(7)}>7 Days</Dropdown.Item>
-              </Dropdown.Menu>
-            </Dropdown>
-          </Card.Title>
-          {isPending && <p>Loading...</p>}
-          {error && <p>Error: {error.message}</p>}
-          {data && (
-            <>
-              <p>Current Level: {levelData.level}</p>
-              <p>Rate of Change (Last Hour): {levelData.rateOfChangeHour} { measureType === 'level'? 'cm' : 'cumecs' }</p>
-              <p>Rate of Change (Last Day): {levelData.rateOfChangeDay} { measureType === 'level'? 'cm' : 'cumecs' }</p>
+    <Col xl={4} md={6}>
+      <Card bg="dark" text="light" border="secondary" className="h-100 shadow-sm">
+        <Card.Body className="d-flex flex-column">
+          <Stack direction="horizontal" className="justify-content-between align-items-start mb-3 gap-2">
+            <div>
+              <Card.Title className="mb-1">{station.gaugeName}</Card.Title>
+              <div className="text-secondary small">{station.summary}</div>
+            </div>
+            <Badge bg={isSelected ? "primary" : "secondary"}>{station.measureType}</Badge>
+          </Stack>
+
+          <div className="mb-3">
+            <div className="text-secondary text-uppercase small">Current reading</div>
+            <div className="fs-4 fw-semibold">{formatCurrentValue(measureSnapshot?.latestValue, station.measureType)}</div>
+            <div className="small text-secondary mt-2">{formatChange(measureSnapshot?.rateOfChangeHour, station.measureType, "1h change")}</div>
+            <div className="small text-secondary">{formatChange(measureSnapshot?.rateOfChangeDay, station.measureType, "24h change")}</div>
+          </div>
+
+          {measureSnapshot ? (
+            <div className="mb-3 flex-grow-1">
               <Chart
-                width={'100%'}
-                height={'400px'}
+                width="100%"
+                height="220px"
                 chartType="LineChart"
-                loader={<div>Loading Chart</div>}
+                loader={<div>Loading chart…</div>}
                 data={chartData}
                 options={{
-                  hAxis: { title: 'Time', format: 'HH:mm' },
-                  vAxis: { title: measureType.charAt(0).toUpperCase() + measureType.slice(1) },
-                  chartArea: { width: '80%', height: '70%' },
+                  backgroundColor: "transparent",
+                  legend: { position: "none" },
+                  hAxis: {
+                    title: "Time",
+                    format: numDays > 1 ? "d MMM HH:mm" : "HH:mm",
+                    textStyle: { color: "#e9ecef" },
+                    titleTextStyle: { color: "#f8f9fa" },
+                  },
+                  vAxis: {
+                    title: station.measureType === "flow" ? "Flow (cumecs)" : "Level (m)",
+                    textStyle: { color: "#e9ecef" },
+                    titleTextStyle: { color: "#f8f9fa" },
+                  },
+                  chartArea: { width: "82%", height: "68%" },
                 }}
               />
-            </>
+            </div>
+          ) : (
+            <Card.Text className="text-secondary flex-grow-1">No data available for this gauge right now.</Card.Text>
           )}
+
+          {station.comparisonEnabled && onSelect ? (
+            <div className="d-grid">
+              <Button variant={isSelected ? "primary" : "outline-light"} onClick={() => onSelect(station)}>
+                {selectionLabel}
+              </Button>
+            </div>
+          ) : null}
         </Card.Body>
       </Card>
     </Col>
   );
 }
+
+TrentWeirBlock.propTypes = {
+  station: PropTypes.shape({
+    stationId: PropTypes.number.isRequired,
+    gaugeName: PropTypes.string.isRequired,
+    measureType: PropTypes.string.isRequired,
+    summary: PropTypes.string,
+    comparisonEnabled: PropTypes.bool,
+  }).isRequired,
+  measureSnapshot: PropTypes.shape({
+    latestValue: PropTypes.number,
+    rateOfChangeHour: PropTypes.number,
+    rateOfChangeDay: PropTypes.number,
+    readings: PropTypes.arrayOf(
+      PropTypes.shape({
+        dateTime: PropTypes.string.isRequired,
+        value: PropTypes.number.isRequired,
+      })
+    ),
+  }),
+  numDays: PropTypes.number.isRequired,
+  isSelected: PropTypes.bool,
+  onSelect: PropTypes.func,
+};

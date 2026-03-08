@@ -36,6 +36,7 @@ Related docs:
 | HPP status | `openIndicator` | Route Handler `revalidate` (15m) + SWR client fetch (`/api/hppstatus`) | **15m** (`900000ms`) | Status is operational and should stay reasonably fresh without aggressive polling while reducing repeated backend computation. |
 | River levels | `riverschemas` | Route Handler `revalidate` (15m) + SWR client fetch (`/api/levels`) | **15m** (`900000ms`) | Upstream level data typically updates on a 15-minute cadence; server-side revalidation smooths request bursts. |
 | Forecast data | S3 forecast + derived APIs | Route Handler `revalidate` (15m) + SWR client fetch (`/api/s3forecast`, `/api/forecastaccuracy`) | **15m** (`900000ms`) | Forecast and related quality indicators are operational and align to the same source update interval. |
+| Trent gauge dashboard | Environment Agency flood-monitoring API | Route Handler `revalidate` (15m) + SWR client fetch (`/api/trentweirs`) | **15m** (`900000ms`) | Trent gauge pages use an app-owned cache boundary so browser traffic no longer fans out directly to Environment Agency station endpoints. |
 
 For forecast handlers that call S3, `fetch()` is configured with explicit `next.revalidate = 900` to align upstream request caching with route-level revalidation.
 The shared helper `libs/api/fetchWithRevalidate.js` keeps this upstream fetch policy consistent across forecast endpoints.
@@ -53,6 +54,7 @@ The shared helper `libs/api/fetchWithRevalidate.js` keeps this upstream fetch po
   - `app/api/sitebanner/route.js`: get/update banner messages.
   - `app/api/hppstatus/route.js`: computes closure days over time windows.
    - `app/api/levels/route.js`: reads the latest river snapshot via `libs/services/levelsService.js`.
+   - `app/api/trentweirs/route.js`: serves the cached Trent gauge snapshot via `libs/services/trentWeirsService.js`.
    - `app/api/waterquality/route.js`: reads water-quality snapshots via `libs/services/waterQualityService.js`.
    - `app/api/trentlockapi/route.js`: persists Trent Lock submissions via `libs/services/trentLockService.js`.
 
@@ -62,6 +64,7 @@ The shared helper `libs/api/fetchWithRevalidate.js` keeps this upstream fetch po
    - `libs/services/hppStatusService.js`
    - `libs/services/levelsService.js`
   - `libs/services/siteBannerService.js`
+   - `libs/services/trentWeirsService.js`
    - `libs/services/trentLockService.js`
    - `libs/services/waterQualityService.js`
 - These services encapsulate validation + persistence calls used by API handlers.
@@ -119,11 +122,6 @@ The shared helper `libs/api/fetchWithRevalidate.js` keeps this upstream fetch po
    - Homepage rendering respects the saved `banner_enabled` flag while preserving draft message/title content in storage.
    - Banner scheduling supports optional start/end dates, enabling both immediate banners and open-ended banners that remain visible until explicitly hidden.
 
-8. **Admin editing experience**
-   - Admin pages now use a more consistent editing pattern across events and site banner workflows.
-   - Event management uses a focused list-and-editor flow with consistent save/reset/delete feedback.
-   - Banner management includes preview, visibility toggle, scheduling controls, and clearer loading/success/error states.
-
 4. **Forecasting and analysis views**
    - Forecast pages compare data sources and surface quality metrics.
 
@@ -139,7 +137,19 @@ The shared helper `libs/api/fetchWithRevalidate.js` keeps this upstream fetch po
    - `app/api/trentlockapi/route.js` accepts user submissions and enriches them with Environment Agency station readings when available.
    - Submission orchestration and persistence live in `libs/services/trentLockService.js`.
 
-7. **Home page static data strategy**
+7. **Trent gauge dashboard cache**
+   - `app/api/trentweirs/route.js` is the app-owned cache boundary for Trent gauge pages.
+   - `libs/services/trentWeirsService.js` fetches Environment Agency readings server-side per required measure type so mixed stations do not lose `level` history to `flow` rows.
+   - `app/trentweirs/page.js` is now the overview-first Trent dashboard, combining summary cards and a comparison workspace on one page.
+   - `components/functional/trentDashboard.js` centralizes the shared Trent dashboard controls so gauge selection, time window, and comparison mode are coordinated instead of repeated per card.
+   - `app/trentcharts/page.js` now redirects to `app/trentweirs/page.js`, preserving the old route while keeping one primary Trent dashboard experience.
+
+8. **Admin editing experience**
+   - Admin pages now use a more consistent editing pattern across events and site banner workflows.
+   - Event management uses a focused list-and-editor flow with consistent save/reset/delete feedback.
+   - Banner management includes preview, visibility toggle, scheduling controls, and clearer loading/success/error states.
+
+9. **Home page static data strategy**
    - `app/page.js` uses App Router `unstable_cache` (`revalidate = 21600`) with tags (`home-snapshot`, `events`, `site-banner`) to cache events/banner and reduce load.
     - Data assembly for the home snapshot lives in `libs/services/homePageService.js`.
    - Home snapshot assembly tolerates partial Mongo-backed failures so banner and events can fall back independently.

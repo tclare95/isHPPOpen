@@ -52,12 +52,18 @@ The shared helper `libs/api/fetchWithRevalidate.js` keeps this upstream fetch po
   - `app/api/events/route.js`: read/update/delete events.
   - `app/api/sitebanner/route.js`: get/update banner messages.
   - `app/api/hppstatus/route.js`: computes closure days over time windows.
+   - `app/api/levels/route.js`: reads the latest river snapshot via `libs/services/levelsService.js`.
+   - `app/api/waterquality/route.js`: reads water-quality snapshots via `libs/services/waterQualityService.js`.
+   - `app/api/trentlockapi/route.js`: persists Trent Lock submissions via `libs/services/trentLockService.js`.
 
 ### Service layer
 - Domain logic has begun moving into service modules:
   - `libs/services/eventsService.js`
    - `libs/services/hppStatusService.js`
+   - `libs/services/levelsService.js`
   - `libs/services/siteBannerService.js`
+   - `libs/services/trentLockService.js`
+   - `libs/services/waterQualityService.js`
 - These services encapsulate validation + persistence calls used by API handlers.
 
 ### Data layer
@@ -112,7 +118,19 @@ The shared helper `libs/api/fetchWithRevalidate.js` keeps this upstream fetch po
 4. **Forecasting and analysis views**
    - Forecast pages compare data sources and surface quality metrics.
 
-5. **Home page static data strategy**
+5. **Water quality and CSO data**
+   - Water-quality endpoints under `app/api/waterquality/*` expose:
+     - latest water quality snapshot
+     - CSO density time series
+     - bulk CSO detail lookup
+     - single CSO detail lookup
+   - Querying and payload shaping for these endpoints live in `libs/services/waterQualityService.js`.
+
+6. **Trent Lock submissions**
+   - `app/api/trentlockapi/route.js` accepts user submissions and enriches them with Environment Agency station readings when available.
+   - Submission orchestration and persistence live in `libs/services/trentLockService.js`.
+
+7. **Home page static data strategy**
    - `app/page.js` uses App Router `unstable_cache` (`revalidate = 21600`) with tags (`home-snapshot`, `events`, `site-banner`) to cache events/banner and reduce load.
     - Data assembly for the home snapshot lives in `libs/services/homePageService.js`.
    - Admin writes in `app/api/events/route.js` and `app/api/sitebanner/route.js` trigger `revalidateTag` for immediate snapshot refresh.
@@ -135,6 +153,6 @@ The shared helper `libs/api/fetchWithRevalidate.js` keeps this upstream fetch po
   - `npm run lint`
 
 ## 5) Known architectural characteristics
-- Some logic remains in route handlers while newer behavior uses `libs/services`.
+- Most domain-heavy Route Handlers now delegate to `libs/services`; remaining inline logic should follow the same pattern as endpoints evolve.
 - Some endpoints still accept legacy body shapes; `parseRequestBody()` exists to smooth migration.
 - Continued value: move remaining domain logic from handlers to `libs/services` while preserving the shared route contract.

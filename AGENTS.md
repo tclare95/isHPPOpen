@@ -26,7 +26,7 @@ Without MongoDB env vars, imports from `libs/database.js` throw immediately.
 - **API layer**: App Router route handlers in `app/api/*`.
 - **API shared helpers**: `libs/api/http.js` provides shared error primitives/mapping used by route handlers.
 - **App Router helpers**: `libs/api/httpApp.js` centralizes `NextResponse` envelopes, JSON body parsing, and route-handler session checks.
-- **Service layer**: business logic extracted in `libs/services/*` for events and site banner operations.
+- **Service layer**: business logic extracted in `libs/services/*` for events, HPP status, levels, site banner, Trent Lock, and water-quality operations.
 - **Data layer**: `libs/database.js` manages a cached singleton Mongo client.
 - **State/fetching**: SWR-based data hooks in `libs/useFetch.js` and helpers in `libs/fetcher.js`.
 - **Testing**: Jest + Testing Library under `__tests__/` with DB/auth mocks in `__mocks__/`.
@@ -43,6 +43,7 @@ Keep this file focused on actionable guardrails. If architecture behavior change
 ## Agent guardrails
 - Prefer changing service modules (`libs/services`) over duplicating logic in API routes.
 - Keep API handlers thin: validate input, authorize, delegate, shape response.
+- Follow the newer route pattern used by levels, water quality, and Trent Lock endpoints: keep DB/query/transformation logic in services, not handlers.
 - Use the balanced freshness policy: editorial/event content via ISR/static + tags, operational levels/status/forecast via Route Handler revalidate + SWR (~15 minutes).
 - For App Router route handlers, export per-method handlers (`GET`, `POST`, etc), keep one route-level `try/catch`, and map errors via `mapApiError()`.
 - Preserve unauthenticated `GET` for public data endpoints unless explicitly requested otherwise.

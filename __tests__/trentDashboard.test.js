@@ -133,8 +133,10 @@ describe("TrentDashboard", () => {
     expect(screen.getByText("Explore and compare gauges")).toBeInTheDocument();
     expect(screen.getByText("Gauge snapshots")).toBeInTheDocument();
     expect(screen.getByText("Comparison workspace")).toBeInTheDocument();
+    expect(screen.getByText("Manage alerts")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Jump to comparison" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Email alerts" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Email me a management link" })).toBeInTheDocument();
     expect(screen.getAllByTestId("chart").length).toBeGreaterThan(1);
   });
 

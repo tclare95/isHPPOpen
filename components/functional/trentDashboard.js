@@ -89,8 +89,8 @@ export default function TrentDashboard({ initialViewMode = "level" }) {
   const controlsSection = (
     <Card bg="dark" text="light" border="secondary" className="shadow-sm mb-4">
       <Card.Body className="py-3">
-        <Row className="g-3 align-items-center mb-3">
-          <Col lg={5}>
+        <Row className="g-4 align-items-start mb-3">
+          <Col lg={12}>
             <div className="text-center text-lg-start">
               <Stack direction="horizontal" className="justify-content-center justify-content-lg-start align-items-center gap-2 flex-wrap mb-1">
                 <Card.Title className="mb-0">Explore and compare gauges</Card.Title>
@@ -100,11 +100,11 @@ export default function TrentDashboard({ initialViewMode = "level" }) {
               <div className="text-secondary small">Colwick now also supports live and forecast email alerts.</div>
             </div>
           </Col>
-          <Col lg={7}>
-            <Stack direction="horizontal" className="gap-2 flex-wrap justify-content-center justify-content-lg-end align-items-start">
-              <div style={{ minWidth: "260px" }}>
-                <AlertManagementAccess compact />
-              </div>
+        </Row>
+
+        <Row className="g-3 mb-3">
+          <Col>
+            <Stack direction="horizontal" className="gap-2 flex-wrap justify-content-center justify-content-lg-end">
               <Button size="sm" variant="outline-light" href="#trent-compare">
                 Jump to comparison
               </Button>
@@ -218,6 +218,28 @@ export default function TrentDashboard({ initialViewMode = "level" }) {
     </section>
   );
 
+  const managementSection = (
+    <section className="mb-4" id="trent-manage-alerts">
+      <Card bg="dark" text="light" border="secondary" className="shadow-sm">
+        <Card.Body>
+          <Stack direction="horizontal" className="justify-content-between align-items-center mb-3">
+            <div>
+              <h2 className="h4 mb-1">Manage alerts</h2>
+              <p className="text-secondary mb-0">
+                Already signed up for Colwick alerts? Email yourself a secure link to review or remove them here.
+              </p>
+            </div>
+          </Stack>
+          <Row className="justify-content-center">
+            <Col lg={8} xl={7}>
+              <AlertManagementAccess />
+            </Col>
+          </Row>
+        </Card.Body>
+      </Card>
+    </section>
+  );
+
   if (isPending) {
     return <Alert variant="secondary">Loading Trent dashboard…</Alert>;
   }
@@ -240,6 +262,7 @@ export default function TrentDashboard({ initialViewMode = "level" }) {
       {controlsSection}
       {overviewHidden ? null : summarySection}
       {comparisonSection}
+      {managementSection}
     </>
   );
 }

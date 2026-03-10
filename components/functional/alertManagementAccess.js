@@ -63,28 +63,51 @@ export default function AlertManagementAccess({ compact = false }) {
       {successMessage ? <Alert variant="success" className="mb-0">{successMessage}</Alert> : null}
       {errorMessage ? <Alert variant="danger" className="mb-0">{errorMessage}</Alert> : null}
 
-      <Form.Group controlId={compact ? "manage-alert-email-compact" : "manage-alert-email"}>
-        <Form.Label className="small text-uppercase text-secondary mb-1">Email</Form.Label>
-        <Form.Control
-          type="email"
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-          onKeyDown={compact ? handleCompactKeyDown : undefined}
-          placeholder="you@example.com"
-          required={!compact}
-        />
-      </Form.Group>
+      {compact ? (
+        <div className="d-flex flex-column flex-sm-row gap-2 align-items-stretch">
+          <Form.Group controlId="manage-alert-email-compact" className="flex-grow-1 mb-0">
+            <Form.Label className="visually-hidden">Email</Form.Label>
+            <Form.Control
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              onKeyDown={handleCompactKeyDown}
+              placeholder="you@example.com"
+              required={false}
+              aria-label="Email"
+            />
+          </Form.Group>
 
-      <div className="d-grid">
-        <Button
-          type={compact ? "button" : "submit"}
-          variant={compact ? "outline-light" : "primary"}
-          disabled={isSubmitting}
-          onClick={compact ? () => handleSubmit() : undefined}
-        >
-          {isSubmitting ? "Sending link…" : "Email me a management link"}
-        </Button>
-      </div>
+          <Button
+            type="button"
+            variant="outline-light"
+            disabled={isSubmitting}
+            onClick={() => handleSubmit()}
+            className="px-3 flex-shrink-0"
+          >
+            {isSubmitting ? "Sending…" : "Get manage link"}
+          </Button>
+        </div>
+      ) : (
+        <>
+          <Form.Group controlId="manage-alert-email">
+            <Form.Label className="small text-uppercase text-secondary mb-1">Email</Form.Label>
+            <Form.Control
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              placeholder="you@example.com"
+              required
+            />
+          </Form.Group>
+
+          <div className="d-grid">
+            <Button type="submit" variant="primary" disabled={isSubmitting}>
+              {isSubmitting ? "Sending link…" : "Email me a management link"}
+            </Button>
+          </div>
+        </>
+      )}
     </Stack>
   );
 

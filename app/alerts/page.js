@@ -1,8 +1,8 @@
 "use client";
 
+import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
 import Card from "react-bootstrap/Card";
 import Col from "react-bootstrap/Col";
 import Container from "react-bootstrap/Container";
@@ -16,7 +16,7 @@ import {
 import { fetcher } from "../../libs/fetcher";
 import useFetch from "../../libs/useFetch";
 
-export default function AlertsPage() {
+function AlertsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams?.get("token") || "";
@@ -121,5 +121,28 @@ export default function AlertsPage() {
         ) : null}
       </Container>
     </Container>
+  );
+}
+
+function AlertsPageFallback() {
+  return (
+    <Container fluid className="bg-dark min-vh-100">
+      <Container className="text-white py-4">
+        <Row className="mb-4">
+          <Col className="text-center">
+            <h1>Manage Colwick Alerts</h1>
+            <Link href="/trentweirs" className="text-info">← Back to Trent Dashboard</Link>
+          </Col>
+        </Row>
+      </Container>
+    </Container>
+  );
+}
+
+export default function AlertsPage() {
+  return (
+    <Suspense fallback={<AlertsPageFallback />}>
+      <AlertsPageContent />
+    </Suspense>
   );
 }

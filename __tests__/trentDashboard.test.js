@@ -4,12 +4,18 @@ import userEvent from "@testing-library/user-event";
 import TrentDashboard from "../components/functional/trentDashboard";
 import useFetch from "../libs/useFetch";
 
+jest.mock("next/navigation", () => ({
+  useSearchParams: jest.fn(() => new URLSearchParams()),
+}));
+import { useSearchParams } from "next/navigation";
+
 jest.mock("../libs/useFetch");
 jest.mock("react-google-charts", () => ({
   Chart: ({ data }) => <div data-testid="chart" data-chart={JSON.stringify(data)} />,
 }));
 
 const mockUseFetch = useFetch;
+const mockUseSearchParams = useSearchParams;
 
 function buildSnapshot() {
   return {
@@ -98,13 +104,27 @@ function buildSnapshot() {
 }
 
 describe("TrentDashboard", () => {
+  const originalFetch = globalThis.fetch;
+
   beforeEach(() => {
     jest.clearAllMocks();
+    mockUseSearchParams.mockReturnValue(new URLSearchParams());
+    globalThis.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        ok: true,
+        data: { message: "Check your email to confirm this Colwick alert." },
+      }),
+    });
     mockUseFetch.mockReturnValue({
       data: buildSnapshot(),
       error: undefined,
       isPending: false,
     });
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
   });
 
   test("renders the shared dashboard layout", () => {
@@ -113,7 +133,10 @@ describe("TrentDashboard", () => {
     expect(screen.getByText("Explore and compare gauges")).toBeInTheDocument();
     expect(screen.getByText("Gauge snapshots")).toBeInTheDocument();
     expect(screen.getByText("Comparison workspace")).toBeInTheDocument();
+    expect(screen.getByText("Manage alerts")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Jump to comparison" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Email alerts" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Email me a management link" })).toBeInTheDocument();
     expect(screen.getAllByTestId("chart").length).toBeGreaterThan(1);
   });
 
@@ -133,5 +156,34 @@ describe("TrentDashboard", () => {
 
     await user.click(screen.getByRole("button", { name: "Reset to all gauges" }));
     expect(screen.getByText("5 selected")).toBeInTheDocument();
+  });
+
+  test("submits the Colwick alert form from the dashboard", async () => {
+    const user = userEvent.setup();
+    render(<TrentDashboard />);
+
+    await user.click(screen.getByRole("button", { name: "Email alerts" }));
+    await user.type(screen.getByLabelText("Email", { selector: "#alert-email-4009-level" }), "user@example.com");
+    await user.clear(screen.getByLabelText("Threshold (m)"));
+    await user.type(screen.getByLabelText("Threshold (m)"), "1.85");
+    await user.selectOptions(screen.getByLabelText("Alert type"), "forecast");
+    await user.selectOptions(screen.getByLabelText("Trigger when level"), "below");
+    await user.click(screen.getByRole("button", { name: "Save Colwick alert" }));
+
+    expect(globalThis.fetch).toHaveBeenCalledWith("/api/alerts", expect.objectContaining({
+      method: "POST",
+    }));
+    expect(await screen.findByText("Check your email to confirm this Colwick alert.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Email me a management link" })).toBeInTheDocument();
+  });
+
+  test("renders dashboard feedback from confirmation redirects", () => {
+    mockUseSearchParams.mockReturnValue(
+      new URLSearchParams("alertStatus=confirmed&alertMessage=Colwick%20alert%20confirmed.")
+    );
+
+    render(<TrentDashboard />);
+
+    expect(screen.getByText("Colwick alert confirmed.")).toBeInTheDocument();
   });
 });

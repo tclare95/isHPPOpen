@@ -1,6 +1,8 @@
 import PropTypes from "prop-types";
 import { Chart } from "react-google-charts";
 import { Badge, Button, Card, Col, Stack } from "react-bootstrap";
+import { getTrentStationKey } from "../../libs/trentWeirsConfig";
+import ColwickAlertSignup from "./colwickAlertSignup";
 
 function getDataPointsToShow(numDays) {
   if (numDays === 7) {
@@ -115,6 +117,14 @@ export default function TrentWeirBlock({
               </Button>
             </div>
           ) : null}
+
+          {station.alertingEnabled ? (
+            <ColwickAlertSignup
+              gaugeKey={getTrentStationKey(station)}
+              gaugeName={station.gaugeName}
+              forecastAvailable={station.forecastAvailable}
+            />
+          ) : null}
         </Card.Body>
       </Card>
     </Col>
@@ -128,6 +138,8 @@ TrentWeirBlock.propTypes = {
     measureType: PropTypes.string.isRequired,
     summary: PropTypes.string,
     comparisonEnabled: PropTypes.bool,
+    alertingEnabled: PropTypes.bool,
+    forecastAvailable: PropTypes.bool,
   }).isRequired,
   measureSnapshot: PropTypes.shape({
     latestValue: PropTypes.number,

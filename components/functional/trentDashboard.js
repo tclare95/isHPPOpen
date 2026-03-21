@@ -1,5 +1,6 @@
 import PropTypes from "prop-types";
 import { useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Alert from "react-bootstrap/Alert";
 import Badge from "react-bootstrap/Badge";
 import Button from "react-bootstrap/Button";
@@ -15,6 +16,7 @@ import {
   TRENT_CHART_STATIONS,
   TRENT_WEIR_BLOCKS,
 } from "../../libs/trentWeirsConfig";
+import AlertManagementAccess from "./alertManagementAccess";
 import MultiMeasureChart from "./multimeasurechart";
 import TrentWeirBlock from "./trentWeir";
 
@@ -35,11 +37,20 @@ function getAllComparisonKeys() {
 }
 
 export default function TrentDashboard({ initialViewMode = "level" }) {
+  const searchParams = useSearchParams();
   const [numDays, setNumDays] = useState(3);
   const [viewMode, setViewMode] = useState(initialViewMode);
   const [selectedKeys, setSelectedKeys] = useState(getAllComparisonKeys);
   const [overviewHidden, setOverviewHidden] = useState(false);
   const { data, error, isPending } = useFetch("/api/trentweirs", SWR_15_MINUTES);
+  const alertStatus = searchParams?.get("alertStatus");
+  const alertMessage = searchParams?.get("alertMessage");
+
+  const dashboardAlertVariant = alertStatus === "error"
+    ? "danger"
+    : alertStatus === "unsubscribed"
+      ? "secondary"
+      : "success";
 
   const selectedStations = useMemo(
     () => TRENT_CHART_STATIONS.filter((station) => selectedKeys.includes(getTrentStationKey(station))),
@@ -78,17 +89,21 @@ export default function TrentDashboard({ initialViewMode = "level" }) {
   const controlsSection = (
     <Card bg="dark" text="light" border="secondary" className="shadow-sm mb-4">
       <Card.Body className="py-3">
-        <Row className="g-3 align-items-center mb-3">
-          <Col lg={5}>
+        <Row className="g-4 align-items-start mb-3">
+          <Col lg={12}>
             <div className="text-center text-lg-start">
               <Stack direction="horizontal" className="justify-content-center justify-content-lg-start align-items-center gap-2 flex-wrap mb-1">
                 <Card.Title className="mb-0">Explore and compare gauges</Card.Title>
                 <Badge bg="secondary">{selectionCount} selected</Badge>
               </Stack>
               <div className="text-secondary small">Pick gauges here, then review the comparison workspace below.</div>
+              <div className="text-secondary small">Colwick now also supports live and forecast email alerts.</div>
             </div>
           </Col>
-          <Col lg={7}>
+        </Row>
+
+        <Row className="g-3 mb-3">
+          <Col>
             <Stack direction="horizontal" className="gap-2 flex-wrap justify-content-center justify-content-lg-end">
               <Button size="sm" variant="outline-light" href="#trent-compare">
                 Jump to comparison
@@ -203,6 +218,28 @@ export default function TrentDashboard({ initialViewMode = "level" }) {
     </section>
   );
 
+  const managementSection = (
+    <section className="mb-4" id="trent-manage-alerts">
+      <Card bg="dark" text="light" border="secondary" className="shadow-sm">
+        <Card.Body>
+          <Stack direction="horizontal" className="justify-content-between align-items-center mb-3">
+            <div>
+              <h2 className="h4 mb-1">Manage alerts</h2>
+              <p className="text-secondary mb-0">
+                Already signed up for Colwick alerts? Email yourself a secure link to review or remove them here.
+              </p>
+            </div>
+          </Stack>
+          <Row className="justify-content-center">
+            <Col lg={8} xl={7}>
+              <AlertManagementAccess />
+            </Col>
+          </Row>
+        </Card.Body>
+      </Card>
+    </section>
+  );
+
   if (isPending) {
     return <Alert variant="secondary">Loading Trent dashboard…</Alert>;
   }
@@ -217,9 +254,15 @@ export default function TrentDashboard({ initialViewMode = "level" }) {
 
   return (
     <>
+      {alertStatus && alertMessage ? (
+        <Alert variant={dashboardAlertVariant} className="mb-4">
+          {alertMessage}
+        </Alert>
+      ) : null}
       {controlsSection}
       {overviewHidden ? null : summarySection}
       {comparisonSection}
+      {managementSection}
     </>
   );
 }

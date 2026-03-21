@@ -13,6 +13,8 @@ const station = {
   measureType: "level",
   summary: "Useful downstream city reference with a broad comparison role.",
   comparisonEnabled: true,
+  alertingEnabled: true,
+  forecastAvailable: true,
 };
 
 describe("TrentWeirBlock", () => {
@@ -42,6 +44,7 @@ describe("TrentWeirBlock", () => {
     expect(screen.getByText("1.23 m")).toBeInTheDocument();
     expect(screen.getByText("1h change: +4.5 cm")).toBeInTheDocument();
     expect(screen.getByTestId("chart")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Email alerts" })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Compare on chart" }));
     expect(onSelect).toHaveBeenCalledWith(station);

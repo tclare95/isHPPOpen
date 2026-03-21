@@ -17,6 +17,12 @@ The site provides a quick way to check if the Holme Pierrepont whitewater course
    - `AUTH0_DOMAIN`
    - `NEXTAUTH_SECRET` (`SECRET` is legacy-only fallback during migration)
    - `NEXTAUTH_URL` (for local development use `http://localhost:3000` including the scheme)
+   - `S3_FORECAST_URL`
+   - `SITE_URL` (preferred canonical app URL used in email links)
+   - `RESEND_API_KEY` (for Colwick email alerts)
+   - `ALERTS_FROM_EMAIL` (transactional sender for Colwick email alerts)
+   - `ALERTS_REPLY_TO_EMAIL` (optional)
+   - `CRON_SECRET` (shared secret used by the scheduled Colwick alert evaluator)
 3. Run the app:
    - `npm run dev`
 
@@ -31,6 +37,14 @@ The site provides a quick way to check if the Holme Pierrepont whitewater course
 ## Admin workflows
 - Events admin supports create, edit, delete, reset, and clear success/error confirmation states.
 - Site banner admin supports title, message, visibility toggle, scheduled start/end, immediate-start banners, and open-ended banners.
+
+## Colwick alert MVP
+- The Trent dashboard now supports Colwick-only email alert signup for live level and S3 forecast threshold crossings.
+- Alert delivery stays Vercel-first: public signup/confirm/unsubscribe Route Handlers plus a scheduled evaluator at `/api/internal/alerts/run`.
+- Vercel Cron should call the scheduled route every 15 minutes. The included [vercel.json](vercel.json) defines this schedule.
+- Alerts use double opt-in confirmation and include unsubscribe links in every alert email.
+- Email confirmation and unsubscribe links now return users to the Trent dashboard with a visible success or error message.
+- Users can also request a one-time email link to view and remove existing Colwick alerts at `/alerts`; the management session is rotated on first use and expires after 30 minutes.
 
 ## API route conventions
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) (API/application layer + API route conventions) for the canonical, maintained standard.

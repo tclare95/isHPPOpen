@@ -1,27 +1,25 @@
-jest.mock('../libs/database');
-
-const { connectToDatabase } = require('../libs/database');
 const { getLatestLevelsSnapshot } = require('../libs/services/levelsService');
 
 describe('levelsService', () => {
-  beforeEach(() => jest.clearAllMocks());
+  const originalS3LevelsUrl = process.env.S3_LEVELS_URL;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    process.env.S3_LEVELS_URL = 'https://example.com/levels/latest.json';
+    global.fetch = jest.fn();
+  });
+
+  afterEach(() => {
+    process.env.S3_LEVELS_URL = originalS3LevelsUrl;
+  });
 
   test('getLatestLevelsSnapshot returns latest level and forecast arrays', async () => {
-    connectToDatabase.mockResolvedValue({
-      db: {
-        collection: jest.fn().mockReturnValue({
-          find: jest.fn().mockReturnValue({
-            sort: jest.fn().mockReturnValue({
-              limit: jest.fn().mockReturnValue({
-                next: jest.fn().mockResolvedValue({
-                  level_readings: [{ reading_level: 1.1 }],
-                  forecast_readings: [{ forecast_reading: 1.2 }],
-                }),
-              }),
-            }),
-          }),
-        }),
-      },
+    global.fetch.mockResolvedValue({
+      ok: true,
+      json: jest.fn().mockResolvedValue({
+        level_readings: [{ reading_level: 1.1 }],
+        forecast_readings: [{ forecast_reading: 1.2 }],
+      }),
     });
 
     const result = await getLatestLevelsSnapshot();
@@ -30,5 +28,42 @@ describe('levelsService', () => {
       level_data: [{ reading_level: 1.1 }],
       forecast_data: [{ forecast_reading: 1.2 }],
     });
+
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(global.fetch).toHaveBeenCalledWith(
+      'https://example.com/levels/latest.json',
+      expect.objectContaining({
+        next: expect.objectContaining({ revalidate: 900 }),
+      }),
+    );
+  });
+
+  test('getLatestLevelsSnapshot normalizes missing arrays', async () => {
+    global.fetch.mockResolvedValue({
+      ok: true,
+      json: jest.fn().mockResolvedValue({
+        level_readings: null,
+      }),
+    });
+
+    const result = await getLatestLevelsSnapshot();
+
+    expect(result).toEqual({
+      level_data: [],
+      forecast_data: [],
+    });
+  });
+
+  test('getLatestLevelsSnapshot throws when S3_LEVELS_URL is missing', async () => {
+    delete process.env.S3_LEVELS_URL;
+
+    await expect(getLatestLevelsSnapshot()).rejects.toThrow('Levels URL not configured');
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  test('getLatestLevelsSnapshot throws when fetch fails', async () => {
+    global.fetch.mockResolvedValue({ ok: false });
+
+    await expect(getLatestLevelsSnapshot()).rejects.toThrow('Failed to fetch levels data');
   });
 });

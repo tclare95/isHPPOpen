@@ -11,6 +11,7 @@ The site provides a quick way to check if the Holme Pierrepont whitewater course
 2. Create `.env.local` with:
    - `MONGODB_URI`
    - `MONGODB_DB`
+   - `S3_LEVELS_URL` (public S3 JSON endpoint for latest levels payload)
    - `AUTH0_CLIENT_ID`
    - `AUTH0_CLIENT_SECRET`
    - `AUTH0_DOMAIN`

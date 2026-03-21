@@ -14,6 +14,7 @@ This file helps coding agents work safely and effectively in this repository.
 Create `.env.local` with values for:
 - `MONGODB_URI`
 - `MONGODB_DB`
+- `S3_LEVELS_URL` (public URL to `levels/latest.json` for operational levels feed)
 - `AUTH0_CLIENT_ID`
 - `AUTH0_CLIENT_SECRET`
 - `AUTH0_DOMAIN`

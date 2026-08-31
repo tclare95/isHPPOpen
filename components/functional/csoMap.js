@@ -1,164 +1,98 @@
-import dynamic from "next/dynamic";
-import { useEffect, useMemo, useState } from "react";
-import Badge from "react-bootstrap/Badge";
-import useFetch from "../../libs/useFetch";
-import { SWR_15_MINUTES } from "../../libs/dataFreshness";
+import dynamic from 'next/dynamic';
+import { useEffect, useMemo, useState } from 'react';
+import Badge from 'react-bootstrap/Badge';
+import Button from 'react-bootstrap/Button';
+import ButtonGroup from 'react-bootstrap/ButtonGroup';
+import PropTypes from 'prop-types';
 
-const MapContainer = dynamic(() => import("react-leaflet").then(mod => mod.MapContainer), { ssr: false });
-const TileLayer = dynamic(() => import("react-leaflet").then(mod => mod.TileLayer), { ssr: false });
-const Marker = dynamic(() => import("react-leaflet").then(mod => mod.Marker), { ssr: false });
-const Popup = dynamic(() => import("react-leaflet").then(mod => mod.Popup), { ssr: false });
+const MapContainer = dynamic(() => import('react-leaflet').then((mod) => mod.MapContainer), { ssr: false });
+const TileLayer = dynamic(() => import('react-leaflet').then((mod) => mod.TileLayer), { ssr: false });
+const Marker = dynamic(() => import('react-leaflet').then((mod) => mod.Marker), { ssr: false });
+const Popup = dynamic(() => import('react-leaflet').then((mod) => mod.Popup), { ssr: false });
+const MarkerClusterGroup = dynamic(() => import('react-leaflet-cluster').then((mod) => mod.default), { ssr: false });
+const center = [52.9458, -1.0907];
+const WINDOWS = [{ label: 'Current', hours: 0 }, { label: '6 hours', hours: 6 }, { label: '24 hours', hours: 24 }, { label: '48 hours', hours: 48 }];
 
-const center = [52.94576790782451, -1.0907147684529286];
-
-function csoLocation(csoDetails, csoId) {
-  const location = csoDetails[csoId]?.Coordinates;
-  return location ? [location.y, location.x] : center;
+function validDate(value) {
+  const date = value ? new Date(value) : null;
+  return date && !Number.isNaN(date.getTime()) ? date : null;
 }
 
-function calculateActiveTime(details) {
-  if (!details) return "N/A";
-  const start = new Date(details.LatestEventStart);
-  const end = details.LatestEventEnd ? new Date(details.LatestEventEnd) : new Date();
-  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
-    return "N/A";
-  }
-  const diffMs = end - start;
-  const diffMins = Math.round(diffMs / (1000 * 60));
-  const hours = Math.floor(diffMins / 60);
-  const minutes = diffMins % 60;
-  return `${hours} hrs ${minutes} mins`;
+function formatTimestamp(value) {
+  return validDate(value)?.toLocaleString() || 'Not available';
 }
 
-function formatTimestamp(timestamp) {
-  if (!timestamp) return "N/A";
-  const date = new Date(timestamp);
-  return Number.isNaN(date.getTime()) ? "N/A" : date.toLocaleString();
+function formatDuration(minutes) {
+  if (!Number.isFinite(minutes)) return 'Not available';
+  const hours = Math.floor(minutes / 60);
+  return hours ? `${hours} hr ${minutes % 60} min` : `${minutes} min`;
 }
 
-export default function WaterQualityMap() {
-  const [icons, setIcons] = useState({
-    active: null,
-    inactive: null,
-  });
-  const { data, error: waterQualityError, isPending: waterQualityPending } = useFetch(
-    "/api/waterquality",
-    SWR_15_MINUTES
-  );
-  const waterQualityData = data?.waterQualityData ?? null;
-  const csoIds = useMemo(
-    () => (Array.isArray(waterQualityData?.WaterQuality?.CSOIds) ? waterQualityData.WaterQuality.CSOIds.filter(Boolean) : []),
-    [waterQualityData]
-  );
-  const shouldFetchCsoDetails = csoIds.length > 0;
-  const csoDetailsPath = shouldFetchCsoDetails
-    ? `/api/waterquality/cso?ids=${csoIds.join(",")}`
-    : null;
-  const {
-    data: csoDetailsData,
-    isPending: csoDetailsPending,
-  } = useFetch(csoDetailsPath, SWR_15_MINUTES);
-  const csoDetails = csoDetailsData?.csoData ?? {};
-
+export default function WaterQualityMap({ locations = [], health, isPending = false, error = null, now = new Date() }) {
+  const [windowHours, setWindowHours] = useState(6);
+  const [icons, setIcons] = useState({ active: null, recent: null });
   useEffect(() => {
-    let ignore = false;
-
-    const initializeIcons = async () => {
-      try {
-        const leafletModule = await import("leaflet");
-        const { Icon } = leafletModule;
-
-        if (ignore) return;
-
-        setIcons({
-          active: new Icon({
-            iconUrl: "/red-marker-icon.png",
-            iconSize: [25, 25],
-            iconAnchor: [12, 25],
-          }),
-          inactive: new Icon({
-            iconUrl: "/grey-marker-icon.png",
-            iconSize: [25, 25],
-            iconAnchor: [12, 25],
-          }),
-        });
-      } catch {
-        if (!ignore) {
-          setIcons({ active: null, inactive: null });
-        }
-      }
-    };
-
-    initializeIcons();
-
-    return () => {
-      ignore = true;
-    };
+    let cancelled = false;
+    import('leaflet').then(({ divIcon }) => {
+      if (cancelled) return;
+      const icon = (kind, symbol) => divIcon({ className: `cso-marker cso-marker--${kind}`, html: `<span aria-hidden="true">${symbol}</span>`, iconSize: [30, 30], iconAnchor: [15, 15] });
+      setIcons({ active: icon('active', '!'), recent: icon('recent', '✓') });
+    }).catch(() => setIcons({ active: null, recent: null }));
+    return () => { cancelled = true; };
   }, []);
+  const filtered = useMemo(() => locations.filter((location) => {
+    const latitude = Number(location?.coordinates?.y);
+    const longitude = Number(location?.coordinates?.x);
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return false;
+    if (location.status === 'active') return true;
+    if (location.status !== 'recent' || windowHours === 0) return false;
+    const ended = validDate(location.latestEventEnd);
+    return ended && ended >= new Date(now.getTime() - windowHours * 60 * 60 * 1000);
+  }), [locations, now, windowHours]);
 
-  const isLoading = waterQualityPending || (shouldFetchCsoDetails && csoDetailsPending);
-
-  if (isLoading) {
-    return <p>Loading map data...</p>;
-  }
-
-  if (waterQualityError) {
-    return <p>Unable to load map data right now.</p>;
-  }
-
-  if (!waterQualityData) {
-    return <p>No map data available.</p>;
-  }
-
-  const activeCSOs = new Set(Array.isArray(waterQualityData.ActiveCSOIds) ? waterQualityData.ActiveCSOIds : []);
-
-  if (!csoIds.length) {
-    return <p>No recent CSO locations found.</p>;
-  }
-
+  if (isPending) return <p>Loading map data…</p>;
+  if (error) return <p>Unable to load map data right now.</p>;
+  if (!locations.length) return <p>No CSO location data is available.</p>;
   return (
-    <MapContainer
-      center={center}
-      zoom={10}
-      style={{ height: "400px", width: "100%", borderRadius: "10px", overflow: "hidden" }}
-    >
-      <TileLayer
-        attribution='&copy; OpenStreetMap contributors'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
-
-      {csoIds.map((id) => {
-        const position = csoLocation(csoDetails, id);
-        const activeTime = calculateActiveTime(csoDetails[id]);
-        return (
-          <Marker
-            key={id}
-            position={position}
-            icon={activeCSOs.has(id) ? icons.active : icons.inactive}
-          >
-            <Popup>
-              <div className="text-center">
-                <strong>CSO ID: {id}</strong>
-                <br />
-                Status:{' '}
-                {activeCSOs.has(id) ? (
-                  <Badge bg="danger">Currently Active</Badge>
-                ) : (
-                  <Badge bg="warning">Active in last 48 hours</Badge>
-                )}
-                <br />
-                Active Time: {activeTime}
-                <br />
-                <small className="text-muted">
-                  Spill start: {formatTimestamp(csoDetails[id]?.LatestEventStart)}
-                  <br />
-                  Spill end: {formatTimestamp(csoDetails[id]?.LatestEventEnd)}
-                </small>
-              </div>
-            </Popup>
-          </Marker>
-        );
-      })}
-    </MapContainer>
+    <div>
+      {health?.state !== 'fresh' ? <div className="alert alert-warning py-2">Status data may be stale. No stale location is labelled as currently spilling.</div> : null}
+      <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+        <ButtonGroup size="sm" aria-label="Recent spill window">
+          {WINDOWS.map((option) => <Button key={option.hours} variant={windowHours === option.hours ? 'info' : 'outline-light'} onClick={() => setWindowHours(option.hours)}>{option.label}</Button>)}
+        </ButtonGroup>
+        <div className="cso-map-legend"><span className="legend-active">!</span> Currently spilling <span className="legend-recent">✓</span> Recently stopped</div>
+      </div>
+      {!filtered.length ? <p className="text-secondary">No locations match this time window.</p> : (
+        <MapContainer center={center} zoom={9} className="cso-map" aria-label="Upstream CSO activity map">
+          <TileLayer attribution='&copy; OpenStreetMap contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+          <MarkerClusterGroup chunkedLoading>
+            {filtered.map((location) => (
+              <Marker key={location.id} position={[location.coordinates.y, location.coordinates.x]} icon={icons[location.status] || undefined}>
+                <Popup>
+                  <div>
+                    <strong>{location.receivingWaterCourse || `CSO ${location.id}`}</strong><br />
+                    <small>{location.id}</small><br />
+                    <Badge bg={location.status === 'active' ? 'danger' : 'warning'}>{location.status === 'active' ? 'Currently spilling' : 'Stopped recently'}</Badge><br />
+                    Spill start: {formatTimestamp(location.latestEventStart)}<br />
+                    Spill end: {location.status === 'active' ? 'Ongoing' : formatTimestamp(location.latestEventEnd)}<br />
+                    Duration: {formatDuration(location.eventDurationMinutes)}<br />
+                    <small>Last checked: {formatTimestamp(location.observedAt)}</small>
+                  </div>
+                </Popup>
+              </Marker>
+            ))}
+          </MarkerClusterGroup>
+        </MapContainer>
+      )}
+      <p className="small text-secondary mt-2 mb-0">Showing {filtered.length} locations. Offline, stale and unknown monitors are counted above but are not plotted.</p>
+    </div>
   );
 }
+
+WaterQualityMap.propTypes = {
+  locations: PropTypes.array,
+  health: PropTypes.shape({ state: PropTypes.string }),
+  isPending: PropTypes.bool,
+  error: PropTypes.object,
+  now: PropTypes.instanceOf(Date),
+};

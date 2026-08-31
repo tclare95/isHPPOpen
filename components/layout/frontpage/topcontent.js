@@ -78,7 +78,7 @@ export default function TopContent(props) {
     isPending: forecastPending,
   } = useFetch("/api/s3forecast", SWR_15_MINUTES);
   const { data: accuracyData, error: accuracyError } = useFetch("/api/forecastaccuracy", SWR_15_MINUTES);
-  const { data: csoDensityData } = useFetch("/api/waterquality/csodensity", SWR_15_MINUTES);
+  const { data: csoDensityData } = useFetch("/api/waterquality/csodensity?hours=3", SWR_15_MINUTES);
 
   const levelReadings = levelData?.level_data ?? [];
   const recentEntry = isPending ? null : levelReadings[0];

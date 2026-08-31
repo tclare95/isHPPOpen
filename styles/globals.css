@@ -111,7 +111,7 @@ color: #8D918D;
 
 .water-quality-back { color: #a9dff8; }
 .water-quality-back:hover { color: #fff; }
-.water-quality-dashboard-link { width: auto; font-weight: 700; }
+.water-quality-dashboard-link { width: auto; }
 .water-quality-intro { color: #d1d9de; }
 .water-quality-muted { color: #bdc8cf; }
 

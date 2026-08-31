@@ -24,8 +24,8 @@ export default function WaterQuality() {
       </Row>
 
       <Row className="justify-content-center mt-3 mb-4">
-        <Link href="/waterquality" className="btn btn-info btn-lg water-quality-dashboard-link">
-          View water quality dashboard <span aria-hidden="true">→</span>
+        <Link href="/waterquality" className="btn btn-primary water-quality-dashboard-link">
+          View water quality dashboard
         </Link>
       </Row>
     </div>

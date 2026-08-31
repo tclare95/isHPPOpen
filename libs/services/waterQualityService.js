@@ -1,5 +1,6 @@
 import { connectToDatabase } from '../database';
 import { HttpError } from '../api/http';
+import { buildOperationalHealth } from "../operationalHealth";
 
 const HOURS_TO_MS = 60 * 60 * 1000;
 const ACTIVE_CSO_LOOKBACK_HOURS = 48;
@@ -60,6 +61,7 @@ export async function getLatestWaterQualitySnapshot(now = new Date()) {
     },
     ActiveCSOCount: activeCSOs.length,
     ActiveCSOIds: activeCSOs.map((cso) => cso._id),
+    health: buildOperationalHealth({ source: "mongodb-water-quality", generatedAt: latest?.scrape_timestamp }),
   };
 }
 

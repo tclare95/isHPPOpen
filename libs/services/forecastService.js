@@ -1,6 +1,7 @@
 import { parseCSVToForecastWithStability } from "../csvParser";
 import { HttpError } from "../api/http";
 import { fetchWithOperationalRevalidate } from "../api/fetchWithRevalidate";
+import { buildOperationalHealth } from "../operationalHealth";
 
 export function buildForecastMetadata(forecastData) {
   const firstRow = forecastData[0];
@@ -32,5 +33,6 @@ export async function getLatestForecastSnapshot() {
   return {
     forecast_data: forecastData,
     metadata: buildForecastMetadata(forecastData),
+    health: buildOperationalHealth({ source: "predictor-forecast", generatedAt: buildForecastMetadata(forecastData)?.forecast_time }),
   };
 }

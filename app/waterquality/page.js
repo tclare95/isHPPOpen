@@ -3,6 +3,7 @@
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { Col, Container, Row } from "react-bootstrap";
+import SourceHealthBadge from "../../components/functional/sourceHealthBadge";
 import { useEffect, useState } from "react";
 
 const WaterQualityMap = dynamic(() => import("../../components/functional/csoMap"), {
@@ -102,8 +103,9 @@ export default function WaterQualityPage() {
         <Row className="mb-5"><Col><h2>CSO Density Chart</h2><CsoChart /></Col></Row>
         <Row className="mb-5">
           <Col>
-            <h2>Current Data</h2>
+            <h2>Current Data <SourceHealthBadge health={currentData?.health} /></h2>
             {currentDataContent}
+            <p><Link href="/alerts" className="text-info">Email me when CSO risk rises</Link></p>
           </Col>
         </Row>
       </Container>

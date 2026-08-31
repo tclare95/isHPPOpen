@@ -1,10 +1,12 @@
 import { sendRouteSuccess } from "../../../libs/api/httpApp";
 import { createRequestLogger } from "../../../libs/api/logger";
 import { getLatestLevelsSnapshot } from "../../../libs/services/levelsService";
+import { buildOperationalHealth } from "../../../libs/operationalHealth";
 
 const EMPTY_LEVELS_PAYLOAD = {
   level_data: [],
   forecast_data: [],
+  health: buildOperationalHealth({ source: "scraper-levels", unavailable: true }),
 };
 
 export const revalidate = 900;

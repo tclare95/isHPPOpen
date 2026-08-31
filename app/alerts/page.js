@@ -9,6 +9,7 @@ import Container from "react-bootstrap/Container";
 import Row from "react-bootstrap/Row";
 import Stack from "react-bootstrap/Stack";
 import AlertManagementAccess from "../../components/functional/alertManagementAccess";
+import AlertsSignup from "../../components/functional/alertsSignup";
 import {
   AlertsManagementContent,
   AlertsManagementFeedback,
@@ -76,11 +77,22 @@ function AlertsPageContent() {
       <Container className="text-white py-4">
         <Row className="mb-4">
           <Col className="text-center">
-            <h1>Manage Colwick Alerts</h1>
+            <h1>Alerts Centre</h1>
             <Link href="/trentweirs" className="text-info">← Back to Trent Dashboard</Link>
           </Col>
         </Row>
 
+        <Row className="justify-content-center mb-4">
+          <Col lg={8}>
+            <Card bg="dark" text="light" border="secondary" className="shadow-sm">
+              <Card.Body>
+                <Card.Title className="mb-3">Create an alert</Card.Title>
+                <Card.Text className="text-secondary">Get confirmed email alerts for Trent gauges, HPP status, or CSO water-quality risk.</Card.Text>
+                <AlertsSignup />
+              </Card.Body>
+            </Card>
+          </Col>
+        </Row>
         <Row className="justify-content-center mb-4">
           <Col lg={8}>
             <Card bg="dark" text="light" border="secondary" className="shadow-sm">
@@ -99,7 +111,7 @@ function AlertsPageContent() {
                 <Card.Body>
                   <Stack direction="horizontal" className="justify-content-between align-items-center mb-3">
                     <div>
-                      <Card.Title className="mb-1">Your current Colwick alerts</Card.Title>
+                      <Card.Title className="mb-1">Your current alerts</Card.Title>
                       <Card.Text className="text-secondary mb-0">
                         {data?.email ? `Signed in as ${data.email}` : "Use the link from your email to manage alerts."}
                       </Card.Text>
@@ -130,7 +142,7 @@ function AlertsPageFallback() {
       <Container className="text-white py-4">
         <Row className="mb-4">
           <Col className="text-center">
-            <h1>Manage Colwick Alerts</h1>
+            <h1>Alerts Centre</h1>
             <Link href="/trentweirs" className="text-info">← Back to Trent Dashboard</Link>
           </Col>
         </Row>

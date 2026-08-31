@@ -6,6 +6,7 @@ import {
   TRENT_READINGS_PER_DAY,
   TRENT_READINGS_PER_HOUR,
 } from "../trentWeirsConfig";
+import { buildOperationalHealth, getNewestTimestamp } from "../operationalHealth";
 
 const EA_BASE_URL = "https://environment.data.gov.uk/flood-monitoring/id/stations";
 let lastSuccessfulSnapshot = null;
@@ -63,11 +64,13 @@ function buildStationSnapshot(stationDefinition, readingsByMeasureType) {
 }
 
 function buildSnapshot(stations, fallback = false, partial = false) {
+  const generatedAt = new Date().toISOString();
   return {
-    generatedAt: new Date().toISOString(),
+    generatedAt,
     fallback,
     partial,
     stations,
+    health: buildOperationalHealth({ source: "environment-agency-trent", generatedAt: getNewestTimestamp(stations.map((station) => Object.values(station.measures).flatMap((measure) => measure.readings?.[0]?.dateTime))), fallback: fallback || partial }),
   };
 }
 
@@ -129,6 +132,7 @@ export function buildEmptyTrentWeirsPayload() {
     fallback: true,
     partial: false,
     stations: [],
+    health: buildOperationalHealth({ source: "environment-agency-trent", unavailable: true }),
   };
 }
 

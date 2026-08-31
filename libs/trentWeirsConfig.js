@@ -26,6 +26,7 @@ export const TRENT_DASHBOARD_STATIONS = [
     group: "Nottingham reach",
     summary: "Upstream city gauge and a strong anchor for surf-oriented comparison.",
     comparisonEnabled: true,
+    alertingEnabled: true,
   },
   {
     stationId: 4007,
@@ -35,6 +36,7 @@ export const TRENT_DASHBOARD_STATIONS = [
     group: "Lower Trent",
     summary: "Key lower river level gauge alongside the separate Shardlow flow view.",
     comparisonEnabled: true,
+    alertingEnabled: true,
   },
   {
     stationId: 4067,
@@ -44,6 +46,7 @@ export const TRENT_DASHBOARD_STATIONS = [
     group: "Lower Trent",
     summary: "Lower Trent level checkpoint that helps show broader downstream movement.",
     comparisonEnabled: true,
+    alertingEnabled: true,
   },
   {
     stationId: 4074,
@@ -53,6 +56,7 @@ export const TRENT_DASHBOARD_STATIONS = [
     group: "Upper Trent",
     summary: "Upper reach gauge for spotting how conditions differ higher up the system.",
     comparisonEnabled: true,
+    alertingEnabled: true,
   },
   {
     stationId: 4007,
@@ -62,6 +66,7 @@ export const TRENT_DASHBOARD_STATIONS = [
     group: "Lower Trent",
     summary: "Separate flow series for Shardlow when you want discharge context.",
     comparisonEnabled: false,
+    alertingEnabled: true,
   },
 ];
 

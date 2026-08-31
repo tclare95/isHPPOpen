@@ -8,6 +8,7 @@ import Col from "react-bootstrap/Col";
 import Row from "react-bootstrap/Row";
 import Button from "react-bootstrap/Button";
 import Link from "next/link";
+import OperationalHealthSummary from "../../components/functional/operationalHealthSummary";
 
 export default function AdminPage() {
   return (
@@ -45,6 +46,7 @@ export default function AdminPage() {
             </Card>
           </Col>
         </Row>
+        <Row className="g-4 mt-1"><Col><OperationalHealthSummary /></Col></Row>
       </AdminBody>
     </Container>
   );

@@ -1,4 +1,5 @@
 import { connectToDatabase } from '../database';
+import { buildOperationalHealth } from "../operationalHealth";
 
 const intervals = {
   7: 7,
@@ -71,6 +72,7 @@ export const buildEmptyStatusPayload = () => ({
   closuresInLast28Days: 0,
   closuresInLast182Days: 0,
   closuresInLast365Days: 0,
+  health: buildOperationalHealth({ source: "mongodb-hpp-status", unavailable: true }),
 });
 
 export async function getHppStatusSnapshot() {
@@ -85,9 +87,10 @@ export async function getHppStatusSnapshot() {
     .filter((record) => !Number.isNaN(new Date(record?.timestamp).getTime()))
     .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
 
+  const health = buildOperationalHealth({ source: "mongodb-hpp-status", generatedAt: sortedRecords[sortedRecords.length - 1]?.timestamp });
   if (sortedRecords.length === 0) {
     return {
-      data: buildEmptyStatusPayload(),
+      data: { ...buildEmptyStatusPayload(), health },
       context: { isEmpty: true, hasClosureRecord: false },
     };
   }
@@ -109,6 +112,7 @@ export async function getHppStatusSnapshot() {
         closuresInLast28Days: Math.min(closures['28'], 28),
         closuresInLast182Days: Math.min(closures['182'], 182),
         closuresInLast365Days: Math.min(closures['365'], 365),
+        health,
       },
       context: { isEmpty: false, hasClosureRecord: false },
     };
@@ -128,6 +132,7 @@ export async function getHppStatusSnapshot() {
       closuresInLast28Days: Math.min(closures['28'], 28),
       closuresInLast182Days: Math.min(closures['182'], 182),
       closuresInLast365Days: Math.min(closures['365'], 365),
+      health,
     },
     context: { isEmpty: false, hasClosureRecord: true },
   };

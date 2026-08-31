@@ -14,8 +14,9 @@ export async function POST(request) {
 
   try {
     const payload = await parseJsonObjectBody(request);
-    const data = await requestColwickAlertManagementLink(payload.email);
-    logger.info("Sent Colwick alert management link request");
+    const ip = request.headers?.get?.("x-forwarded-for")?.split(",")[0]?.trim() || request.headers?.get?.("x-real-ip") || "unknown";
+    const data = ip === "unknown" ? await requestColwickAlertManagementLink(payload.email) : await requestColwickAlertManagementLink(payload.email, { ip });
+    logger.info("Sent alert management link request");
     return sendRouteSuccess(data);
   } catch (error) {
     const { statusCode, message } = mapApiError(error);

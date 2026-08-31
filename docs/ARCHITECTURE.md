@@ -132,6 +132,10 @@ The shared helper `libs/api/fetchWithRevalidate.js` keeps this upstream fetch po
      - bulk CSO detail lookup
      - single CSO detail lookup
    - Querying and payload shaping for these endpoints live in `libs/services/waterQualityService.js`.
+   - The latest snapshot classifies each upstream monitor as `active`, `recent`, `offline`, or `unknown`. An active claim requires both the summary and per-CSO record to be no more than 30 minutes old.
+   - The summary response includes map-ready `locations` so clients do not issue a second request containing hundreds of IDs. Legacy summary fields remain additive compatibility fields.
+   - CSO activity and four-hour river rise are combined by `libs/waterQualityIndicator.js`; calibrated thresholds are checked in and never recomputed during a request.
+   - Required Mongo indexes and their explicit rollout procedure are documented in `docs/WATER_QUALITY_ROLLOUT.md`.
 
 6. **Trent Lock submissions**
    - `app/api/trentlockapi/route.js` accepts user submissions and enriches them with Environment Agency station readings when available.

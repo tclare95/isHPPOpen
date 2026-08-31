@@ -1,5 +1,7 @@
 import "bootstrap/dist/css/bootstrap.min.css";
 import "leaflet/dist/leaflet.css";
+import "react-leaflet-cluster/dist/assets/MarkerCluster.css";
+import "react-leaflet-cluster/dist/assets/MarkerCluster.Default.css";
 import "../styles/globals.css";
 import PropTypes from "prop-types";
 import Providers from "./providers";

@@ -41,7 +41,20 @@ describe('Water quality API route handlers', () => {
 
     expect(res.status).toBe(200);
     expect(payload.data).toEqual([{ timestamp: '2026-03-08T10:00:00Z', numberCSOsPerKm2: 1.2 }]);
-    expect(getWaterQualityDensitySeries).toHaveBeenCalledWith(24, expect.any(Date));
+    expect(getWaterQualityDensitySeries).toHaveBeenCalledWith(24, expect.any(Date), 15);
+  });
+
+  test('csodensity validates hours and interval', async () => {
+    const res = await getCsoDensity({ nextUrl: { searchParams: new URLSearchParams('hours=9000&interval=30') } });
+    expect(res.status).toBe(400);
+    expect(getWaterQualityDensitySeries).not.toHaveBeenCalled();
+  });
+
+  test('csodensity requests hourly aggregation', async () => {
+    getWaterQualityDensitySeries.mockResolvedValue([]);
+    const res = await getCsoDensity({ nextUrl: { searchParams: new URLSearchParams('hours=120&interval=60') } });
+    expect(res.status).toBe(200);
+    expect(getWaterQualityDensitySeries).toHaveBeenCalledWith(120, expect.any(Date), 60);
   });
 
   test('bulk cso GET returns 400 when ids are missing', async () => {

@@ -144,15 +144,16 @@ The shared helper `libs/api/fetchWithRevalidate.js` keeps this upstream fetch po
    - `components/functional/trentDashboard.js` centralizes the shared Trent dashboard controls so gauge selection, time window, and comparison mode are coordinated instead of repeated per card.
    - `app/trentcharts/page.js` now redirects to `app/trentweirs/page.js`, preserving the old route while keeping one primary Trent dashboard experience.
 
-10. **Colwick alerting MVP**
-   - Public alert signup lives under `app/api/alerts/route.js` and is limited to the Colwick gauge for the first iteration.
+10. **Operational alerts and health**
+   - Public alert signup lives under `app/api/alerts/route.js`; it supports Trent gauge thresholds, Colwick forecasts, HPP open/closed changes, and CSO risk thresholds.
    - Confirmation and unsubscribe flows live under `app/api/alerts/confirm/route.js` and `app/api/alerts/unsubscribe/route.js`.
    - Email-based alert management access lives under `app/api/alerts/manage-link/route.js`, `app/api/alerts/manage/route.js`, and the user-facing `app/alerts/page.js`.
-   - Alert persistence and threshold-evaluation logic live in `libs/services/colwickAlertsService.js`.
+   - Alert persistence and threshold-evaluation logic live in `libs/services/colwickAlertsService.js`; its legacy export name remains for compatibility with the original Colwick implementation.
    - The S3 forecast fetch/parse logic is shared via `libs/services/forecastService.js`, so both the public forecast API and internal alert evaluation use the same source of truth.
-   - Scheduled evaluation runs via `app/api/internal/alerts/run/route.js` and is intended to be triggered by Vercel Cron every 15 minutes.
+   - Scheduled evaluation runs via `app/api/internal/alerts/run/route.js` every 15 minutes. Each run records delivery and run metrics in MongoDB, and uses Resend idempotency keys to make overlapping invocations safe.
    - Alert emails are transactional and use a Resend-compatible HTTP integration. Required env vars are `SITE_URL`, `RESEND_API_KEY`, `ALERTS_FROM_EMAIL`, and `CRON_SECRET`.
-   - Management links are email-scoped, time-limited tokens stored separately from alert subscriptions so users can view and remove their alerts without a full account system.
+   - Management links are email-scoped, 30-minute tokens stored separately from alert subscriptions so users can view and remove their alerts without a full account system. Confirmation links expire after 24 hours.
+   - Operational APIs return additive `health` metadata (`source`, `generatedAt`, `fetchedAt`, `ageSeconds`, and `state`). The authenticated `/api/admin/operational-health` endpoint is the safe operator diagnostic view.
 
 8. **Admin editing experience**
    - Admin pages now use a more consistent editing pattern across events and site banner workflows.

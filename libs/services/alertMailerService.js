@@ -23,13 +23,14 @@ function getRequiredMailConfig() {
   return { apiKey, from, replyTo };
 }
 
-async function sendEmail({ to, subject, text }) {
+async function sendEmail({ to, subject, text, idempotencyKey }) {
   const { apiKey, from, replyTo } = getRequiredMailConfig();
   const response = await fetch(RESEND_API_URL, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
+      ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}),
     },
     body: JSON.stringify({
       from,
@@ -93,6 +94,7 @@ export async function sendAlertConfirmationEmail({
   threshold,
   confirmationToken,
   unsubscribeToken,
+  ruleDescription,
 }) {
   const confirmationUrl = buildConfirmationUrl(confirmationToken);
   const unsubscribeUrl = buildUnsubscribeUrl(unsubscribeToken);
@@ -103,7 +105,7 @@ export async function sendAlertConfirmationEmail({
     text: [
       `Please confirm your ${gaugeName} ${formatSource(source)} alert.`,
       "",
-      `We will email you when ${gaugeName} ${formatDirection(direction)} ${threshold.toFixed(2)} m.`,
+      ruleDescription || `We will email you when ${gaugeName} ${formatDirection(direction)} ${threshold.toFixed(2)} m.`,
       "",
       `Confirm alert: ${confirmationUrl}`,
       `Unsubscribe: ${unsubscribeUrl}`,
@@ -122,7 +124,7 @@ export async function sendManageAlertsAccessEmail({ email, manageToken }) {
       "",
       `Manage alerts: ${manageUrl}`,
       "",
-      "For security, this link expires after 24 hours.",
+      "For security, this link expires after 30 minutes.",
     ].join("\n"),
   });
 }
@@ -137,6 +139,8 @@ export async function sendThresholdAlertEmail({
   observedAt,
   forecastRunAt,
   unsubscribeToken,
+  ruleDescription,
+  idempotencyKey,
 }) {
   const unsubscribeUrl = buildUnsubscribeUrl(unsubscribeToken);
   const sourceLabel = formatSource(source);
@@ -149,16 +153,17 @@ export async function sendThresholdAlertEmail({
 
   await sendEmail({
     to: email,
-    subject: `${gaugeName} alert: ${direction === "below" ? "below" : "above"} ${threshold.toFixed(2)} m`,
+    subject: threshold !== undefined ? `${gaugeName} alert: ${direction === "below" ? "below" : "above"} ${Number(threshold).toFixed(2)} m` : `${gaugeName} alert`,
     text: [
       `${gaugeName} ${sourceLabel} has triggered your alert.`,
       "",
-      `Rule: alert when ${gaugeName} ${formatDirection(direction)} ${threshold.toFixed(2)} m`,
+      ruleDescription || `Rule: alert when ${gaugeName} ${formatDirection(direction)} ${threshold.toFixed(2)} m`,
       `Value: ${formattedObservedValue}`,
       triggerLine,
       ...(forecastRunAt ? [`Forecast generated at: ${forecastRunAt}`] : []),
       "",
       `Unsubscribe: ${unsubscribeUrl}`,
     ].join("\n"),
+    idempotencyKey,
   });
 }

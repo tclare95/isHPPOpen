@@ -48,7 +48,7 @@ function AlertRow({ alert, busyAlertKey, onRemove }) {
           <div>
             <div className="fw-semibold mb-1">{alert.gaugeName}</div>
             <div className="text-secondary small">
-              {formatSource(alert.source)} • {formatDirection(alert.direction)} {Number(alert.threshold).toFixed(2)} m
+              {alert.description || (alert.threshold !== null ? `${formatSource(alert.source)} • ${formatDirection(alert.direction)} ${Number(alert.threshold).toFixed(2)} m` : "Status alert")}
             </div>
           </div>
           <Badge bg={status.variant}>{status.label}</Badge>
@@ -78,9 +78,10 @@ AlertRow.propTypes = {
   alert: PropTypes.shape({
     alertKey: PropTypes.string.isRequired,
     gaugeName: PropTypes.string.isRequired,
-    source: PropTypes.string.isRequired,
-    direction: PropTypes.string.isRequired,
-    threshold: PropTypes.number.isRequired,
+    source: PropTypes.string,
+    direction: PropTypes.string,
+    threshold: PropTypes.number,
+    description: PropTypes.string,
     status: PropTypes.string.isRequired,
     createdAt: PropTypes.string,
     updatedAt: PropTypes.string,
@@ -114,7 +115,7 @@ export function AlertsManagementContent({ data, error, isPending, busyAlertKey, 
   }
 
   if (data?.alerts?.length === 0) {
-    return <Alert variant="secondary">No active or pending Colwick alerts were found for this email address.</Alert>;
+    return <Alert variant="secondary">No active or pending alerts were found for this email address.</Alert>;
   }
 
   if (!data?.alerts?.length) {

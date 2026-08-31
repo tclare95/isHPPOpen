@@ -4,6 +4,7 @@ import {
   buildEmptyTrentWeirsPayload,
   getTrentWeirsSnapshot,
 } from "../../../libs/services/trentWeirsService";
+import { buildOperationalHealth } from "../../../libs/operationalHealth";
 
 export const revalidate = 900;
 
@@ -15,6 +16,6 @@ export async function GET() {
     return sendRouteSuccess(data);
   } catch (error) {
     logger.error("Error in trentweirs", error);
-    return sendRouteSuccess(buildEmptyTrentWeirsPayload());
+    return sendRouteSuccess({ ...buildEmptyTrentWeirsPayload(), health: buildOperationalHealth({ source: "environment-agency-trent", unavailable: true }) });
   }
 }

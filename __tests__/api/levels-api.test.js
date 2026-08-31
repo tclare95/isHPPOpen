@@ -30,6 +30,7 @@ describe('Levels API route handler', () => {
 
     expect(res.status).toBe(200);
     expect(payload.ok).toBe(true);
-    expect(payload.data).toEqual({ level_data: [], forecast_data: [] });
+    expect(payload.data).toMatchObject({ level_data: [], forecast_data: [] });
+    expect(payload.data.health.state).toBe("unavailable");
   });
 });

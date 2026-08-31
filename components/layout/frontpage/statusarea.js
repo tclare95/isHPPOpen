@@ -1,4 +1,6 @@
 import { Row, ProgressBar, Accordion, Alert, Spinner } from "react-bootstrap";
+import Link from "next/link";
+import SourceHealthBadge from "../../functional/sourceHealthBadge";
 import useFetch from "../../../libs/useFetch";
 import { SWR_15_MINUTES } from "../../../libs/dataFreshness";
 
@@ -156,8 +158,9 @@ export default function StatusArea() {
       <Row className="justify-content-center">
         <h2>HPP Closure Stats</h2>
         <p>
-          Current status: <span className="font-weight-bold">{currentStatus}</span>
+          Current status: <span className="font-weight-bold">{currentStatus}</span><SourceHealthBadge health={statusData.health} />
         </p>
+        <p><Link className="text-info" href="/alerts">Email me when HPP opens or closes</Link></p>
         {statusData.isEmpty && (
           <Alert variant="info" className="text-center mb-0">
             No historical closure records are available yet.

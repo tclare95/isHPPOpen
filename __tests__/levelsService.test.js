@@ -24,10 +24,11 @@ describe('levelsService', () => {
 
     const result = await getLatestLevelsSnapshot();
 
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       level_data: [{ reading_level: 1.1 }],
       forecast_data: [{ forecast_reading: 1.2 }],
     });
+    expect(result.health).toMatchObject({ source: "scraper-levels", state: "stale" });
 
     expect(global.fetch).toHaveBeenCalledTimes(1);
     expect(global.fetch).toHaveBeenCalledWith(
@@ -48,10 +49,11 @@ describe('levelsService', () => {
 
     const result = await getLatestLevelsSnapshot();
 
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       level_data: [],
       forecast_data: [],
     });
+    expect(result.health).toMatchObject({ source: "scraper-levels", state: "stale" });
   });
 
   test('getLatestLevelsSnapshot throws when S3_LEVELS_URL is missing', async () => {

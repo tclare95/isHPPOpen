@@ -14,8 +14,9 @@ export async function POST(request) {
 
   try {
     const payload = await parseJsonObjectBody(request);
-    const data = await createColwickAlertSubscription(payload);
-    logger.info("Created Colwick alert subscription request", {
+    const ip = request.headers?.get?.("x-forwarded-for")?.split(",")[0]?.trim() || request.headers?.get?.("x-real-ip") || "unknown";
+    const data = ip === "unknown" ? await createColwickAlertSubscription(payload) : await createColwickAlertSubscription(payload, { ip });
+    logger.info("Created alert subscription request", {
       gaugeKey: payload.gaugeKey,
       source: payload.source,
       direction: payload.direction,

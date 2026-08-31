@@ -62,7 +62,7 @@ describe('waterQualityService', () => {
 
     const result = await getLatestWaterQualitySnapshot(new Date('2026-03-08T12:00:00Z'));
 
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       Id: 'wq-1',
       ScrapeTimestamp: '2026-03-08T10:00:00Z',
       WaterQuality: {
@@ -74,6 +74,7 @@ describe('waterQualityService', () => {
       ActiveCSOCount: 1,
       ActiveCSOIds: ['A'],
     });
+    expect(result.health).toMatchObject({ source: "mongodb-water-quality", state: "stale" });
   });
 
   test('getWaterQualityDensitySeries filters invalid rows', async () => {

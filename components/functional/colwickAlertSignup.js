@@ -64,7 +64,7 @@ export default function ColwickAlertSignup({ gaugeKey, gaugeName, forecastAvaila
   return (
     <div className="mt-3 pt-3 border-top border-secondary">
       <div className="d-grid gap-2">
-        <Button variant={isOpen ? "info" : "outline-info"} onClick={() => setIsOpen((current) => !current)}>
+        <Button aria-label={gaugeName === "Colwick" ? "Email alerts" : `Email alerts for ${gaugeName}`} variant={isOpen ? "info" : "outline-info"} onClick={() => setIsOpen((current) => !current)}>
           {isOpen ? "Hide email alerts" : "Email alerts"}
         </Button>
       </div>
@@ -73,7 +73,7 @@ export default function ColwickAlertSignup({ gaugeKey, gaugeName, forecastAvaila
         <Form className="mt-3 text-start" onSubmit={handleSubmit}>
           <Stack gap={2}>
             <div className="small text-secondary">
-              Set a Colwick alert by email. Forecast alerts use the Colwick S3 forecast.
+              Set a {gaugeName} alert by email. Forecast alerts are available for Colwick only.
             </div>
             {successMessage ? <Alert variant="success" className="mb-0">{successMessage}</Alert> : null}
             {errorMessage ? <Alert variant="danger" className="mb-0">{errorMessage}</Alert> : null}
@@ -120,7 +120,7 @@ export default function ColwickAlertSignup({ gaugeKey, gaugeName, forecastAvaila
 
             <div className="d-grid">
               <Button type="submit" variant="primary" disabled={isSubmitting}>
-                {isSubmitting ? "Saving alert…" : "Save Colwick alert"}
+                {isSubmitting ? "Saving alert…" : gaugeName === "Colwick" ? "Save Colwick alert" : "Save email alert"}
               </Button>
             </div>
           </Stack>

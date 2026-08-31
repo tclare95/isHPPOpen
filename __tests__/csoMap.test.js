@@ -1,150 +1,45 @@
 /* eslint-disable react/prop-types */
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import WaterQualityMap from '../components/functional/csoMap';
-import useFetch from '../libs/useFetch';
 
-jest.mock('../libs/useFetch');
-jest.mock('leaflet', () => ({
-  Icon: function Icon(config) {
-    return config;
-  },
-}));
+jest.mock('leaflet', () => ({ divIcon: (config) => config }));
 jest.mock('next/dynamic', () => (loader) => {
   const source = loader.toString();
-
-  const MapContainer = ({ children }) => <div data-testid="map-container">{children}</div>;
-
-  const TileLayer = () => <div data-testid="tile-layer" />;
-
-  const Marker = ({ children }) => <div data-testid="marker">{children}</div>;
-
-  const Popup = ({ children }) => <div data-testid="popup">{children}</div>;
-
-  if (source.includes('mod.MapContainer')) {
-    return MapContainer;
-  }
-
-  if (source.includes('mod.TileLayer')) {
-    return TileLayer;
-  }
-
-  if (source.includes('mod.Marker')) {
-    return Marker;
-  }
-
-  if (source.includes('mod.Popup')) {
-    return Popup;
-  }
-
-  return () => null;
+  if (source.includes('MapContainer')) return ({ children }) => <div data-testid="map-container">{children}</div>;
+  if (source.includes('TileLayer')) return () => <div />;
+  if (source.includes('react-leaflet-cluster')) return ({ children }) => <div data-testid="cluster">{children}</div>;
+  if (source.includes('mod.Marker')) return ({ children }) => <div data-testid="marker">{children}</div>;
+  if (source.includes('mod.Popup')) return ({ children }) => <div>{children}</div>;
+  return ({ children }) => <div>{children}</div>;
 });
 
-const mockUseFetch = useFetch;
-
-function mockResponses(responses) {
-  mockUseFetch.mockImplementation((path) => {
-    if (path in responses) {
-      return responses[path];
-    }
-
-    return { data: undefined, error: undefined, isPending: false };
-  });
-}
+const now = new Date('2026-08-31T12:00:00Z');
+const locations = [
+  { id: 'ACTIVE', status: 'active', coordinates: { x: -1.2, y: 52.9 }, receivingWaterCourse: 'River Trent', latestEventStart: '2026-08-31T10:00:00Z', eventDurationMinutes: 120, observedAt: '2026-08-31T11:55:00Z' },
+  { id: 'RECENT', status: 'recent', coordinates: { x: -1.3, y: 53 }, latestEventStart: '2026-08-31T05:00:00Z', latestEventEnd: '2026-08-31T07:00:00Z', eventDurationMinutes: 120, observedAt: '2026-08-31T11:55:00Z' },
+  { id: 'NO_COORDS', status: 'active', coordinates: null },
+];
 
 describe('WaterQualityMap', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
-  it('renders loading state while primary data is pending', () => {
-    mockResponses({
-      '/api/waterquality': { data: undefined, error: undefined, isPending: true },
-      null: { data: undefined, error: undefined, isPending: false },
-    });
-
-    render(<WaterQualityMap />);
-
-    expect(screen.getByText('Loading map data...')).toBeInTheDocument();
-  });
-
-  it('renders error state when primary data fails', () => {
-    mockResponses({
-      '/api/waterquality': { data: undefined, error: new Error('boom'), isPending: false },
-      null: { data: undefined, error: undefined, isPending: false },
-    });
-
-    render(<WaterQualityMap />);
-
+  it('renders loading, error and empty states', () => {
+    const { rerender } = render(<WaterQualityMap isPending />);
+    expect(screen.getByText('Loading map data…')).toBeInTheDocument();
+    rerender(<WaterQualityMap error={new Error('boom')} />);
     expect(screen.getByText('Unable to load map data right now.')).toBeInTheDocument();
+    rerender(<WaterQualityMap locations={[]} />);
+    expect(screen.getByText('No CSO location data is available.')).toBeInTheDocument();
   });
 
-  it('renders empty state when no map payload is available', () => {
-    mockResponses({
-      '/api/waterquality': {
-        data: { waterQualityData: null },
-        error: undefined,
-        isPending: false,
-      },
-      null: { data: undefined, error: undefined, isPending: false },
-    });
-
-    render(<WaterQualityMap />);
-
-    expect(screen.getByText('No map data available.')).toBeInTheDocument();
-  });
-
-  it('renders no-locations state when the snapshot has no CSOs', () => {
-    mockResponses({
-      '/api/waterquality': {
-        data: {
-          waterQualityData: {
-            ActiveCSOIds: [],
-            WaterQuality: { CSOIds: [] },
-          },
-        },
-        error: undefined,
-        isPending: false,
-      },
-      null: { data: undefined, error: undefined, isPending: false },
-    });
-
-    render(<WaterQualityMap />);
-
-    expect(screen.getByText('No recent CSO locations found.')).toBeInTheDocument();
-  });
-
-  it('renders the map with CSO details from useFetch', () => {
-    mockResponses({
-      '/api/waterquality': {
-        data: {
-          waterQualityData: {
-            ActiveCSOIds: ['CSO1'],
-            WaterQuality: { CSOIds: ['CSO1'] },
-          },
-        },
-        error: undefined,
-        isPending: false,
-      },
-      '/api/waterquality/cso?ids=CSO1': {
-        data: {
-          csoData: {
-            CSO1: {
-              LatestEventStart: '2026-03-08T08:00:00Z',
-              LatestEventEnd: '2026-03-08T09:30:00Z',
-              Coordinates: { x: 1.2, y: 3.4 },
-            },
-          },
-        },
-        error: undefined,
-        isPending: false,
-      },
-    });
-
-    render(<WaterQualityMap />);
-
+  it('plots valid locations, filters recent events and warns for stale data', () => {
+    render(<WaterQualityMap locations={locations} health={{ state: 'stale' }} now={now} />);
     expect(screen.getByTestId('map-container')).toBeInTheDocument();
-    expect(screen.getByText('CSO ID: CSO1')).toBeInTheDocument();
-    expect(screen.getByText('Currently Active')).toBeInTheDocument();
-    expect(screen.getByText(/Active Time:/)).toBeInTheDocument();
+    expect(screen.getAllByTestId('marker')).toHaveLength(2);
+    expect(screen.getByText('Currently spilling')).toBeInTheDocument();
+    expect(screen.getByText('≈')).toBeInTheDocument();
+    expect(screen.getByText(/flow remains downstream/i)).toBeInTheDocument();
+    expect(screen.getByText(/No stale location is labelled/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Current' }));
+    expect(screen.getAllByTestId('marker')).toHaveLength(1);
+    expect(screen.queryByText('RECENT')).not.toBeInTheDocument();
   });
 });

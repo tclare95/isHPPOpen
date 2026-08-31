@@ -53,7 +53,7 @@ describe('TopContent', () => {
       '/api/levels': { data: undefined, error: undefined, isPending: true },
       '/api/s3forecast': { data: undefined, error: undefined, isPending: true },
       '/api/forecastaccuracy': { data: undefined, error: undefined, isPending: true },
-      '/api/waterquality/csodensity': { data: undefined, error: undefined, isPending: true },
+      '/api/waterquality/csodensity?hours=3': { data: undefined, error: undefined, isPending: true },
     });
 
     renderWithGraphContext(<TopContent cachedEvents={[]} />);
@@ -81,7 +81,7 @@ describe('TopContent', () => {
         error: undefined,
         isPending: false,
       },
-      '/api/waterquality/csodensity': {
+      '/api/waterquality/csodensity?hours=3': {
         data: [{ timestamp: '2026-03-08T10:00:00Z', numberCSOsPerKm2: 1.2 }],
         error: undefined,
         isPending: false,
@@ -113,7 +113,7 @@ describe('TopContent', () => {
         error: undefined,
         isPending: false,
       },
-      '/api/waterquality/csodensity': {
+      '/api/waterquality/csodensity?hours=3': {
         data: [],
         error: undefined,
         isPending: false,

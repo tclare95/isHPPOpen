@@ -2,6 +2,8 @@ import { mapApiError } from "../../../../../libs/api/http";
 import { sendRouteError, sendRouteSuccess } from "../../../../../libs/api/httpApp";
 import { getCsoDetailsById } from "../../../../../libs/services/waterQualityService";
 
+export const revalidate = 900;
+
 export const dynamic = "force-dynamic";
 
 export async function GET(_request, context) {

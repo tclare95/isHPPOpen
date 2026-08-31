@@ -1,0 +1,26 @@
+{
+  "version": "2026-08-31",
+  "method": "Trailing 365-day empirical percentiles",
+  "waterQuality": {
+    "windowStart": "2025-08-31T14:07:36.919Z",
+    "windowEnd": "2026-08-31T14:07:36.919Z",
+    "sampleCount": 28291,
+    "rollingWindowHours": 3,
+    "minimumSamples": 8,
+    "elevatedDensity": 0.0105,
+    "highDensity": 0.0258,
+    "elevatedPercentile": 60,
+    "highPercentile": 80
+  },
+  "runoff": {
+    "windowStart": "2025-08-31T14:07:36.919Z",
+    "windowEnd": "2026-08-31T14:07:36.919Z",
+    "sampleCount": 49,
+    "windowHours": 4,
+    "elevatedRiseMetres": 0.081,
+    "highRiseMetres": 0.101,
+    "elevatedPercentile": 75,
+    "highPercentile": 90,
+    "note": "Calibrated from the available de-duplicated level history; the small sample count should be reviewed as more history accumulates."
+  }
+}

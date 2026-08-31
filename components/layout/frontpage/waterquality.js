@@ -16,14 +16,17 @@ export default function WaterQuality() {
           <Accordion.Item eventKey="0">
             <Accordion.Header>Information about HPP Water Quality</Accordion.Header>
             <Accordion.Body className="bg-secondary">
-              The water quality at HPP has a poor reputation. However quite a lot of the time, particularly in the summer, it is not that bad! To help judge what the quality will be like, the "traffic light" system next to the water level is based on the current river level and recent rate of change of the river. Please note this is only a rough indication—other factors may be in play when you paddle, so take sensible precautions.
-              There is a new page with more detailed water quality information <Link href="/waterquality">here</Link>.
+              The indicator combines recent upstream storm-overflow activity with how quickly the river is rising. It gives a general direction, not a measurement of bacteria or a safe/unsafe verdict. Other pollution sources may be present, so always take sensible precautions.
+              The dashboard includes the supporting map, trends and methodology.
             </Accordion.Body>
           </Accordion.Item>
         </Accordion>
       </Row>
 
-      <Row className="justify-content-center my-3">
+      <Row className="justify-content-center mt-3 mb-4">
+        <Link href="/waterquality" className="btn btn-primary water-quality-dashboard-link">
+          View water quality dashboard
+        </Link>
       </Row>
     </div>
   );

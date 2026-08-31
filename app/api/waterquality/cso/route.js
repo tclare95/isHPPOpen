@@ -2,7 +2,7 @@ import { HttpError, mapApiError } from "../../../../libs/api/http";
 import { sendRouteError, sendRouteSuccess } from "../../../../libs/api/httpApp";
 import { getCsoDetailsByIds } from "../../../../libs/services/waterQualityService";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 900;
 
 export async function GET(request) {
   try {

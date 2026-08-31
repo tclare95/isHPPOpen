@@ -12,13 +12,15 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "db:indexes:water-quality": "node scripts/create-water-quality-indexes.mjs",
+    "calibrate:water-quality": "node scripts/calibrate-water-quality.mjs"
   },
   "dependencies": {
     "@vercel/analytics": "^1.6.1",
     "axios": "^1.13.5",
     "bootstrap": "^5.3.8",
-    "eslint": "^10.0.0",
+    "eslint": "^9.39.2",
     "form-data": "^4.0.5",
     "formik": "^2.4.9",
     "leaflet": "^1.9.4",
@@ -33,6 +35,7 @@
     "react-google-charts": "^5.2.1",
     "react-gtm-module": "^2.0.11",
     "react-leaflet": "^5.0.0",
+    "react-leaflet-cluster": "^4.0.0",
     "swr": "^2.4.0",
     "yup": "^1.7.1"
   },

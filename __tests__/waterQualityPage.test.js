@@ -25,6 +25,9 @@ describe('WaterQualityPage', () => {
     expect(screen.getByTestId('map')).toHaveTextContent('1');
     expect(screen.getByTestId('density-chart')).toHaveTextContent('1');
     expect(screen.getByText('Currently spilling').previousSibling).toHaveTextContent('1');
+    expect(screen.queryByText(/HPP paddling guidance/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Fresh monitors/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/contents may still be travelling downstream/i)).toBeInTheDocument();
     expect(useFetch).toHaveBeenCalledTimes(3);
     expect(useFetch.mock.calls.map(([path]) => path)).toEqual(['/api/waterquality', '/api/waterquality/csodensity?hours=120', '/api/levels']);
   });

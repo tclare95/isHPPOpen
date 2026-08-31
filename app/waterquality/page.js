@@ -22,11 +22,11 @@ function formatUpdated(value) {
   return date && !Number.isNaN(date.getTime()) ? date.toLocaleString() : 'Unavailable';
 }
 
-function SummaryCard({ value, label, detail, variant = '' }) {
-  return <Card className={`water-quality-stat h-100 ${variant}`}><Card.Body><div className="water-quality-stat__value">{value}</div><Card.Title as="h3">{label}</Card.Title><Card.Text>{detail}</Card.Text></Card.Body></Card>;
+function SummaryCard({ value, label, detail }) {
+  return <Card className="water-quality-stat h-100"><Card.Body><div className="water-quality-stat__value">{value}</div><Card.Title as="h3">{label}</Card.Title><Card.Text>{detail}</Card.Text></Card.Body></Card>;
 }
 
-SummaryCard.propTypes = { value: PropTypes.oneOfType([PropTypes.string, PropTypes.number]), label: PropTypes.string.isRequired, detail: PropTypes.string.isRequired, variant: PropTypes.string };
+SummaryCard.propTypes = { value: PropTypes.oneOfType([PropTypes.string, PropTypes.number]), label: PropTypes.string.isRequired, detail: PropTypes.string.isRequired };
 
 export default function WaterQualityPage() {
   const [chartHours, setChartHours] = useState(120);
@@ -44,9 +44,8 @@ export default function WaterQualityPage() {
       <Container className="py-4 py-lg-5">
         <div className="mb-4">
           <Link href="/" className="water-quality-back">← Back to home</Link>
-          <p className="water-quality-kicker mt-4">HPP paddling guidance</p>
-          <h1 className="display-5 fw-bold">Water quality indication</h1>
-          <p className="lead text-white-50 col-lg-8">A general indication based on upstream storm-overflow activity and how quickly the river is rising. It is not a measurement of bacteria or a guarantee that the water is safe.</p>
+          <h1 className="display-5 fw-bold mt-4">Water quality indication</h1>
+          <p className="lead water-quality-intro col-lg-8">A general indication based on upstream storm-overflow activity and how quickly the river is rising. It is not a measurement of bacteria or a guarantee that the water is safe.</p>
         </div>
 
         <Card className="water-quality-hero mb-4">
@@ -58,7 +57,7 @@ export default function WaterQualityPage() {
               </Col>
               <Col lg={5}>
                 <p className="mb-1"><strong>Observed:</strong> {formatUpdated(current?.ScrapeTimestamp)}</p>
-                <p className="small text-secondary mb-2">Sources normally update around every 15 minutes.</p>
+                <p className="small water-quality-muted mb-2">Sources normally update around every 15 minutes.</p>
                 <SourceHealthBadge health={current?.health} />
                 {(summaryError || densityError || levelError) ? <div className="alert alert-warning mt-3 mb-0">Some supporting data is unavailable, so the indication may be incomplete.</div> : null}
               </Col>
@@ -68,15 +67,15 @@ export default function WaterQualityPage() {
 
         {summaryPending ? <p>Loading current CSO status…</p> : summaryError ? <div className="alert alert-danger">Current CSO status is unavailable. Historical activity may still be shown below.</div> : (
           <Row className="g-3 mb-4">
-            <Col md={4}><SummaryCard value={counts.currentlySpilling ?? '—'} label="Currently spilling" detail="Fresh upstream monitors reporting an active event." variant="water-quality-stat--danger" /></Col>
-            <Col md={4}><SummaryCard value={counts.recentlyStopped48h ?? '—'} label="Stopped in 48 hours" detail="Fresh monitors whose latest event has ended." variant="water-quality-stat--warning" /></Col>
-            <Col md={4}><SummaryCard value={unavailable} label="Status unavailable" detail="Offline, stale, missing or unrecognised monitor states." /></Col>
+            <Col md={4}><SummaryCard value={counts.currentlySpilling ?? '—'} label="Currently spilling" detail="Upstream locations reporting an active spill." /></Col>
+            <Col md={4}><SummaryCard value={counts.recentlyStopped48h ?? '—'} label="Stopped in 48 hours" detail="The latest spill has ended, but its contents may still be travelling downstream." /></Col>
+            <Col md={4}><SummaryCard value={unavailable} label="Status unavailable" detail="Locations with offline, stale, missing or unrecognised status data." /></Col>
           </Row>
         )}
 
         <Row className="g-4 mb-4">
-          <Col lg={6}><section className="water-quality-panel h-100"><h2>Upstream activity map</h2><p className="text-secondary">Current spills and recently stopped events that can contribute downstream.</p><WaterQualityMap locations={current?.locations || []} health={current?.health} isPending={summaryPending} error={summaryError} /></section></Col>
-          <Col lg={6}><section className="water-quality-panel h-100"><h2>Activity over time</h2><p className="text-secondary">Hourly upstream CSO activity density with the indicator reference levels.</p><CsoChart data={densityRows} error={densityError} isPending={densityPending} hours={chartHours} onHoursChange={setChartHours} /></section></Col>
+          <Col lg={6}><section className="water-quality-panel h-100"><h2>Upstream activity map</h2><p className="water-quality-muted">Current spills and recently stopped events that can contribute downstream.</p><WaterQualityMap locations={current?.locations || []} health={current?.health} isPending={summaryPending} error={summaryError} /></section></Col>
+          <Col lg={6}><section className="water-quality-panel h-100"><h2>Activity over time</h2><p className="water-quality-muted">Hourly upstream CSO activity density with the indicator reference levels.</p><CsoChart data={densityRows} error={densityError} isPending={densityPending} hours={chartHours} onHoursChange={setChartHours} /></section></Col>
         </Row>
 
         <Accordion className="mb-4">

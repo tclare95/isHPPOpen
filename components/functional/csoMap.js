@@ -36,7 +36,7 @@ export default function WaterQualityMap({ locations = [], health, isPending = fa
     import('leaflet').then(({ divIcon }) => {
       if (cancelled) return;
       const icon = (kind, symbol) => divIcon({ className: `cso-marker cso-marker--${kind}`, html: `<span aria-hidden="true">${symbol}</span>`, iconSize: [30, 30], iconAnchor: [15, 15] });
-      setIcons({ active: icon('active', '!'), recent: icon('recent', '✓') });
+      setIcons({ active: icon('active', '!'), recent: icon('recent', '≈') });
     }).catch(() => setIcons({ active: null, recent: null }));
     return () => { cancelled = true; };
   }, []);
@@ -60,9 +60,9 @@ export default function WaterQualityMap({ locations = [], health, isPending = fa
         <ButtonGroup size="sm" aria-label="Recent spill window">
           {WINDOWS.map((option) => <Button key={option.hours} variant={windowHours === option.hours ? 'info' : 'outline-light'} onClick={() => setWindowHours(option.hours)}>{option.label}</Button>)}
         </ButtonGroup>
-        <div className="cso-map-legend"><span className="legend-active">!</span> Currently spilling <span className="legend-recent">✓</span> Recently stopped</div>
+        <div className="cso-map-legend"><span className="legend-active" aria-hidden="true">!</span> Currently spilling <span className="legend-recent" aria-hidden="true">≈</span> Stopped recently; flow remains downstream</div>
       </div>
-      {!filtered.length ? <p className="text-secondary">No locations match this time window.</p> : (
+      {!filtered.length ? <p className="water-quality-muted">No locations match this time window.</p> : (
         <MapContainer center={center} zoom={9} className="cso-map" aria-label="Upstream CSO activity map">
           <TileLayer attribution='&copy; OpenStreetMap contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
           <MarkerClusterGroup chunkedLoading>
@@ -84,7 +84,7 @@ export default function WaterQualityMap({ locations = [], health, isPending = fa
           </MarkerClusterGroup>
         </MapContainer>
       )}
-      <p className="small text-secondary mt-2 mb-0">Showing {filtered.length} locations. Offline, stale and unknown monitors are counted above but are not plotted.</p>
+      <p className="small water-quality-muted mt-2 mb-0">Showing {filtered.length} locations. Locations with offline, stale or unknown status are counted above but are not plotted.</p>
     </div>
   );
 }

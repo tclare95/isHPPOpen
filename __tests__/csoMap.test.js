@@ -35,6 +35,8 @@ describe('WaterQualityMap', () => {
     expect(screen.getByTestId('map-container')).toBeInTheDocument();
     expect(screen.getAllByTestId('marker')).toHaveLength(2);
     expect(screen.getByText('Currently spilling')).toBeInTheDocument();
+    expect(screen.getByText('≈')).toBeInTheDocument();
+    expect(screen.getByText(/flow remains downstream/i)).toBeInTheDocument();
     expect(screen.getByText(/No stale location is labelled/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Current' }));
     expect(screen.getAllByTestId('marker')).toHaveLength(1);

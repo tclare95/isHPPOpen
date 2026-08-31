@@ -109,16 +109,10 @@ color: #8D918D;
     linear-gradient(180deg, #17232b 0%, #27343d 58%, #343a40 100%);
 }
 
-.water-quality-kicker {
-  color: #6ed1ff;
-  font-size: 0.8rem;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-
 .water-quality-back { color: #a9dff8; }
 .water-quality-back:hover { color: #fff; }
+.water-quality-intro { color: #d1d9de; }
+.water-quality-muted { color: #bdc8cf; }
 
 .water-quality-hero,
 .water-quality-stat,
@@ -130,9 +124,6 @@ color: #8D918D;
   box-shadow: 0 1rem 2.4rem rgba(0, 0, 0, 0.16);
 }
 
-.water-quality-stat { border-left: 4px solid #70808a; }
-.water-quality-stat--danger { border-left-color: #ff5d68; }
-.water-quality-stat--warning { border-left-color: #ffc857; }
 .water-quality-stat__value { font-size: 2.6rem; font-weight: 750; line-height: 1; margin-bottom: 0.7rem; }
 .water-quality-stat h3 { font-size: 1.05rem; }
 .water-quality-stat p { color: #aebbc4; font-size: 0.9rem; }
@@ -149,10 +140,19 @@ color: #8D918D;
 .cso-map-legend { color: #bdc8cf; font-size: 0.78rem; }
 .legend-active, .legend-recent { display: inline-grid; place-items: center; width: 1.25rem; height: 1.25rem; margin-left: 0.35rem; border-radius: 50%; color: white; font-weight: 800; }
 .legend-active { background: #c82333; }
-.legend-recent { background: #55636c; }
+.legend-recent { background: #52636e; border-radius: 0.3rem; }
 .cso-marker { display: grid; place-items: center; border: 3px solid white; border-radius: 50%; color: white; font-weight: 900; box-shadow: 0 2px 8px rgba(0,0,0,.45); }
 .cso-marker--active { background: #c82333; }
-.cso-marker--recent { background: #55636c; }
+.cso-marker--recent { background: #52636e; border-radius: 0.4rem; }
+
+.water-quality-page .accordion-item {
+  overflow: hidden;
+  border-color: rgba(190, 220, 234, 0.45);
+}
+.water-quality-page .accordion-body {
+  color: #eef3f5;
+  background: #24323b;
+}
 
 @media (max-width: 575.98px) {
   .cso-map { height: 360px; }

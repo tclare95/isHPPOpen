@@ -33,6 +33,10 @@ export async function getLatestForecastSnapshot() {
   return {
     forecast_data: forecastData,
     metadata: buildForecastMetadata(forecastData),
-    health: buildOperationalHealth({ source: "predictor-forecast", generatedAt: buildForecastMetadata(forecastData)?.forecast_time }),
+    health: buildOperationalHealth({
+      source: "predictor-forecast",
+      generatedAt: buildForecastMetadata(forecastData)?.forecast_time,
+      staleAfterMs: 60 * 60 * 1000,
+    }),
   };
 }

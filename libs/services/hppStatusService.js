@@ -87,7 +87,10 @@ export async function getHppStatusSnapshot() {
     .filter((record) => !Number.isNaN(new Date(record?.timestamp).getTime()))
     .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
 
-  const health = buildOperationalHealth({ source: "mongodb-hpp-status", generatedAt: sortedRecords[sortedRecords.length - 1]?.timestamp });
+  // HPP records are written only when the 2.2m boundary changes. A successful
+  // query is therefore the freshness signal; lastChangedAt remains the user-facing
+  // timestamp for the actual status transition.
+  const health = buildOperationalHealth({ source: "mongodb-hpp-status", generatedAt: currentDate });
   if (sortedRecords.length === 0) {
     return {
       data: { ...buildEmptyStatusPayload(), health },

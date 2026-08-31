@@ -157,7 +157,7 @@ The shared helper `libs/api/fetchWithRevalidate.js` keeps this upstream fetch po
    - Scheduled evaluation runs via `app/api/internal/alerts/run/route.js` every 15 minutes. Each run records delivery and run metrics in MongoDB, and uses Resend idempotency keys to make overlapping invocations safe.
    - Alert emails are transactional and use a Resend-compatible HTTP integration. Required env vars are `SITE_URL`, `RESEND_API_KEY`, `ALERTS_FROM_EMAIL`, and `CRON_SECRET`.
    - Management links are email-scoped, 30-minute tokens stored separately from alert subscriptions so users can view and remove their alerts without a full account system. Confirmation links expire after 24 hours.
-   - Operational APIs return additive `health` metadata (`source`, `generatedAt`, `fetchedAt`, `ageSeconds`, and `state`). The authenticated `/api/admin/operational-health` endpoint is the safe operator diagnostic view.
+   - Operational APIs return additive `health` metadata (`source`, `generatedAt`, `fetchedAt`, `ageSeconds`, and `state`). Most feeds are stale after 30 minutes; predictor forecasts use a one-hour window. HPP status is fresh when its MongoDB query succeeds because its source only writes on 2.2m boundary transitions. The authenticated `/api/admin/operational-health` endpoint is the safe operator diagnostic view.
 
 8. **Admin editing experience**
    - Admin pages now use a more consistent editing pattern across events and site banner workflows.

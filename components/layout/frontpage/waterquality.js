@@ -17,13 +17,16 @@ export default function WaterQuality() {
             <Accordion.Header>Information about HPP Water Quality</Accordion.Header>
             <Accordion.Body className="bg-secondary">
               The indicator combines recent upstream storm-overflow activity with how quickly the river is rising. It gives a general direction, not a measurement of bacteria or a safe/unsafe verdict. Other pollution sources may be present, so always take sensible precautions.
-              See the supporting map, trends and methodology on the <Link href="/waterquality">water quality page</Link>.
+              The dashboard includes the supporting map, trends and methodology.
             </Accordion.Body>
           </Accordion.Item>
         </Accordion>
       </Row>
 
-      <Row className="justify-content-center my-3">
+      <Row className="justify-content-center mt-3 mb-4">
+        <Link href="/waterquality" className="btn btn-info btn-lg water-quality-dashboard-link">
+          View water quality dashboard <span aria-hidden="true">→</span>
+        </Link>
       </Row>
     </div>
   );

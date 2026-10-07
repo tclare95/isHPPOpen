@@ -53,6 +53,8 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) (API/application layer + API ro
 - Agent operating guidance: [AGENTS.md](AGENTS.md)
 - Architecture overview and key functionality: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 - Engineering retrospective notes: [docs/LESSONS_LEARNED.md](docs/LESSONS_LEARNED.md)
+- CI, release and rollback setup: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
+- Three-repository system and rollout checklist: [docs/SYSTEM.md](docs/SYSTEM.md)
 
 Documentation ownership:
 - Runtime architecture and API standards: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)

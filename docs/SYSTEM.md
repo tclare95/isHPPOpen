@@ -6,7 +6,7 @@ Three repositories have independent runtime and release lifecycles:
 | --- | --- | --- | --- |
 | Web | [tclare95/isHPPOpen](https://github.com/tclare95/isHPPOpen) | Vercel Git integration, protected main | Lint, Jest, Next.js build |
 | Scraper | [tclare95/ishppopenScraper](https://github.com/tclare95/ishppopenScraper) | Manual SAM change set, production approval | Node syntax, SAM lint/container build |
-| Predictor | tclare95/trent-predictor (private repository to create/connect) | Manual Docker/ECR + saved Terraform plan, production approval | Python/shell syntax, Terraform validation, Lambda image import |
+| Predictor | [tclare95/trent-predictor](https://github.com/tclare95/trent-predictor) (must be private for deployment) | Manual Docker/ECR + saved Terraform plan, production approval | Python/shell syntax, Terraform validation, Lambda image import |
 
 The suite documentation lives in the web repository, avoiding a fourth source
 repository just for the local coordination folder. Each backend owns its own
@@ -28,8 +28,9 @@ The deployment setup does not change these contracts or upload a trained model.
 
 ## Activation checklist
 
-1. Connect/push the private predictor repo and review local edits in the existing
-   repos. Do not commit environments, Terraform state, models or generated data.
+1. The predictor source is pushed to GitHub. Confirm private visibility and review
+   local edits in the existing repos. Do not commit environments, Terraform state,
+   models or generated data.
 2. Rotate the database credential from scraper Git history; store its replacement
    in Secrets Manager and coordinate the web/scraper transition. Removing it from
    the current template alone does not invalidate the old credential.

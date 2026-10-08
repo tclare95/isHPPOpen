@@ -1,0 +1,31 @@
+schema: spec-driven
+
+context: |
+  isHPPOpen is a Next.js 16 / React 19 JavaScript App Router application on Vercel.
+  Node baseline is >=20.19; CI runs Node 22, ESLint, Jest and Next.js build.
+  App Router handlers live in app/api; business logic belongs in libs/services.
+  Preserve shared { ok: true, data } / { ok: false, error } API envelopes.
+  MongoDB, scraper S3 JSON and predictor S3 CSV contracts have independent consumers.
+  The product spans tclare95/isHPPOpen (web), ishppopenScraper (AWS SAM)
+  and trent-predictor (Python / AWS Lambda); see docs/SYSTEM.md.
+  Web main merges can deploy automatically to Vercel. Scraper/predictor
+  production deployments and model publishing require separate authorization.
+  Existing behaviour is documented in docs/ARCHITECTURE.md and docs/CONTRACTS.md.
+  Avoid large refactors, data migration or changed production behaviour as
+  collateral to maintenance tasks.
+
+rules:
+  proposal:
+    - Name the affected repositories and explicitly bound non-goals.
+    - Describe compatibility, release and rollback consequences.
+  specs:
+    - Use SHALL or MUST requirements with testable WHEN/THEN scenarios.
+    - Specify observable behaviour, not implementation internals.
+    - Preserve existing API and producer/consumer contracts unless explicitly changing them.
+  design:
+    - Justify decisions, include failure handling and migration/rollback where relevant.
+    - Reuse current service, route-handler and test patterns.
+  tasks:
+    - Use small, independently verifiable checked tasks with focused tests and documentation beside each change.
+    - Include existing lint, Jest and build verification before considering implementation complete.
+    - Never deploy, change production data, rotate credentials or upload models without explicit authorization.

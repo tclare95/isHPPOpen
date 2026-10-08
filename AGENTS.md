@@ -63,3 +63,12 @@ Keep this file focused on actionable guardrails. If architecture behavior change
 2. `npm test` passes (or explain environmental limitations).
 3. `npm run lint` passes (or explain environmental limitations).
 4. Update docs when behavior or architecture changes.
+
+
+## Suite specifications and cross-repository work
+
+- Canonical suite planning uses [OpenSpec](openspec/config.yaml): active proposals are in `openspec/changes/<descriptive-name>/` with `proposal.md`, capability deltas, `design.md` and `tasks.md`; completed requirements are archived/synced into `openspec/specs/`. Use `openspec status --change <name>` and `openspec validate <name> --strict` when the CLI is available. Current-state architecture documentation remains authoritative for behaviour not yet covered by OpenSpec.
+- Shared producer/consumer contracts: [docs/CONTRACTS.md](docs/CONTRACTS.md); suite ownership and rollout: [docs/SYSTEM.md](docs/SYSTEM.md).
+- A cross-repository feature has one descriptively named OpenSpec change and separate implementation PRs in web, scraper and/or predictor repositories. Link the change path in each PR; do not create a competing specification registry.
+- Confirm producer formats and downstream readers before changing S3 keys, CSV fields, MongoDB collections, cadence, station IDs, units or timestamp semantics. Prefer additive producer changes and coordinated consumer migration.
+- Deployments are independently authorized: merging web main may deploy to Vercel; AWS backends require reviewed manual release workflows. Do not deploy or mutate production as an incidental part of a documentation/spec task.

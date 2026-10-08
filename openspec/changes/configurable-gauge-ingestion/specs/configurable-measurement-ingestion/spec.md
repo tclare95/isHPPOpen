@@ -7,7 +7,7 @@ Allow operators to collect additional supported EA station measurements by revie
 ## ADDED Requirements
 
 ### Requirement: Version-controlled measurement configuration
-The ingestion system SHALL load and validate a version-controlled definition of active sources, stations and measurements before scheduled collection, without requiring an administration interface.
+The new .NET collector SHALL load and validate a version-controlled definition of active sources, stations and measurements before scheduled collection, without requiring an administration interface or modifying legacy Lambdas.
 
 #### Scenario: New supported EA level measurement is configured
 - **WHEN** a valid measurement definition is added and deployed
@@ -54,8 +54,23 @@ The ingestion system SHALL collect measurements incrementally with a bounded re-
 - **WHEN** a scheduled run is retried or overlaps another run
 - **THEN** ingestion remains idempotent, watermarks do not move past unpersisted observations, and repeat execution cannot corrupt the measurement history.
 
+### Requirement: Durable DynamoDB hot observations
+The collector SHALL persist uniquely keyed full-resolution observations for a rolling 365-day window in DynamoDB, using measurement-specific monthly partitions, and SHALL conditionally maintain the latest per-measurement value.
+
+#### Scenario: Corrected and stale duplicate observations
+- **WHEN** a provider corrects an already stored timestamp while an older fetch is retried
+- **THEN** the authorised correction wins deterministically, the older retry cannot overwrite it, and the latest pointer does not regress.
+
+#### Scenario: Historical query spans month boundaries
+- **WHEN** an authorised consumer requests a bounded 365-day measurement range across months
+- **THEN** only relevant measurement/month partitions are queried, raw samples are returned chronologically and all continuation pages are accounted for.
+
+#### Scenario: Archive not implemented yet
+- **WHEN** stage-2 Dynamo persistence is available without the permanent S3 archive
+- **THEN** no production scheduled ingestion or automatic observation TTL is enabled.
+
 ### Requirement: Safe compatibility boundary
-The system SHALL support shadow or parallel collection without changing current production S3/Mongo payloads or consumer responses before an explicitly approved cutover.
+The new .NET collector SHALL support shadow or parallel collection without changing current production S3/Mongo payloads or consumer responses before an explicitly approved cutover.
 
 #### Scenario: New collector is enabled for verification
 - **WHEN** a configured measurement is collected in shadow mode

@@ -1,38 +1,33 @@
-# Proposal: Configurable gauge and measurement ingestion
+# Proposal: Configurable EA gauge ingestion in new .NET backend
 
 ## Why
 
-The current HPP scraper is centred on Colwick; the web's Trent dashboard fetches several EA gauges directly, and `riverscraper` is an independent multi-station DynamoDB prototype. Over time, this creates duplicated fetch logic, inconsistent measurement identity and provider-specific coupling. We want a single, testable ingestion foundation where adding an Environment Agency level or flow measurement is principally a version-controlled configuration change.
+The old `ishppopenScraper` is a mixed-concern Node.js Lambda for river levels, HPP status, water quality, forecasts and CSOs. Its production responsibilities should not be refactored merely to introduce configurable gauge measurement ingestion. `riverscraper` was an exploratory .NET implementation in a possibly different AWS account and is not suitable to promote unchanged.
 
-## What Changes
+## What changes
 
-- Introduce one validated source/station/measurement registry owned by the collector. Start with Environment Agency flood-monitoring readings and a distinct provider-adapter boundary for later providers.
-- Represent each measurement independently of its station, with external EA measure IDs, parameter, units, reference/datum when known, UTC observation time, ingestion time and source provenance.
-- Use per-measurement collection cursors or watermarks, bounded overlap/backfill, robust source failures, correction rules and idempotent writes to the store selected by `evaluate-data-storage`.
-- Record per-source/per-measurement collection run health, latest successful observation and lag; avoid pretending a successful HTTP fetch guarantees fresh readings.
-- Provide an independently testable, shadow-capable collection path; preserve production `levels/latest.json`, Mongo `riverschemas`, HPP status, CSO and web/predictor consumers during rollout.
+- Implement the **new `river-observations` .NET 10 service** from [foundation #64](https://github.com/tclare95/isHPPOpen/issues/64), keeping old production Lambdas untouched.
+- Load a version-controlled, validated EA gauge/measurement registry owned by the new collector (measurement—not station—identity is authoritative).
+- Introduce a small EA provider adapter and a provider-neutral normalised observation contract; support multiple measurements at the same station and allow future providers without building them now.
+- Poll eligible measures incrementally with bounded overlap/retry/concurrency, apply source corrections idempotently, and record independent per-measurement health.
+- Use the approved [DynamoDB observation model](../../../docs/decisions/0001-observation-storage.md) for **365 rolling days** of full-resolution readings and conditional latest pointers. The permanent S3 archive and **safe TTL eligibility** arrive separately in [archive change #65](https://github.com/tclare95/isHPPOpen/issues/65). Stage-2 Dynamo writing is **staging/shadow only**; no production activation until archive safety is integrated and separately approved.
 
 ## Capabilities
 
-### New Capabilities
-
-- `configurable-measurement-ingestion`: Add and collect supported measurements through a validated source-control configuration, independent of web page display choices.
-- `ingestion-health`: Report collection outcomes and freshness per configured measurement while isolating failed measurements.
-
-### Modified Capabilities
-
-None currently canonical in OpenSpec. The existing single-station production collector remains authoritative until a separately approved migration.
+### New capabilities
+- `configurable-measurement-ingestion`: EA-only initial collector, configured from source control.
+- `ingestion-health`: per-measure run outcome, source freshness and error isolation.
 
 ## Impact
 
-**Primary code owner:** `tclare95/ishppopenScraper`, with the OpenSpec change stored centrally in `tclare95/isHPPOpen`. Review but do not directly merge the `riverscraper` or `reservoir-levels` repositories. `trent-predictor` is an independent consumer, not part of initial migration.
+**Implementation owner:** new `tclare95/river-observations` repository; canonical OpenSpec planning remains `tclare95/isHPPOpen`. This replaces the earlier plan to add the feature directly to `ishppopenScraper`. **Tracking:** [#49](https://github.com/tclare95/isHPPOpen/issues/49).
 
-**Dependency:** complete the backend-neutral identity contract and resolve storage choice via [`evaluate-data-storage`](../evaluate-data-storage/proposal.md) / [#48](https://github.com/tclare95/isHPPOpen/issues/48) before writing production storage adapters or promoting new ingestion.
-
-**Tracking:** [Issue #49](https://github.com/tclare95/isHPPOpen/issues/49).
-
-**Release:** additive, side-by-side production review; independent AWS manual deployment; do not automatically switch or delete S3/Mongo keys. An admin UI and additional provider integrations are not part of this change.
+**Dependencies:** accepted [ADR-001](../../../docs/decisions/0001-observation-storage.md), new foundation [#64](https://github.com/tclare95/isHPPOpen/issues/64) and archive before approved production collection [#65](https://github.com/tclare95/isHPPOpen/issues/65). Historical backfill is [#50](https://github.com/tclare95/isHPPOpen/issues/50), web consumers [#51](https://github.com/tclare95/isHPPOpen/issues/51), additional advertised gauges [#52](https://github.com/tclare95/isHPPOpen/issues/52).
 
 ## Non-goals
 
-No global hydrology platform, web station-management UI, wide provider catalogue, migration of the existing complete archive, changes to user-facing dashboards/alerts, replacement of CSO/water-quality collection, predictor retraining, or automatic deployment.
+No modifications or retirement of the old Node.js Lambdas, HPP/CSO/forecast refactor, old Mongo/S3 reconstruction, production rollout, admin UI, non-EA provider, user-facing dashboard change or full archive design in this slice.
+
+## Compatibility / release
+
+Additive service deployed to isolated stage/preview resources by a **separately approved manual release**. Existing Mongo `riverschemas`, public `levels/latest.json`, HPP, CSO and forecast outputs remain authoritative until explicitly migrated. A normal code merge never starts production collection.

@@ -6,7 +6,7 @@ This is the **internal** HTTP contract between Vercel server-side code and the .
 
 - Request/response JSON; UTC ISO 8601 time with explicit `Z` or offset input, canonical output in `Z`; never local/naive timestamps. `from` is inclusive and `to` exclusive.
 - Success envelope: `{ "data": ..., "meta": ... }`. Error envelope: `{ "error": { "code": "...", "message": "..." }, "requestId": "..." }`. The existing **public** Next.js envelope is unrelated and unchanged.
-- Positive or zero finite source observations only as dictated by the provider's parameter/domain validation; never invent values, interpolate missing samples or convert missing to zero.
+- Preserve finite numeric source values (including valid negative datum-relative readings), subject to the provider's parameter/domain validation; never invent values, interpolate missing samples or convert missing to zero.
 - One canonical ID maps to exactly one source measurement, not station alone. `ea:4009-level` below is a **placeholder**, not the confirmed upstream external measure identifier.
 
 ## GET /v1/measurements
@@ -71,7 +71,7 @@ A known measurement with no stored observations is `status=no_observations` rath
 
 ## GET /v1/measurements/{id}/observations
 
-Required `from` and `to`; optional `limit` (default 2000, max 5000); optional `cursor`. Max span 366 days and serialized JSON page size 4 MB. A cursor fixes original query, stage, cutoff and archive revision references, has 30-minute TTL and cannot be altered to change query semantics.
+Required `from` and `to`; optional `limit` (default 2000, max 5000); optional `cursor`. Max span 366 days and serialized JSON page size 4 MB. A cursor is authenticated-encrypted, fixes original query, stage, cutoff and archive revision references, has 30-minute TTL and cannot be altered to change query semantics.
 
 Success with **known historic gaps**, `200`:
 

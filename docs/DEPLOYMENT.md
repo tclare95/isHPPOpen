@@ -27,6 +27,20 @@ Use the native [Vercel Git integration](https://vercel.com/docs/git), so no
 Vercel token or second deployment workflow is required. This setup does not
 change the deployed project or its settings automatically.
 
+## Setup status (8 October 2026)
+
+Main is protected: PR required, up-to-date branch, `Web checks` and `Vercel`
+required, administrator enforcement enabled, force pushes/deletion disabled.
+Vercel's existing `is-hpp-open` project is connected to `tclare95/isHPPOpen`,
+uses main for production, the repository root, Next.js and Node 22. The pipeline
+PR has passed CI and Vercel preview checks. It remains unmerged because merging
+main triggers a production deployment.
+
+The Vercel configuration currently shares the same MongoDB, auth and email
+variable entries across Production and Preview. Preview isolation therefore
+remains an operational follow-up: provision test data/credentials before changing
+these targets. Environment values were not printed or changed during setup.
+
 ## Release and rollback
 
 Open a PR, check CI and the Vercel preview, then merge. After production is ready,

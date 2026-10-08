@@ -5,8 +5,8 @@ Three repositories have independent runtime and release lifecycles:
 | Component | Repository | Deployment | Checks |
 | --- | --- | --- | --- |
 | Web | [tclare95/isHPPOpen](https://github.com/tclare95/isHPPOpen) | Vercel Git integration, protected main | Lint, Jest, Next.js build |
-| Scraper | [tclare95/ishppopenScraper](https://github.com/tclare95/ishppopenScraper) | Manual SAM change set, production approval | Node syntax, SAM lint/container build |
-| Predictor | [tclare95/trent-predictor](https://github.com/tclare95/trent-predictor) (must be private for deployment) | Manual Docker/ECR + saved Terraform plan, production approval | Python/shell syntax, Terraform validation, Lambda image import |
+| Scraper | [tclare95/ishppopenScraper](https://github.com/tclare95/ishppopenScraper) | Manual SAM prepare, separate manual apply of verified change set | Node syntax, SAM lint/container build, plan provenance |
+| Predictor | [tclare95/trent-predictor](https://github.com/tclare95/trent-predictor) (private) | Manual Docker/ECR prepare, separate manual apply of verified Terraform plan | Python/shell syntax, Terraform validation, Lambda image import, plan provenance |
 
 The suite documentation lives in the web repository, avoiding a fourth source
 repository just for the local coordination folder. Each backend owns its own
@@ -35,12 +35,15 @@ The deployment setup does not change these contracts or upload a trained model.
    in Secrets Manager and coordinate the web/scraper transition. Removing it from
    the current template alone does not invalidate the old credential.
 3. Set up AWS OIDC roles and protected `production-plan`/`production` environments
-   as described in each backend's deployment guide. Configure required reviewers
-   for production execution and restrict environments to main.
+   as described in each backend's deployment guide. Main-only environments are
+   configured. The current plan cannot provide private-repository required
+   reviewers; each backend instead requires a separate manual apply dispatch
+   selecting a successful prepare run for the same main commit.
 4. Migrate the predictor's existing state into a private versioned S3 bucket,
    confirm existing resources and match GitHub variables to production settings.
-5. Enable branch protection with the respective CI check and connect/check
-   Vercel's production and preview settings. Use isolated preview data/secrets.
+5. All main branches now require PRs and their CI check. Web also requires Vercel.
+   Vercel Git/Node settings are verified; Preview currently shares Production
+   database/auth/email variable entries and still needs isolated data/secrets.
 6. Activate AWS workflow variables only after the above steps, then perform each
    deployment as a separately authorized action and check feed freshness.
 

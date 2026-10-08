@@ -56,7 +56,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) (API/application layer + API ro
 - CI, release and rollback setup: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
 - Three-repository system and rollout checklist: [docs/SYSTEM.md](docs/SYSTEM.md)
 - Shared integration contracts: [docs/CONTRACTS.md](docs/CONTRACTS.md)
-- Spec-driven development workflow and index: [docs/specs/README.md](docs/specs/README.md)
+- OpenSpec change proposals and configuration: [openspec/config.yaml](openspec/config.yaml) and [openspec/changes/](openspec/changes/)
 
 Documentation ownership:
 - Runtime architecture and API standards: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)

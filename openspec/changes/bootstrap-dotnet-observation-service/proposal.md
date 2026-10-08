@@ -1,32 +1,45 @@
-# Proposal: Bootstrap a .NET observation backend
+# Proposal: Bootstrap a unified .NET river data platform
 
 ## Why
 
-The current `ishppopenScraper` Lambdas mix river polling, HPP status changes, water quality, CSO and legacy Mongo/S3 writes. They should stay running unchanged while gauge ingestion moves to an independently deployable backend. The former `riverscraper` .NET prototype was deployed but is no longer useful; its AWS account and Terraform state may be unrelated to the active isHPPOpen environment, and its GitHub workflow applies Terraform on main pushes.
+isHPPOpen's existing Node scraper mixes river observations, HPP threshold transitions, water-quality indicators, CSO polling and legacy publishing. The aim is **one reusable river/environmental data backend**, initially serving isHPPOpen but designed to support multiple rivers, providers, locations and future consumers. It must not become either another single-purpose gauge scraper or a prematurely generic multi-service framework.
+
+The existing `ishppopenScraper` and independent Python `trent-predictor` remain authoritative until separate, verified consumer migrations. The legacy `riverscraper` prototype may have been deployed in a different AWS account and has an auto-applying Terraform workflow; none of its resources, state or deployment assumptions may be inherited.
 
 ## What changes
 
-- Establish a **new repository, `tclare95/river-observations`**, with a clean .NET 10 managed-runtime Lambda foundation. Do **not** transplant or rename legacy Terraform state, Dynamo tables, IAM roles or pipelines from `riverscraper`.
-- One small scheduled-host solution with separated domain contracts, orchestration and infrastructure adapters; shared logging/configuration and fixture-driven xUnit tests.
-- AWS **eu-west-1** target by default, with **separate stage-specific stacks** and an explicitly recorded/verified AWS account identity before any apply.
-- Build/test/package/validate CI; production deploy is **manual prepare -> reviewed change set -> manual apply**, never on PR or a push to main.
-- Create guidance for the subsequent EA ingestion (#49), S3 archive (#65), historical migration (#50) and web consumers (#51); leave the old Lambdas and predictor alone.
+- Create **one new repository, `tclare95/river-data-platform`**, containing the shared .NET 10 Lambda foundation for later observation, CSO and other modules. This supersedes the previously *proposed* `river-observations` repository name **before repository creation**; do not create a second scaffold or reuse `riverscraper`.
+- Build a small testable solution with minimal cross-cutting infrastructure, source/provider identity and configuration conventions, application orchestration, structured logging/health and independent Lambda entry points **as needed by subsequent changes**. No common all-purpose observation/event record or retention policy.
+- Include one safely **disabled/no-op collector host** with explicit `NotConfigured`/disabled outcome. No live providers, writes, reads from existing production data or activated schedule in this slice.
+- Provide AWS SAM scaffolding with separate stage-specific stacks/roles, account-and-region fail-closed checks, a provisionally selected **eu-west-1** region and a reviewed, **manual prepare → review → apply** workflow only. No PR/main-triggered AWS apply.
+- Add pinned .NET 10 SDK, reproducible CI (restore, format/build/test, SAM validation), fixture-driven xUnit tests, concise README/AGENTS/deployment handoff.
+
+## Modular platform boundaries
+
+The foundation documents extension seams; **none of these domain features is implemented by #64**:
+
+- **Catalogue and configuration:** independent source/provider, station/measurement and outfall/asset identities; explicit version-controlled selections (see CSO [#71](https://github.com/tclare95/isHPPOpen/issues/71)).
+- **Hydrological observations:** gauge levels, flow and later rainfall/other scalar time series; EA collector [#49](https://github.com/tclare95/isHPPOpen/issues/49), gauge-specific Dynamo/S3 archive [#65](https://github.com/tclare95/isHPPOpen/issues/65), shared authenticated API [#69](https://github.com/tclare95/isHPPOpen/issues/69).
+- **CSO operational state and events:** provider-reported snapshots, spill intervals, revisions and their **separate** 24-calendar-month completed-event hot retention; [#71](https://github.com/tclare95/isHPPOpen/issues/71) then [#72](https://github.com/tclare95/isHPPOpen/issues/72).
+- **Forecast publications:** future model-neutral output contract (model/run/issue/target times and optional uncertainty) while Python training/inference stays an **independent service**.
+- **Site assessments:** separately versioned, reproducible derivations tied to source data; HPP's particular rules are **not** platform-wide assumptions.
+
+See [platform direction](../../../docs/RIVER_DATA_PLATFORM_DIRECTION.md). [ADR-001](../../../docs/decisions/0001-observation-storage.md) applies specifically to **gauge observations**, not to all domains.
 
 ## Capabilities
 
-### New capabilities
-- `observation-collector-foundation`: independently buildable, inspectable, stage-isolated, deployable collector host with no accidental production activation.
+### Modified foundation capability
 
-## Impact
+- `observation-collector-foundation`: **retained historical OpenSpec capability identifier**, now describing a safe, independently buildable **shared platform foundation** with an inert collector entry point. Keep this identifier and the existing `bootstrap-dotnet-observation-service` change slug for tracking continuity; implementation namespace/repository is `RiverDataPlatform`.
 
-**New code owner:** proposed `tclare95/river-observations` (create when scaffolding is authorised); canonical planning and issue tracking remain `tclare95/isHPPOpen`. No backend repo or AWS resource is created by this documentation change.
+## Impact and dependencies
 
-**Tracking:** [#64](https://github.com/tclare95/isHPPOpen/issues/64). **Dependency:** [ADR-001 / PR #62](https://github.com/tclare95/isHPPOpen/pull/62) (DynamoDB 365 days + S3 Standard indefinite). The separate idle `riverscraper` installation is tracked for later inventory as [#66](https://github.com/tclare95/isHPPOpen/issues/66).
+**Implementation owner:** new `tclare95/river-data-platform` repository, created only by an expressly authorised implementation task; **canonical OpenSpec and issues:** `tclare95/isHPPOpen` ([#64](https://github.com/tclare95/isHPPOpen/issues/64)). Existing gauge and CSO specs stay separate. Dependency: accepted observation-specific ADR-001 for future gauge persistence, not for generic bootstrapping. Experimental AWS inventory is separately [#66](https://github.com/tclare95/isHPPOpen/issues/66).
 
 ## Non-goals
 
-EA fetching, deployed Dynamo/S3 persistence, historical archives/backfill, web changes, production activation, migrating/retiring existing Lambdas, accessing/deleting old `riverscraper` state and introducing microservice orchestration.
+No real EA/CSO ingestion, asset discovery, DynamoDB/S3 storage or retention policies, historical backfill, API read routes, forecasts, HPP/site logic, web/alert changes, model migration, provider-agnostic plug-in framework, event bus, GIS routing, legacy data access or infrastructure retirement. No production activation, resource creation or decommissioning.
 
-## Release/rollback
+## Release and rollback
 
-Mergeable source scaffolding is separate from an authorised AWS release. Local and CI validation must work without AWS credentials. Deploy only to a separately identified **staging** account/environment after explicit approval; prod is a separate future manual approval. No existing consumer is switched, so rollback consists of disabling the new schedule without affecting the old system.
+Source/CI scaffolding may be developed without AWS credentials. Any staging/prod infrastructure creation or schedule activation needs separately recorded explicit approval, correct AWS identity and reviewed manual apply. The old system stays untouched; before any new consumer is switched, rollback remains independent of legacy production.

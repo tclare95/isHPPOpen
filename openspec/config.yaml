@@ -28,8 +28,8 @@ rules:
     - Preserve existing API and producer/consumer contracts unless explicitly changing them.
   design:
     - Justify decisions, include failure handling and migration/rollback where relevant.
-    - Reuse current service, route-handler and test patterns.
+    - Reuse patterns appropriate to the target repository. Use Next.js service/route conventions in the web repo, and small DI/adapter/Lambda conventions for the new .NET backend.
   tasks:
     - Use small, independently verifiable checked tasks with focused tests and documentation beside each change.
-    - Include existing lint, Jest and build verification before considering implementation complete.
+    - Run the target repository's existing relevant verification: Jest/ESLint/Next.js build for web; dotnet restore/build/test/format and SAM validation for the .NET backend.
     - Never deploy, change production data, rotate credentials or upload models without explicit authorization.

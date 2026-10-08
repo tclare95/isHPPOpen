@@ -5,7 +5,7 @@ export default function WeirLevels (props) {
             )
         } else if (props.currentLevel >= 2.4 && props.currentLevel < 2.75) {
             return(
-                <div><h6><a href = "#weirs">You're out of luck on the Trent unfortunately!</a></h6></div>
+                <div><h6><a href = "#weirs">You&apos;re out of luck on the Trent unfortunately!</a></h6></div>
                 )
         } else if(props.currentLevel >=2.75 && props.currentLevel < 3.1) {
             return(

@@ -4,7 +4,7 @@
 
 The current Node scraper fetches Severn Trent ArcGIS CSO point-in-time records at roughly 15-minute intervals, appends repeated Mongo `csoData` documents, and archives older snapshots in S3. Those snapshots are not reliable event identities, and provider outages must not be interpreted as definite event endings. The new river data platform needs first-class **outfall state** and **spill event** domains.
 
-This is the CSO domain module of a **unified backend** for multiple rivers, provider observations, CSOs, model-independent forecasts and site assessments. It does **not** force all data into a single table or move independent Python prediction execution into .NET. The planned `river-observations` repo stays the implementation target pending any separately agreed rename.
+This is the CSO domain module of a **unified backend** for multiple rivers, provider observations, CSOs, model-independent forecasts and site assessments. It does **not** force all data into a single table or move independent Python prediction execution into .NET. The agreed `river-data-platform` repository is the shared implementation target after foundation #64; the older `river-observations` proposal is superseded.
 
 ## Agreed decisions (8 October 2026)
 
@@ -22,7 +22,7 @@ This is the CSO domain module of a **unified backend** for multiple rivers, prov
 
 ## Ownership and dependencies
 
-Implementation: new shared .NET river backend (planned `tclare95/river-observations`); canonical OpenSpec planning: `tclare95/isHPPOpen`. Tracking [#72](https://github.com/tclare95/isHPPOpen/issues/72). Depends on configured selection [#71](https://github.com/tclare95/isHPPOpen/issues/71), accepted read security [#69](https://github.com/tclare95/isHPPOpen/issues/69), and verified-archive patterns [#65](https://github.com/tclare95/isHPPOpen/issues/65). Existing gauge-only ADR-001 does **not** itself decide CSO retention; the CSO-specific policy is recorded here.
+Implementation: new shared .NET river backend (planned `tclare95/river-data-platform`); canonical OpenSpec planning: `tclare95/isHPPOpen`. Tracking [#72](https://github.com/tclare95/isHPPOpen/issues/72). Depends on configured selection [#71](https://github.com/tclare95/isHPPOpen/issues/71), accepted read security [#69](https://github.com/tclare95/isHPPOpen/issues/69), and verified-archive patterns [#65](https://github.com/tclare95/isHPPOpen/issues/65). Existing gauge-only ADR-001 does **not** itself decide CSO retention; the CSO-specific policy is recorded here.
 
 ## Deliberate non-goals
 

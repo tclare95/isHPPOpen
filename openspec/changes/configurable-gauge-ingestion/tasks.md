@@ -2,7 +2,7 @@
 
 ## 1. Registry and contracts
 
-- [ ] 1.1 Start from the independently buildable `river-observations` .NET 10 solution specified by [#64](https://github.com/tclare95/isHPPOpen/issues/64). Implement version-controlled, startup-validated EA measurement definitions, including Colwick and distinct Shardlow level and flow examples; new configurations must not enable production collection.
+- [ ] 1.1 Start from the independently buildable `river-data-platform` .NET 10 solution specified by [#64](https://github.com/tclare95/isHPPOpen/issues/64). Implement version-controlled, startup-validated EA measurement definitions, including Colwick and distinct Shardlow level and flow examples; new configurations must not enable production collection.
 - [ ] 1.2 Define/test normalised source/station/measurement/observation IDs, exact UTC observed vs ingested timestamps, units/datum/quality/source provenance and corrections, with no synthetic timestamps.
 - [ ] 1.3 Add EA adapter behind a typed provider interface, fixture tests for measurements and failure/429/invalid data, `HttpClientFactory` and bounded retry/timeout.
 

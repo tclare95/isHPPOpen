@@ -6,7 +6,7 @@ The chosen observation store retains 365 days of full-resolution readings in Dyn
 
 ## What changes
 
-- Build an independently testable **S3 archival adapter** inside the new `river-observations` .NET backend, not the legacy Node.js Lambdas.
+- Build an independently testable **S3 archival adapter** inside the **observation domain of** `river-data-platform`, not the legacy Node.js Lambdas or CSO event storage.
 - Persist source-observed measurements in compact date-partitioned, versioned, private S3 Standard objects with a manifest defining count, time range, checksum, schema/version and correction handling.
 - Support **direct GetObject** retrieval of relevant partitions for historic range requests, including data older than the 365-day DynamoDB window; accept modest latency but bound reads and responses.
 - Retain canonical raw archives indefinitely and enable DynamoDB 365-day TTL **only after independently verified permanent archive coverage**.
@@ -19,7 +19,7 @@ The chosen observation store retains 365 days of full-resolution readings in Dyn
 
 ## Impact / Dependencies
 
-**Code owner:** new `tclare95/river-observations` repository. **Central plan:** `tclare95/isHPPOpen` OpenSpec. Tracking [#65](https://github.com/tclare95/isHPPOpen/issues/65), prerequisites [#64](https://github.com/tclare95/isHPPOpen/issues/64) and [#49](https://github.com/tclare95/isHPPOpen/issues/49). Matches [ADR-001](../../../docs/decisions/0001-observation-storage.md).
+**Code owner:** new `tclare95/river-data-platform` repository. **Central plan:** `tclare95/isHPPOpen` OpenSpec. Tracking [#65](https://github.com/tclare95/isHPPOpen/issues/65), prerequisites [#64](https://github.com/tclare95/isHPPOpen/issues/64) and [#49](https://github.com/tclare95/isHPPOpen/issues/49). Matches [ADR-001](../../../docs/decisions/0001-observation-storage.md).
 
 ## Non-goals
 

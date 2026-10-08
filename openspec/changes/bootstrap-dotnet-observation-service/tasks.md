@@ -1,25 +1,28 @@
-# Tasks: .NET observation collector foundation
+# Tasks: Unified .NET river data platform foundation (#64)
 
-## 1. New repo/solution (no AWS deployment)
+All tasks are **unchecked implementation work**. Documentation alignment is not implementation completion.
 
-- [ ] 1.1 Create **new** `river-observations` repo when authorised; link this OpenSpec change in README/AGENTS instructions and #64. Do not overwrite old `riverscraper`.
-- [ ] 1.2 Add pinned .NET 10 SDK, solution/project layout (Core, Infrastructure, Lambda, Tests), NuGet version management where helpful, `.gitignore` and a concise local runbook.
-- [ ] 1.3 Add minimal managed Lambda entry point, host dependency injection/options validation, cancellation/clock/logging and explicit no-op result until configured. No source calls or data writes.
-- [ ] 1.4 Add xUnit tests for startup, invalid configuration, no-op scheduling, cancellation and run diagnostics; run restore/build/test/format locally.
+## 1. New repository and minimal runnable solution
 
-## 2. Safe, isolated infrastructure and CI
+- [ ] 1.1 Create fresh **`tclare95/river-data-platform`** repository (never `riverscraper` or an extra `river-observations` scaffold) when implementation is authorised; link canonical OpenSpec, [platform direction](../../../docs/RIVER_DATA_PLATFORM_DIRECTION.md) and [#64](https://github.com/tclare95/isHPPOpen/issues/64) in README/AGENTS.
+- [ ] 1.2 Pin .NET 10 SDK; create small Core, Infrastructure, Lambda and Tests solution/projects with DI, options validation, structured logging, cancellation, fake clock, xUnit, sensible NuGet management and local runbook; defer unnecessary module projects.
+- [ ] 1.3 Implement a non-collecting, disabled-by-default Lambda handler/composition root returning `Disabled` or `NotConfigured`; do not fetch EA, CSO, forecast data or touch any real persistence.
+- [ ] 1.4 Test clean-checkout restore/build/test/format and disabled invocation; assert no outgoing HTTP/DB/S3 calls, actionable redacted config failure and proper cancellation.
 
-- [ ] 2.1 Define an isolated AWS SAM template and stage-specific parameters for eu-west-1, Lambda/runtime, disabled-by-default EventBridge schedule and limited CloudWatch logs; leave Dynamo/S3 resource creation to following changes.
-- [ ] 2.2 Add PR CI: restore/build/test, format check, SAM template validation and package verification; failures block merge. No PR/main auto-apply or deployment side effect.
-- [ ] 2.3 Add explicit manual prepare/review/apply workflow design with STS account+region assertions and environment approval, documenting intended AWS account **without embedding account IDs/secrets in public logs or examples**. Abort on mismatch.
-- [ ] 2.4 Document stage/prod isolation, artifact identity, minimum IAM, planned alarms, rollback by disabling new schedule and build/release instructions.
+## 2. Security, CI and release guardrails
 
-## 3. Cross-repo boundaries and handoff
+- [ ] 2.1 Add stage-isolated AWS SAM template for a managed `dotnet10` Lambda, minimal CloudWatch logging/health hooks and an **inactive** EventBridge schedule; stage/prod resource separation, **eu-west-1 only as an approved provisional default**.
+- [ ] 2.2 Add required PR CI for .NET restore/format/build/test, SAM validate and repeatable package checks, running without AWS credentials, and ensure main/PR never auto-applies an infrastructure change.
+- [ ] 2.3 Document and verify manually dispatched **prepare → reviewed change set → explicitly approved apply**, checking STS AWS identity, expected stage/account/region, artifact provenance and fail-closed behaviour on a mismatch. No apply as part of the initial foundation PR.
+- [ ] 2.4 Document least-privilege initial IAM (logs only), separate stage/prod identities and no production data credentials, rollback/disabled schedule and developer/release runbooks.
 
-- [ ] 3.1 Verify the legacy `ishppopenScraper`, web and predictor are untouched; do not connect new Lambda to production consumer outputs.
-- [ ] 3.2 Document extension seams for EA provider/measurement registry (#49) and permanent S3 archive (#65), plus dependency order for #50/#51.
-- [ ] 3.3 Attach CI evidence and source implementation PR to [#64](https://github.com/tclare95/isHPPOpen/issues/64). **Do not activate a schedule, deploy or mutate resources as part of this task without separate explicit approval.**
+## 3. Reusable platform boundaries without premature implementation
+
+- [ ] 3.1 Document shared source/provider identity, configuration, health and provenance conventions; draw clear boundaries for observation entities, CSO source/current/event records, independent model forecast publications and reproducible site assessments. **Do not create generic universal data/retention tables.**
+- [ ] 3.2 Explain follow-on sequencing for [#49](https://github.com/tclare95/isHPPOpen/issues/49) → [#65](https://github.com/tclare95/isHPPOpen/issues/65) → [#69](https://github.com/tclare95/isHPPOpen/issues/69), separate historical/web [#50](https://github.com/tclare95/isHPPOpen/issues/50)/[#51](https://github.com/tclare95/isHPPOpen/issues/51), and parallel CSO [#71](https://github.com/tclare95/isHPPOpen/issues/71) → [#72](https://github.com/tclare95/isHPPOpen/issues/72). Preserve independent Python predictor execution.
+- [ ] 3.3 Verify no modification to `isHPPOpen` application behaviour, `ishppopenScraper`, `trent-predictor`, existing AWS deployments, production data, alerts or legacy provider/public contracts.
+- [ ] 3.4 Link tested source implementation PR and evidence to [#64](https://github.com/tclare95/isHPPOpen/issues/64); leave downstream tasks unchecked and do not mark #64 implemented on documentation PR merge.
 
 ## Acceptance
 
-A developer can clone and `dotnet test` the new repo; PR CI passes; the IAM/account/schedule rules prevent accidental old-account use or production deployment. The runtime is deliberately non-collecting until #49.
+From a fresh clone, `dotnet test` and CI pass with no AWS credentials; an unconfigured scheduled handler reports an inert outcome; manual deployment identities fail closed; no merge can deploy or activate production; future gauge and CSO implementations can grow as **independent modules in the same repository**. No infrastructure deployment, source migration or consumer cutover is authorised by this change alone.

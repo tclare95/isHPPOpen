@@ -2,11 +2,11 @@
 
 ## Why
 
-The new `river-observations` backend needs a stable read interface before the Next.js application can stop fetching Environment Agency gauges directly. Putting database and S3 query logic into Vercel would duplicate persistence decisions and force web and backend changes to deploy together. The existing `/api/trentweirs`, `/api/levels`, alerts, HPP status and predictor output have different contracts and must not be rewritten as a side effect.
+The **observation module of the shared** `river-data-platform` backend needs a stable read interface before the Next.js application can stop fetching Environment Agency gauges directly. Putting database and S3 query logic into Vercel would duplicate persistence decisions and force web and backend changes to deploy together. The existing `/api/trentweirs`, `/api/levels`, alerts, HPP status and predictor output have different contracts and must not be rewritten as a side effect.
 
 ## Accepted owner decisions (8 October 2026)
 
-1. **Runtime and topology:** a separate, read-only .NET 10 Lambda in the *same new* `river-observations` repository, sharing domain and query adapters with (but independent from) the scheduled collector. AWS API Gateway **HTTP API** exposes explicit versioned GET routes.
+1. **Runtime and topology:** a separate, read-only .NET 10 Lambda in the *same shared* `river-data-platform` repository, sharing domain and query adapters with (but independent from) the scheduled collector. AWS API Gateway **HTTP API** exposes explicit versioned GET routes.
 2. **Auth:** server-side Next.js/Vercel obtains short-lived AWS credentials via **Vercel OIDC + AWS STS AssumeRoleWithWebIdentity**; signs requests with SigV4; API Gateway `AWS_IAM` authorisation. No static AWS credentials, API key, browser calls or anonymous access.
 3. **Storage abstraction:** one history route joins DynamoDB's rolling **365-day full-resolution** store and indefinite S3 Standard archives via direct GetObject, with paging and a stable request boundary.
 4. **Audience:** first-party **server-to-server** only. Existing public Next.js API routes remain the UI-facing contract.
@@ -27,7 +27,7 @@ The new `river-observations` backend needs a stable read interface before the Ne
 
 ## Impact
 
-**Implementation:** new `tclare95/river-observations` backend; **planning:** `tclare95/isHPPOpen`. Tracking [#69](https://github.com/tclare95/isHPPOpen/issues/69). Depends on [#64](https://github.com/tclare95/isHPPOpen/issues/64), [#49](https://github.com/tclare95/isHPPOpen/issues/49), [#65](https://github.com/tclare95/isHPPOpen/issues/65) and accepted [ADR-001](../../../docs/decisions/0001-observation-storage.md).
+**Implementation:** new `tclare95/river-data-platform` backend; **planning:** `tclare95/isHPPOpen`. Tracking [#69](https://github.com/tclare95/isHPPOpen/issues/69). Depends on [#64](https://github.com/tclare95/isHPPOpen/issues/64), [#49](https://github.com/tclare95/isHPPOpen/issues/49), [#65](https://github.com/tclare95/isHPPOpen/issues/65) and accepted [ADR-001](../../../docs/decisions/0001-observation-storage.md).
 
 ## Non-goals
 

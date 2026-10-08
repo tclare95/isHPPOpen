@@ -4,7 +4,7 @@
 
 ## 1. Runtime, API contract and versioning
 
-- [ ] 1.1 Add a separate read-only .NET 10 Lambda project/entrypoint to the *new* `river-observations` repo, sharing the collector's domain and Dynamo/S3 read adapters without sharing its write permissions; pin SDK and local fixture tests.
+- [ ] 1.1 Add a separate read-only .NET 10 Lambda project/entrypoint to the *new* `river-data-platform` repo, sharing the collector's domain and Dynamo/S3 read adapters without sharing its write permissions; pin SDK and local fixture tests.
 - [ ] 1.2 Define an explicit `/v1` JSON/OpenAPI contract corresponding to [api-contract.md](api-contract.md): registry, batch latest, unified history and measurement health. Use `{data, meta}` successes, structured error codes + requestId; do not alter existing Next.js public envelopes.
 - [ ] 1.3 Implement registry-backed measurement lookup and precise validation of canonical IDs, enabled status, UTC timestamp/date ranges, IDs/row/byte limits. Fixture test no observations vs unknown measurement, malformed values and level/flow at same timestamp.
 

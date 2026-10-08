@@ -14,7 +14,8 @@ This repository is the canonical OpenSpec planning home for the web app, scraper
 - [bootstrap-dotnet-observation-service](changes/bootstrap-dotnet-observation-service/proposal.md) — **first implementation slice**, isolated new `.NET 10` repository and manual deployment foundation ([#64](https://github.com/tclare95/isHPPOpen/issues/64)).
 - [configurable-gauge-ingestion](changes/configurable-gauge-ingestion/proposal.md) — **second slice**, EA registry/adapter, DynamoDB hot observations and ingestion health in the **new .NET service**, staging/shadow only ([#49](https://github.com/tclare95/isHPPOpen/issues/49)).
 - [archive-observation-history](changes/archive-observation-history/proposal.md) — **third slice**, private permanent S3 archive, verified expiry and direct historical reads ([#65](https://github.com/tclare95/isHPPOpen/issues/65)).
-- After those: [#50](https://github.com/tclare95/isHPPOpen/issues/50) historical backfill and [#51](https://github.com/tclare95/isHPPOpen/issues/51) web consumer migration. Existing Node scraper and predictor remain untouched throughout initial backend build.
+- [observation-read-api](changes/observation-read-api/proposal.md) — **fourth slice**, an independent .NET read Lambda, AWS_IAM + Vercel OIDC, unified Dynamo/S3 history, gap/integrity semantics ([#69](https://github.com/tclare95/isHPPOpen/issues/69)).
+- After those: [#50](https://github.com/tclare95/isHPPOpen/issues/50) historical backfill and [#51](https://github.com/tclare95/isHPPOpen/issues/51) Next.js consumer migration, in order **Trent → observed levels → gauge alerts**. The read API can be implemented before #50 finishes; production web cutover needs validated history/coverage. Existing Node scraper and predictor remain untouched throughout initial backend build.
 
 **Agent handoff:** [Observation backend implementation sequence](../docs/OBSERVATION_BACKEND_HANDOFF.md) links each bounded OpenSpec change and its release gates.
 

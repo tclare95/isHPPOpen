@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo } from 'react';
 import Chart from 'react-google-charts';
 
 /**
@@ -6,12 +6,9 @@ import Chart from 'react-google-charts';
  * Each line represents what was predicted N hours ago for each target time
  */
 const StabilityChart = ({ stabilityData }) => {
-  const [chartData, setChartData] = useState([]);
-
-  useEffect(() => {
+  const chartData = useMemo(() => {
     if (!stabilityData || stabilityData.length === 0) {
-      setChartData([]);
-      return;
+      return [];
     }
 
     // Build header: Date, Current, 1h ago, 2h ago, ..., 12h ago
@@ -44,7 +41,7 @@ const StabilityChart = ({ stabilityData }) => {
     // Sort by target time
     data.sort((a, b) => a[0] - b[0]);
 
-    setChartData([header, ...data]);
+    return [header, ...data];
   }, [stabilityData]);
 
   if (!chartData || chartData.length <= 1) {

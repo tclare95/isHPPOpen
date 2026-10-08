@@ -6,7 +6,8 @@ export async function revalidateTagsSafe(tags, options = {}) {
 
   for (const tag of tags) {
     try {
-      await Promise.resolve(revalidateTag(tag));
+      // Admin writes must be visible on the next read, without serving stale content.
+      await Promise.resolve(revalidateTag(tag, { expire: 0 }));
     } catch (error) {
       logger?.warn?.("Cache tag revalidation skipped", {
         context,

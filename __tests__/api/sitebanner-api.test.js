@@ -1,8 +1,10 @@
 jest.mock('../../libs/services/siteBannerService');
+jest.mock('next/cache', () => ({ revalidateTag: jest.fn() }));
 jest.mock('next-auth', () => ({ getServerSession: jest.fn() }));
 
 const { getBanners, upsertBanner } = require('../../libs/services/siteBannerService');
 const { getServerSession } = require('next-auth');
+const { revalidateTag } = require('next/cache');
 const { ValidationError } = require('yup');
 const { GET, POST } = require('../../app/api/sitebanner/route');
 
@@ -35,6 +37,7 @@ describe('Site Banner API route handler', () => {
       banner_end_date: '2026-03-09T10:00:00.000Z',
     }));
     expect(res.status).toBe(401);
+    expect(revalidateTag).not.toHaveBeenCalled();
   });
 
   test('POST updates banner when authenticated', async () => {
@@ -50,6 +53,8 @@ describe('Site Banner API route handler', () => {
     const payload = await res.json();
     expect(res.status).toBe(200);
     expect(payload.data.message).toBe('Banner updated');
+    expect(revalidateTag).toHaveBeenNthCalledWith(1, 'site-banner', { expire: 0 });
+    expect(revalidateTag).toHaveBeenNthCalledWith(2, 'home-snapshot', { expire: 0 });
   });
 
   test('POST supports an open-ended banner when authenticated', async () => {
@@ -89,5 +94,6 @@ describe('Site Banner API route handler', () => {
     const payload = await res.json();
     expect(res.status).toBe(400);
     expect(payload.error.message).toBe('Validation failed');
+    expect(revalidateTag).not.toHaveBeenCalled();
   });
 });

@@ -63,3 +63,12 @@ Keep this file focused on actionable guardrails. If architecture behavior change
 2. `npm test` passes (or explain environmental limitations).
 3. `npm run lint` passes (or explain environmental limitations).
 4. Update docs when behavior or architecture changes.
+
+
+## Suite specifications and cross-repository work
+
+- Canonical product specs: [docs/specs/README.md](docs/specs/README.md); use its [template](docs/specs/TEMPLATE.md) for substantial changes. Current-state documentation remains authoritative for existing behaviour.
+- Shared producer/consumer contracts: [docs/CONTRACTS.md](docs/CONTRACTS.md); suite ownership and rollout: [docs/SYSTEM.md](docs/SYSTEM.md).
+- A cross-repository feature has one suite spec and separate implementation PRs in the web, scraper and/or predictor repositories. Reference the same SPEC ID in each PR and record dependencies and verification in the spec.
+- Confirm producer formats and downstream readers before changing S3 keys, CSV fields, MongoDB collections, cadence, station IDs, units or timestamp semantics. Prefer additive producer changes and coordinated consumer migration.
+- Deployments are independently authorized: merging web main may deploy to Vercel; AWS backends require reviewed manual release workflows. Do not deploy or mutate production as an incidental part of a documentation/spec task.

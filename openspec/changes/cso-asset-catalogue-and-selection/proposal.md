@@ -3,7 +3,7 @@
 ## Goal
 Make CSO monitoring in the planned shared .NET river-data backend independent of Sewage Map **at runtime**, while retaining the current HPP ID list as a permitted one-time, reviewed, attributed configuration import.
 
-The backend is intended to support observations, CSO status/events, independent model forecasts and site assessments over time. This change establishes a CSO provider/catalogue/selection seam, **not** a new geographic network engine. First supported provider: Severn Trent. The planned `river-observations` repository is the implementation home until a separately agreed name change.
+The backend is intended to support observations, CSO status/events, independent model forecasts and site assessments over time. This change establishes a CSO provider/catalogue/selection seam, **not** a new geographic network engine. First supported provider: Severn Trent. The agreed new `river-data-platform` repository is the shared implementation home (created under foundation #64); the former `river-observations` name is historical only. No second scaffold.
 
 ## Confirmed decisions (8 October 2026)
 - A provider-owned asset catalogue is discovered independently from operational polling and from site-level upstream/downstream interpretations.

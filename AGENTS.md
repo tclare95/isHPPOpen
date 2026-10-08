@@ -67,8 +67,8 @@ Keep this file focused on actionable guardrails. If architecture behavior change
 
 ## Suite specifications and cross-repository work
 
-- Canonical product specs: [docs/specs/README.md](docs/specs/README.md); use its [template](docs/specs/TEMPLATE.md) for substantial changes. Current-state documentation remains authoritative for existing behaviour.
+- Canonical suite planning uses [OpenSpec](openspec/config.yaml): active proposals are in `openspec/changes/<descriptive-name>/` with `proposal.md`, capability deltas, `design.md` and `tasks.md`; completed requirements are archived/synced into `openspec/specs/`. Use `openspec status --change <name>` and `openspec validate <name> --strict` when the CLI is available. Current-state architecture documentation remains authoritative for behaviour not yet covered by OpenSpec.
 - Shared producer/consumer contracts: [docs/CONTRACTS.md](docs/CONTRACTS.md); suite ownership and rollout: [docs/SYSTEM.md](docs/SYSTEM.md).
-- A cross-repository feature has one suite spec and separate implementation PRs in the web, scraper and/or predictor repositories. Reference the same SPEC ID in each PR and record dependencies and verification in the spec.
+- A cross-repository feature has one descriptively named OpenSpec change and separate implementation PRs in web, scraper and/or predictor repositories. Link the change path in each PR; do not introduce a parallel `docs/specs` registry.
 - Confirm producer formats and downstream readers before changing S3 keys, CSV fields, MongoDB collections, cadence, station IDs, units or timestamp semantics. Prefer additive producer changes and coordinated consumer migration.
 - Deployments are independently authorized: merging web main may deploy to Vercel; AWS backends require reviewed manual release workflows. Do not deploy or mutate production as an incidental part of a documentation/spec task.

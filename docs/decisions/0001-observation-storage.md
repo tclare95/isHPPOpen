@@ -38,7 +38,7 @@ This is a **conditional recommendation**, not permission to provision tables or 
 ### Concrete risks found
 
 - **Write amplification:** with one 480-reading snapshot every 15 minutes, one station can write roughly 35,040 Mongo history documents, each containing up to 480 overlapping level points, and as many S3 dated objects in a 365-day year. Up to ~16.8 million embedded reading occurrences/year for ~35,040 distinct 15-minute timestamps, ignoring gaps and overlapping S3 versions. This is a **model estimate** for a continuously full window, not a measured live count.
-- **CSO retry duplication:** worker does insertOne for each SQS task with no source-event uniqueness constraint; retried messages can duplicate snapshots.
+- **CSO queue failure reporting:** worker returns per-message batchItemFailures but the SAM SQS mapping does **not** declare ReportBatchItemFailures; partial failures may be acknowledged rather than retried. The worker also insertOne's every task without a source-event uniqueness constraint, so retries can duplicate snapshots. See [AWS SQS partial batch handling](https://docs.aws.amazon.com/lambda/latest/dg/services-sqs-errorhandling.html) and [scraper #10](https://github.com/tclare95/ishppopenScraper/issues/10).
 - **Archive verification gap:** CSO archival HEAD verification checks only object metadata recordCount, not uploaded bytes/checksum, readable JSONL or record IDs. If an exception occurs after records have been deleted, generic error cleanup attempts to delete the uploaded archive object. Preserve the existing copy-before-delete order but strengthen it before any future destructive operation.
 - **Status carry-forward:** status history query starting one year ago can omit a long-running open/closed state. The new design must retrieve the last transition before the interval start as well as transitions within it.
 - **Separation of responsibilities:** the predictor accesses external EA history directly; replacing the web gauge reader alone does not centralise inference or create a stable historic API. S3 public latest, Mongo transition/event readers and existing CSO handling remain compatibility contracts.
@@ -157,7 +157,7 @@ After those measurements, update this ADR with actuals, a same-region price esti
 - [#50](https://github.com/tclare95/isHPPOpen/issues/50): canonical observation backfill, dedup, archive verification and rollback; **avoid repeated window-array snapshots**.
 - [#51](https://github.com/tclare95/isHPPOpen/issues/51): web reader adapters, retained response contracts, HPP status boundary, freshness/fallback and alert idempotency.
 - [#52](https://github.com/tclare95/isHPPOpen/issues/52): further gauges only after stable data contracts and migration; configure flow separately from level.
-- **Additional follow-up recommended:** targeted issue for CSO archival integrity (content checksums, post-delete cleanup safety, replay/idempotency and independent restore test), and an approved live inventory pass. Neither is part of an observation-storage deployment.
+- **Source-audit defects filed:** [ishppopenScraper #10](https://github.com/tclare95/ishppopenScraper/issues/10) (SQS batch failure reporting), [ishppopenScraper #11](https://github.com/tclare95/ishppopenScraper/issues/11) (CSO archive integrity), and [isHPPOpen #63](https://github.com/tclare95/isHPPOpen/issues/63) (year-window HPP state carry-forward). These are separate bounded fixes, not an observation-store migration. Live inventory approval remains with #48.
 
 ## Review decisions requested
 

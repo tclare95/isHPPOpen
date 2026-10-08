@@ -2,7 +2,7 @@
 
 ## Service boundary
 
-A dedicated `RiverObservations.ReadApi` AWS Lambda hosts a small HTTP API behind **API Gateway HTTP API** in the approved AWS account/region (first target eu-west-1). Its read services/interfaces live alongside the collector in the new repository and reuse stable source/station/measurement contracts and Dynamo/S3 adapters. The read Lambda has its **own execution role** and cannot write observations, update latest pointers, publish archives, enable TTL or mutate the collection registry. API Gateway has explicit GET routes only, **AWS_IAM on every route**, no unauthenticated `$default`/`ANY` proxy, no browser CORS use case.
+A dedicated `RiverDataPlatform.ReadApi` AWS Lambda hosts a small HTTP API behind **API Gateway HTTP API** in the approved AWS account/region (first target eu-west-1). Its read services/interfaces live alongside the collector in the new repository and reuse stable source/station/measurement contracts and Dynamo/S3 adapters. The read Lambda has its **own execution role** and cannot write observations, update latest pointers, publish archives, enable TTL or mutate the collection registry. API Gateway has explicit GET routes only, **AWS_IAM on every route**, no unauthenticated `$default`/`ANY` proxy, no browser CORS use case.
 
 No arbitrary S3 key, Dynamo partition key, provider URL, SQL/PartiQL, expression or IAM role is accepted from callers. All IDs resolve through the published measurement registry. Existing app-specific aliases such as `4009-level` are mapped in the web adapter; they are not assumed to be canonical EA measure IDs.
 

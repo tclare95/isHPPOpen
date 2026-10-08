@@ -29,7 +29,7 @@ Implement the **new standalone `tclare95/river-observations` .NET 10 AWS Lambda 
 
 **Read API (#69):** "Implement `openspec/changes/observation-read-api` in `river-observations` as a separate read-only .NET Lambda. Follow its `api-contract.md`, accepted ADR-001, AWS_IAM/SigV4 and per-environment Vercel OIDC trust, unified Dynamo/S3 history, explicit known/unknown historical gaps and strict error for missing expected archives. Keep existing Next.js routes and all legacy Lambdas unchanged. Write contract/security/failure tests, no cloud apply, and open a bounded PR referencing #69."
 
-**Important order:** #69 may begin once #49's data identity and #65's archive read contracts are stable; it need not wait for the full production backfill in #50. Consumer cutover (#51) needs validated source parity/coverage. If #50 finds uncollected legacy intervals, produce coverage metadata so #69 can distinguish them from broken expected S3 archives.
+**Important order:** #69 may begin once #49's data identity and #65's archive read contracts are stable; it need not wait for the full production backfill in #50. Consumer cutover (#51) needs validated source parity/coverage and must happen **Trent dashboard → observed levels → gauge alerts**, with separate reversible flags. HPP status events, forecast data, CSO data and alert delivery logic remain on existing services. If #50 finds uncollected legacy intervals, produce coverage metadata so #69 can distinguish them from broken expected S3 archives.
 
 ## Operational prerequisites (not design blockers)
 

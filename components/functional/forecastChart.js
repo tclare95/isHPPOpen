@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Chart from 'react-google-charts';
 
 // Chart header with confidence interval columns
@@ -100,9 +100,14 @@ const ForecastChartWithConfidence = ({
   accuracyData,
   showConfidence = true,
 }) => {
-  const [chartData, setChartData] = useState([chartArrayHeader]);
+  const [now, setNow] = useState(null);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Sample the external clock when chart inputs change.
+    setNow(new Date());
+  }, [graphData, graphForeCastData, lowerBound, upperBound, accuracyData, showConfidence]);
+
+  const chartData = useMemo(() => {
     const data = [];
 
     // Add historical level data (no confidence intervals)
@@ -124,7 +129,7 @@ const ForecastChartWithConfidence = ({
     // Get forecast start time to calculate horizons
     const forecastStartTime = graphForeCastData.length > 0 
       ? new Date(Date.parse(graphForeCastData[0].forecast_date))
-      : new Date();
+      : null;
 
     // Pre-calculate smoothed stability values using a moving average (window of 5)
     const smoothedStability = graphForeCastData.map((element, index) => {
@@ -180,15 +185,13 @@ const ForecastChartWithConfidence = ({
     });
 
     // Add 'now' line
-    const now = new Date();
-    data.push([now, 'Now', null, null, null, null, null, null, null]);
+    if (now) data.push([now, 'Now', null, null, null, null, null, null, null]);
 
     // Sort the data array
     data.sort((a, b) => a[0] - b[0]);
 
-    // Set chart data with header
-    setChartData([chartArrayHeader, ...data]);
-  }, [graphData, graphForeCastData, lowerBound, upperBound, accuracyData, showConfidence]);
+    return [chartArrayHeader, ...data];
+  }, [graphData, graphForeCastData, lowerBound, upperBound, accuracyData, showConfidence, now]);
 
   return (
     <Chart

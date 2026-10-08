@@ -123,9 +123,11 @@ Editorial writes use the shared `libs/cache/revalidate.js` helper with `revalida
    - Authenticated admin updates banner title, content, visibility, and scheduling.
    - Homepage rendering respects the saved `banner_enabled` flag while preserving draft message/title content in storage.
    - Banner scheduling supports optional start/end dates, enabling both immediate banners and open-ended banners that remain visible until explicitly hidden.
+   - Scheduled banners resolve visibility after hydration, then update at inclusive start/end boundaries and when the browser regains focus. Unscheduled banners remain server-rendered; scheduled cached markup stays consistent with initial hydration regardless of its age.
 
 4. **Forecasting and analysis views**
    - Forecast pages compare data sources and surface quality metrics.
+   - Chart rows are memoized from their inputs. “Now” annotations retain input-triggered clock samples in small effects, with documented per-line lint exceptions for that external clock synchronization. Global Hooks purity and state-effect rules remain enabled.
 
 5. **Water quality and CSO data**
    - Water-quality endpoints under `app/api/waterquality/*` expose:
@@ -165,6 +167,7 @@ Editorial writes use the shared `libs/cache/revalidate.js` helper with `revalida
 8. **Admin editing experience**
    - Admin pages now use a more consistent editing pattern across events and site banner workflows.
    - Event management uses a focused list-and-editor flow with consistent save/reset/delete feedback.
+   - A removed selected event falls back to the first remaining event or new-event mode before its editor renders; refreshes preserve valid selections and explicit new-event mode.
    - Banner management includes preview, visibility toggle, scheduling controls, and clearer loading/success/error states.
 
 9. **Home page static data strategy**

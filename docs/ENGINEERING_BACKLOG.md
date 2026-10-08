@@ -23,7 +23,18 @@ Completed here: the three unescaped-entity reports in `weirlevels.js` and
 `footer.js` were fixed with HTML entities that preserve visible text;
 `react/no-unescaped-entities` is enabled globally. `react/display-name` is enabled
 outside test mocks. The two behavioral Hooks exceptions remain explicitly disabled
-pending #56; no Hooks refactor or caching migration is included.
+pending #56; no Hooks refactor or caching migration was included in that baseline.
+
+## Follow-up: Hooks enforcement (#56)
+
+The `enforce-react-hooks` change resolves the four derived-state effects and the
+render-time banner clock. Both Hooks rules are now enabled globally. Only two
+per-line chart-clock sampling exceptions remain; chart rows are pure derivations.
+Banner subscriptions handle boundaries, focus, hydration and cleanup. Event
+selection repair preserves first-event/new fallback. Focused regressions cover
+these behaviors. The table above retains the original audit evidence; its #56
+behavioral actions are complete. Anonymous test doubles retain their scoped
+exception; the cache and consumer-consolidation follow-ups remain separate.
 
 Reference: [Next.js unstable_cache](https://nextjs.org/docs/app/api-reference/functions/unstable_cache)
 and [revalidateTag](https://nextjs.org/docs/app/api-reference/functions/revalidateTag).

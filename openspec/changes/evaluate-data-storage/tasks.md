@@ -9,7 +9,7 @@
 ## 2. Create backend-neutral target contract
 
 - [x] 2.1 Define stable source, station, measurement and observation identities and units; ensure two measure types at the same station/timestamp never overwrite each other. Specify UTC, observed vs ingested time, correction/dedup semantics and provenance.
-- [ ] 2.2 Define distinct handling of HPP events, CSO intervals, forecasts and alerts. Decide requirements for raw S3 archives, active retention and historical access.
+- [x] 2.2 Define distinct handling of HPP events, CSO intervals, forecasts and alerts. **Owner decisions:** DynamoDB 365 rolling days full-resolution, canonical raw gauge S3 archive indefinitely, phased observation-first migration keeping Mongo temporarily. Historical >365d *access SLA* remains a validation item, not an undecided retention policy.
 
 ## 3. Compare candidate architectures
 
@@ -27,4 +27,13 @@ This investigation intentionally has `skip_specs: true`. Do not invent a behavio
 
 ## Investigation outcome (8 October 2026)
 
-Source-code audit, candidate schema, workload estimates, proposed retention and migration/rollback approach are documented in [ADR-001](../../../docs/decisions/0001-observation-storage.md). **DynamoDB + S3 is proposed for gauge observations, not approved**. Static evidence is not live data: tasks 1.2, 2.2, 3.1, 3.2 and 3.3 retain open gates for actual region-specific bills, collection/object counts, a history-access decision and isolated representative measurements. Task 4.3 requires PR review. No production inventory or other cloud/database operations were performed.
+Source-code audit, target identity/schema, workload estimates, retention policy and migration/rollback approach are documented in [ADR-001](../../../docs/decisions/0001-observation-storage.md) and [draft PR #62](https://github.com/tclare95/isHPPOpen/pull/62).
+
+**Owner-confirmed (8 October 2026):**
+- Store **365 rolling days of full-resolution gauge observations in DynamoDB**.
+- Preserve **canonical raw gauge observations indefinitely in S3**, with no expiry lifecycle; cost/verify archive recovery and version retention.
+- **Migrate observations first**; keep Mongo for HPP transitions, CSO, editorial and alerts until each separate domain is assessed/migrated.
+
+**Architecture choice remains proposed, not finally approved.** Open gates: 1.2 (approved live inventory and measured counts/bytes/indexes), 3.1 (current eu-west-1 pricing and perpetual S3 growth / read costs), 3.2 (isolated candidate and fallback benchmark with 365-day queries, monthly partitions, archive recovery and TTL safety), 3.3 (IAM, Vercel region/preview isolation, backups, restore, rollback, operational burden) and 4.3 (PR review). Also confirm user-facing access/latency for **raw data older than 365 days**: indefinite retention does not automatically imply synchronous chart queries.
+
+No production inventory, database write/delete, infrastructure deployment or retention change was performed.

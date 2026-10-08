@@ -33,13 +33,18 @@ Main is protected: PR required, up-to-date branch, `Web checks` and `Vercel`
 required, administrator enforcement enabled, force pushes/deletion disabled.
 Vercel's existing `is-hpp-open` project is connected to `tclare95/isHPPOpen`,
 uses main for production, the repository root, Next.js and Node 22. The pipeline
-PR has passed CI and Vercel preview checks. It remains unmerged because merging
-main triggers a production deployment.
+PR #43 is merged; main passed CI and Vercel production checks. Merging main
+triggers a production deployment.
 
 The Vercel configuration currently shares the same MongoDB, auth and email
 variable entries across Production and Preview. Preview isolation therefore
 remains an operational follow-up: provision test data/credentials before changing
-these targets. Environment values were not printed or changed during setup.
+these targets. After explicit approval, only `MONGODB_URI` was replaced with
+the verified new scraper credential, preserving its existing targets. Production
+was redeployed from Git commit `69b3797830caf311b06a2b7a61b452b37b93fbaf` as
+`dpl_2PXyrJd9roi82qWpceLC3zkoM24R`; it is READY and homepage/status/water-quality/forecast
+smoke checks passed. Local UI edits were not deployed. Old preview deployments
+may retain the previous credential; redeploy any needed previews before revocation.
 
 ## Release and rollback
 

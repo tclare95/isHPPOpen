@@ -50,3 +50,25 @@ The deployment setup does not change these contracts or upload a trained model.
 Deployment workflows do not rotate credentials, create IAM/OIDC bootstrap roles,
 migrate state or configure GitHub/Vercel automatically. These are operational
 changes distinct from local code preparation.
+
+## Verified activation (8 October 2026)
+
+All three repositories have protected main branches and passing CI. The backend
+OIDC roles and main-only environments are configured; both manual prepare/apply
+pipelines are enabled. Predictor state is migrated to its private encrypted,
+versioned S3 backend with locking. Training stays local and model publishing
+remains a separate reviewed action.
+
+- Predictor [apply 37790398717](https://github.com/tclare95/trent-predictor/actions/runs/37790398717)
+  succeeded. Its first scheduled output passed the 288-row, finite-value,
+  15-minute-step and 72-hour-horizon checks.
+- Scraper [apply 37797183663](https://github.com/tclare95/ishppopenScraper/actions/runs/37797183663)
+  succeeded. The three functions are Active on Node.js 22 with the verified
+  replacement secret; existing history settings and schedules were preserved.
+- Web production is READY on Git commit `69b3797` after an explicitly approved
+  credential-only transition and redeploy. Public API smoke checks passed.
+
+The replacement secret is primary in eu-west-2 with a synchronized eu-west-1
+replica. Both live applications use it. Atlas old-user revocation, narrowing the
+replacement user's database role, and Preview isolation remain follow-ups.
+No model upload or manual production Lambda invocation was performed.

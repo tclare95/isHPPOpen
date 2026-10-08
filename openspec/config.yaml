@@ -8,9 +8,13 @@ context: |
   MongoDB, scraper S3 JSON and predictor S3 CSV contracts have independent consumers.
   Existing production spans tclare95/isHPPOpen (web), ishppopenScraper (Node / AWS SAM)
   and trent-predictor (Python / AWS Lambda); see docs/SYSTEM.md.
-  Planned new gauge collector: tclare95/river-observations (.NET 10 Lambda), in a
-  NEW standalone repository only after authorised creation. Do not modify or
-  repurpose legacy riverscraper deployed Terraform/state/account or auto-apply CI.
+  Planned unified river data backend: tclare95/river-data-platform (.NET 10 AWS
+  Lambda) in ONE new repository after authorised creation (#64). Initially
+  isHPPOpen is its first consumer; future domain modules include independent
+  hydrological observations, CSO events, forecast publication and site assessments.
+  Keep existing bootstrap-dotnet-observation-service OpenSpec ID for continuity.
+  Do not force all domains into scalar observation data schemas or retention.
+  Do not modify or repurpose legacy riverscraper Terraform/state/account or CI.
   Web main merges can deploy automatically to Vercel. All existing and planned
   backend production deployments require separate authorisation, account/region
   assertions and reviewed manual apply; no PR/main-triggered AWS apply.

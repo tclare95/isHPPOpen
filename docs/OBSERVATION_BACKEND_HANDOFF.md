@@ -4,7 +4,7 @@
 
 [ADR-001](decisions/0001-observation-storage.md) accepts **DynamoDB on-demand + private S3 Standard**, 365 days of full-resolution hot readings and **indefinite S3 raw observations**, queryable historically by bounded direct `GetObject`. Environment Agency first, measurement identity separate from station, gauge configuration in version control and no admin UI.
 
-Implement the **new standalone `tclare95/river-observations` .NET 10 AWS Lambda backend**. It has **not yet been created by these specs**. `tclare95/riverscraper` is a legacy experimental deployment, possibly in another AWS account; do not import its Terraform state or reuse its resources. No work in the old Node.js `ishppopenScraper` Lambdas is required for this backend. Legacy HPP/CSO/forecast functions and production API/S3 keys remain live. Their removal is outside this plan.
+Implement the **new standalone `tclare95/river-observations` .NET 10 AWS Lambda backend**. It has **not yet been created by these specs**. `tclare95/riverscraper` is a legacy experimental deployment, possibly in another AWS account; do not import its Terraform state or reuse its resources. No work in the old Node.js `ishppopenScraper` Lambdas is required for this backend. Legacy HPP/CSO/forecast functions and production API/S3 keys remain live. Their eventual modular replacement and old scraper retirement are separate, tracked as [#68](https://github.com/tclare95/isHPPOpen/issues/68), not assumed complete when gauge collection migrates.
 
 ## Recommended agent execution order
 
@@ -32,3 +32,4 @@ Implement the **new standalone `tclare95/river-observations` .NET 10 AWS Lambda 
 - Backend CI build/test/validate is always safe and should not deploy. Any deployment, schedule activation, database read/modify, retained-data cleanup or secret update requires separate explicit authorisation.
 - Preview/staging and production table, bucket, IAM and web credentials must not overlap; no production alert sends from new collector and no hidden switch in existing web endpoints.
 - Atlas is currently Free tier; do not claim live sizes without an approved read-only inventory during #50. Use modest AWS budgets and alarms rather than requiring a standalone performance prototype.
+- Do not switch off the old mixed-concern `ishppopenScraper` merely because gauge readings are available through Dynamo/S3. Its remaining HPP, water-quality/CSO and forecast-publication responsibilities require [independent future replacement #68](https://github.com/tclare95/isHPPOpen/issues/68).

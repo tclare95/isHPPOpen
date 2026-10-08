@@ -28,7 +28,7 @@ See [platform direction](../../../docs/RIVER_DATA_PLATFORM_DIRECTION.md). [ADR-0
 
 ## Capabilities
 
-### Modified foundation capability
+### New foundation capability (historical identifier retained)
 
 - `observation-collector-foundation`: **retained historical OpenSpec capability identifier**, now describing a safe, independently buildable **shared platform foundation** with an inert collector entry point. Keep this identifier and the existing `bootstrap-dotnet-observation-service` change slug for tracking continuity; implementation namespace/repository is `RiverDataPlatform`.
 

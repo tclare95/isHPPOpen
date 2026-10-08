@@ -1,4 +1,6 @@
-# Design: Storage evaluation protocol
+# Design: Storage evaluation and completed handoff
+
+**Outcome (8 October 2026):** [ADR-001](../../../docs/decisions/0001-observation-storage.md) is **Accepted** for DynamoDB on-demand + private S3 Standard **gauge-observation** storage only. Keep 365 days full resolution in Dynamo, retain raw observations indefinitely in S3, read older history by direct S3 `GetObject`, and migrate observations first while leaving MongoDB Atlas Free for CSO, HPP events, editorial and alerts. The owner does **not** require a separate infrastructure prototype, full live database inventory, historical-read latency benchmark or exact regional bill as architecture acceptance gates. No production operations are authorised.
 
 ## Current state and key risks
 
@@ -8,19 +10,24 @@
 - `riverscraper` offers a station-configurable DynamoDB prototype but keys station+timestamp without a distinct measurement dimension; level and flow for one station can collide.
 - `reservoir-levels` demonstrates PostgreSQL/Drizzle and source-specific adapters but uses slower periodic report data, not frequent time-series observations.
 
-## Method
+## Method and investigation conclusions
 
-1. **Inventory and measure.** Record collection row counts, approximate data/index bytes, oldest/newest timestamps, indexes, document distribution, growth, query patterns and S3 object counts/bytes. Separate operational control documents from historical measurements. Use read-only commands/permissions and approved, non-sensitive aggregates. Do not copy personal contact details or secrets into the ADR.
-2. **Define logical schema.** Every `Measurement` has stable provider, station and external-measure identity; its unit/parameter/datum are explicit. An `Observation` is unique by measurement identity and observed UTC timestamp, supports quality/provenance and distinguishes observed versus collected time. Corrections/duplicate feeds need an explicit deterministic rule. Forecasts require issue/target timestamps and their own structure; HPP threshold transitions and CSO spill intervals are not scalar observations.
-3. **Model realistic workload.** Baseline and scenarios for current stations plus 25, 100 and 500 measurements, at 15-minute observation cadence with growth over 1/3/5 years. Include latest-point, 24-hour/7-day/year-history, bounded station comparisons, alert evaluation, backfill, bulk ingest and operational-health queries. Storage unit/cost assumptions must be dated and verified before conclusions.
-4. **Compare viable approaches.** Improved MongoDB with normalised observations and archival; PostgreSQL with necessary composite indexes, partitions if justified and S3 archival; DynamoDB with correctly dimensioned keys and predictable access patterns. Estimate storage+index usage, backup, compute, network, cross-region traffic, transfer, migration cost and operator burden. A hybrid operational DB+S3 pattern is an option, not a preselected outcome.
-5. **Decide retention.** Explicit hot data, warm aggregates and immutable/raw S3 history; document data export accessibility and deletion/archival verification. Avoid relying on short TTL where full history is an explicit requirement.
-6. **Stage migration.** Add producer and consumer compatibility boundaries, dual write/read or shadow validation as warranted, count and sample reconciliation, safe fallback to existing Mongo/S3 consumers, independent web/AWS deploy ordering and recovery steps. Never use live production as a benchmark target with mutating operations.
-7. **Decision and handoff.** Record architecture decision, alternatives rejected, assumptions and measurable thresholds, provider-neutral contract and migration actions to issues #49–#52.
+1. **Read-only source audit completed:** mapped Mongo collections, repeated river arrays, S3 latest/history/CSO archives, predictor CSVs, health and application consumers across the suite. Live collection/index/S3 byte counts were **not** queried. The existing Atlas cluster is Free (published capacity ceiling 512 MB), not a measured collection size.
+2. **Backend-neutral contract completed:** stable source/station/measurement identity, `measurementId + observedAt UTC` observation key, unit/datum, observed/ingested time, provenance, corrections and idempotency. HPP transitions, CSO snapshots/incidents, forecasts and alert operational state remain separate.
+3. **Proportionate capacity and alternatives completed:** theoretical 25/100/500-measure 15-minute-cadence calculations, 1/3/5-year point counts and 5/10/20-year S3 archive growth; pricing explicitly illustrative, not a current eu-west-1 quote. Compared normalized Mongo+S3, PostgreSQL+S3 and DynamoDB+S3 using existing query shapes.
+4. **User-directed choice:** DynamoDB monthly measurement partitions for bounded latest/365-day history; S3 Standard compact immutable per-measure/date partitions and manifests for indefinite raw history with direct GET/filter reads. No S3 Select, Athena, separate data warehouse or historical p95 SLA required.
+5. **Safe rollout defined, not executed:** additive producer writers, S3 archive verification before hot-data TTL eligibility, bounded read-only Mongo/S3 baseline when backfill runs, shadow parity, reversible consumer switch, IAM/Preview isolation and legacy fallback. No prototype resource deployment, migration or production benchmarking in this investigation.
+
+## Implementation acceptance delegated
+
+- **#49:** measurement identity, duplicate and correction handling, Dynamo latest/query paths, bounded pagination, health and narrow IAM.
+- **#50:** actual migration-time source counts/coverage, S3 Standard object/manifests/checksums, permanent raw retention, direct historical GET, verified expiry and recovery.
+- **#51:** 365-day Dynamo/raw older-than-year S3 historical APIs, existing response envelopes/health, rollback and Preview isolation.
+- **Deployment:** sensible eu-west-1 cost/alarms and a normal staging smoke test. No dedicated synthetic 500-measure infrastructure prototype required.
 
 ## Outputs
 
-A concise ADR under `docs/decisions/` (or adjacent existing docs), with an explicit storage-choice outcome or a clearly identified remaining evidence gap. Keep generated benchmarks/fixtures non-sensitive and checked in only if small and appropriate. No production application changes.
+Accepted [ADR-001](../../../docs/decisions/0001-observation-storage.md) and updated [tasks.md](tasks.md), prepared through [PR #62](https://github.com/tclare95/isHPPOpen/pull/62). Production implementation, live metrics and regional billing verification remain follow-on work; no production application or infrastructure changes were made.
 
 ## Risks
 

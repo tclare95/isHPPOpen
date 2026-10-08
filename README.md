@@ -57,6 +57,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) (API/application layer + API ro
 - Three-repository system and rollout checklist: [docs/SYSTEM.md](docs/SYSTEM.md)
 - Shared integration contracts: [docs/CONTRACTS.md](docs/CONTRACTS.md)
 - OpenSpec change proposals and configuration: [openspec/config.yaml](openspec/config.yaml) and [openspec/changes/](openspec/changes/)
+- Suite roadmap and GitHub Issues ideas backlog: [#57](https://github.com/tclare95/isHPPOpen/issues/57)
 
 Documentation ownership:
 - Runtime architecture and API standards: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)

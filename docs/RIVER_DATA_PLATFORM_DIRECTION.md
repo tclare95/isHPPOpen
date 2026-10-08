@@ -33,10 +33,10 @@ The existing web/Node/Mongo/forecast and alert contracts remain unchanged until 
 
 ## Bounded specification path
 
-0. [Unified platform foundation](../openspec/changes/bootstrap-dotnet-observation-service/proposal.md) ([#64](https://github.com/tclare95/isHPPOpen/issues/64)) — first implementation, .NET 10 solution, inert Lambda, CI, stage/account guards and manual AWS release, with no live ingestion or storage.
-1. [First gauge vertical slice](../openspec/changes/configurable-gauge-ingestion/proposal.md) ([#49](https://github.com/tclare95/isHPPOpen/issues/49) → [#65](https://github.com/tclare95/isHPPOpen/issues/65) → [#69](https://github.com/tclare95/isHPPOpen/issues/69)) — configured EA measurement collection, S3 retention, server-only read API.
-2. [CSO catalogue and selection](../openspec/changes/cso-asset-catalogue-and-selection/proposal.md) ([#71](https://github.com/tclare95/isHPPOpen/issues/71)): discover asset catalogue, explicit selection, validated plan and collection scheduling.
-3. [CSO ingestion, event revisions and history](../openspec/changes/modernise-cso-data/proposal.md) ([#72](https://github.com/tclare95/isHPPOpen/issues/72)): Severn Trent source claims, current and event records, tiered storage and shared internal read API.
-4. **Later:** CSO historical EDM/Mongo/Glacier reconciliation; site-to-CSO relationships and assessment logic; modular replacements for legacy HPP, CSO and forecast-publisher duties ([#68](https://github.com/tclare95/isHPPOpen/issues/68)); predictor publish/query contract and additional provider adapters.
+1. [Unified platform foundation](../openspec/changes/bootstrap-dotnet-observation-service/proposal.md) ([#64](https://github.com/tclare95/isHPPOpen/issues/64)) — first implementation, .NET 10 solution, inert Lambda, CI, stage/account guards and manual AWS release, with no live ingestion or storage.
+2. [First gauge vertical slice](../openspec/changes/configurable-gauge-ingestion/proposal.md) ([#49](https://github.com/tclare95/isHPPOpen/issues/49) → [#65](https://github.com/tclare95/isHPPOpen/issues/65) → [#69](https://github.com/tclare95/isHPPOpen/issues/69)) — configured EA measurement collection, S3 retention, server-only read API.
+3. [CSO catalogue and selection](../openspec/changes/cso-asset-catalogue-and-selection/proposal.md) ([#71](https://github.com/tclare95/isHPPOpen/issues/71)): discover asset catalogue, explicit selection, validated plan and collection scheduling.
+4. [CSO ingestion, event revisions and history](../openspec/changes/modernise-cso-data/proposal.md) ([#72](https://github.com/tclare95/isHPPOpen/issues/72)): Severn Trent source claims, current and event records, tiered storage and shared internal read API.
+5. **Later:** CSO historical EDM/Mongo/Glacier reconciliation; site-to-CSO relationships and assessment logic; modular replacements for legacy HPP, CSO and forecast-publisher duties ([#68](https://github.com/tclare95/isHPPOpen/issues/68)); predictor publish/query contract and additional provider adapters.
 
 These are *modular parts of one platform*, not proof that the same physical database table, IAM role or retention lifecycle suits every domain.

@@ -6,10 +6,14 @@ context: |
   App Router handlers live in app/api; business logic belongs in libs/services.
   Preserve shared { ok: true, data } / { ok: false, error } API envelopes.
   MongoDB, scraper S3 JSON and predictor S3 CSV contracts have independent consumers.
-  The product spans tclare95/isHPPOpen (web), ishppopenScraper (AWS SAM)
+  Existing production spans tclare95/isHPPOpen (web), ishppopenScraper (Node / AWS SAM)
   and trent-predictor (Python / AWS Lambda); see docs/SYSTEM.md.
-  Web main merges can deploy automatically to Vercel. Scraper/predictor
-  production deployments and model publishing require separate authorization.
+  Planned new gauge collector: tclare95/river-observations (.NET 10 Lambda), in a
+  NEW standalone repository only after authorised creation. Do not modify or
+  repurpose legacy riverscraper deployed Terraform/state/account or auto-apply CI.
+  Web main merges can deploy automatically to Vercel. All existing and planned
+  backend production deployments require separate authorisation, account/region
+  assertions and reviewed manual apply; no PR/main-triggered AWS apply.
   Existing behaviour is documented in docs/ARCHITECTURE.md and docs/CONTRACTS.md.
   Avoid large refactors, data migration or changed production behaviour as
   collateral to maintenance tasks.

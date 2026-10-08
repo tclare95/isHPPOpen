@@ -6,7 +6,18 @@ This repository is the canonical OpenSpec planning home for the web app, scraper
 - `changes/<change-name>/` — proposed changes, each with a proposal, capability deltas, design and tracked tasks.
 - `specs/<capability>/spec.md` — current requirements after changes are implemented and archived.
 
-**First planned change:** [audit-web-engineering-standards](changes/audit-web-engineering-standards/proposal.md). Its code tasks are intentionally unchecked; adding the specification does not implement the fixes.
+## Active proposals
+
+- [audit-web-engineering-standards](changes/audit-web-engineering-standards/proposal.md) — bounded web baseline fixes.
+- [improve-alert-scheduling](changes/improve-alert-scheduling/proposal.md) — evaluate a faster Vercel alert cadence **after** reliable idempotency, freshness and monitoring checks.
+- [evaluate-data-storage](changes/evaluate-data-storage/proposal.md) — `skip_specs: true` investigation, which must decide the database/backend using evidence rather than assumptions.
+- [configurable-gauge-ingestion](changes/configurable-gauge-ingestion/proposal.md) — version-controlled EA measurements and provider-neutral contracts; persist only after storage evaluation approves the target.
+
+All implementation tasks are initially unchecked. Writing a specification is not implementation approval or deployment.
+
+## GitHub issue backlog
+
+The suite's ideas backlog and work index is **[Issue #57](https://github.com/tclare95/isHPPOpen/issues/57)**. New ideas belong in **individual GitHub issues**, not a separate markdown backlog. Keep #57 updated with issue links, and link selected work to OpenSpec changes. Ideas for historical migration, web consumer migration, gauge expansion, predictor inputs, other providers, cache invalidation and React lint follow-up are captured there.
 
 ## Using the OpenSpec CLI
 

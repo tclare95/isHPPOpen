@@ -31,6 +31,18 @@ Implement the **new standalone `tclare95/river-observations` .NET 10 AWS Lambda 
 
 **Important order:** #69 may begin once #49's data identity and #65's archive read contracts are stable; it need not wait for the full production backfill in #50. Consumer cutover (#51) needs validated source parity/coverage and must happen **Trent dashboard → observed levels → gauge alerts**, with separate reversible flags. HPP status events, forecast data, CSO data and alert delivery logic remain on existing services. If #50 finds uncollected legacy intervals, produce coverage metadata so #69 can distinguish them from broken expected S3 archives.
 
+## Platform expansion (independently bounded CSO specs)
+
+The planned .NET repository is intended to be a **shared river data backend** with domain modules rather than an isHPPOpen/gauge-only scraper. See [platform boundaries](RIVER_DATA_PLATFORM_DIRECTION.md). The `river-observations` repo name remains as previously planned until explicitly renamed; do not create a second competing scaffold or alter the accepted gauge designs because of branding.
+
+- [#71 CSO catalogue and selection](../openspec/changes/cso-asset-catalogue-and-selection/proposal.md): provider asset discovery, independent explicit named sets, unresolved-ID recovery, no runtime Sewage Map dependency. Can implement independently of event storage.
+- [#72 CSO ingestion, events and history](../openspec/changes/modernise-cso-data/proposal.md): consumes #71 collection plan, maintains source-state vs current state vs stable event ID/revisions, archive-first S3 evidence, **24-calendar-month completed-event Dynamo retention**, direct S3 older events and new read-only `/v1/cso` endpoints. Does not move existing public web/alert callers.
+- Separate later specs for historic EDM/Mongo/Glacier reconciliation, site impact assessment, predictor output publication, additional water companies and legacy Node retirement.
+
+**CSO agent prompt (#71):** "Implement the CSO catalogue/selection OpenSpec in the shared .NET backend with provider-verified Severn Trent asset discovery, validated version-controlled explicit named sets and deterministic selection-plan health; preserve unresolved IDs, no automatic geographic selection or runtime Sewage Map dependency. No production apply or existing scraper changes; submit focused tests and PR."
+
+**CSO agent prompt (#72):** "Implement the CSO ingestion/event OpenSpec *after #71's selection contract*, with source claim evidence, current/freshness distinction, stable event IDs and immutable corrections, verified S3-first durability and 24-calendar-month hot event storage with older direct S3 reads. Extend existing IAM-protected read Lambda for CSO GET routes; preserve current web, alerts and legacy sources. No production apply, source migration or cutover; submit fixture/security tests and bounded PR."
+
 ## Operational prerequisites (not design blockers)
 
 - Confirm intended **AWS account and eu-west-1** target before any new stack creation; require owner approval and STS identity checks. `riverscraper` Terraform state/old account is **not** the starting point. Investigate retirement separately in [#66](https://github.com/tclare95/isHPPOpen/issues/66).

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Chart from 'react-google-charts';
 import PropTypes from 'prop-types';
 
@@ -13,9 +13,14 @@ const chartArrayHeader = [
 ];
 
 const ChartRender = ({ graphData, graphForeCastData, lowerBound, upperBound }) => {
-  const [chartData, setChartData] = useState([chartArrayHeader]);
+  const [now, setNow] = useState(null);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Sample the external clock when chart inputs change.
+    setNow(new Date());
+  }, [graphData, graphForeCastData, lowerBound, upperBound]);
+
+  const chartData = useMemo(() => {
     const data = [];
 
     graphData.forEach((element) => {
@@ -45,15 +50,13 @@ const ChartRender = ({ graphData, graphForeCastData, lowerBound, upperBound }) =
     });
 
     // Add 'now' line
-    const now = new Date();
-    data.push([now, 'Now', null, null, null, null, null]);
+    if (now) data.push([now, 'Now', null, null, null, null, null]);
 
     // Sort the data array
     data.sort((a, b) => a[0] - b[0]);
 
-    // Set chart data with header
-    setChartData([chartArrayHeader, ...data]);
-  }, [graphData, graphForeCastData, lowerBound, upperBound]); // Dependency array to trigger update
+    return [chartArrayHeader, ...data];
+  }, [graphData, graphForeCastData, lowerBound, upperBound, now]);
 
   return (
     <Chart

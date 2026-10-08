@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Alert from "react-bootstrap/Alert";
 import Badge from "react-bootstrap/Badge";
 import Button from "react-bootstrap/Button";
@@ -29,16 +29,10 @@ export default function EventsTable() {
   const events = useMemo(() => data?.eventsArray ?? [], [data]);
   const [selectedEventId, setSelectedEventId] = useState("new");
 
-  useEffect(() => {
-    if (selectedEventId === "new") {
-      return;
-    }
-
-    const hasSelectedEvent = events.some((event) => event._id === selectedEventId);
-    if (!hasSelectedEvent) {
-      setSelectedEventId(events[0]?._id ?? "new");
-    }
-  }, [events, selectedEventId]);
+  // Repair a removed selection before rendering its editor.
+  if (selectedEventId !== "new" && !events.some((event) => event._id === selectedEventId)) {
+    setSelectedEventId(events[0]?._id ?? "new");
+  }
 
   const selectedEvent = useMemo(
     () => events.find((event) => event._id === selectedEventId) ?? null,

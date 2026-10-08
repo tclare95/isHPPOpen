@@ -1,6 +1,7 @@
 import Alert from 'react-bootstrap/Alert'
 import PropTypes from 'prop-types'
 import Row from 'react-bootstrap/Row'
+import { useCallback, useSyncExternalStore } from 'react'
 
 function toTimestamp(value) {
     if (!value) {
@@ -23,11 +24,36 @@ export default function Header ({message}) {
         : bannerMessage.length > 0;
     const bannerStart = toTimestamp(banner?.banner_start_date)
     const bannerEnd = toTimestamp(banner?.banner_end_date)
-    const now = Date.now()
-    const hasStarted = bannerStart === null || bannerStart <= now
-    const hasNotEnded = bannerEnd === null || bannerEnd >= now
+    const inWindow = useSyncExternalStore(
+        useCallback((onChange) => {
+            let timer
+            const refresh = () => {
+                clearTimeout(timer)
+                const now = Date.now()
+                onChange()
+                const nextBoundary = [bannerStart, bannerEnd === null ? null : bannerEnd + 1]
+                    .filter((time) => time !== null && time > now)
+                    .sort((a, b) => a - b)[0]
+                if (nextBoundary !== undefined) {
+                    timer = setTimeout(refresh, Math.min(nextBoundary - now, 2147483647))
+                }
+            }
+            refresh()
+            window.addEventListener('focus', refresh)
+            return () => {
+                clearTimeout(timer)
+                window.removeEventListener('focus', refresh)
+            }
+        }, [bannerStart, bannerEnd]),
+        useCallback(() => {
+            const now = Date.now()
+            return (bannerStart === null || bannerStart <= now) && (bannerEnd === null || bannerEnd >= now)
+        }, [bannerStart, bannerEnd]),
+        // Cached server HTML cannot know the viewing time; scheduled banners resolve after hydration.
+        useCallback(() => bannerStart === null && bannerEnd === null, [bannerStart, bannerEnd]),
+    )
 
-    if (!bannerEnabled || bannerMessage.length === 0 || !hasStarted || !hasNotEnded) {
+    if (!bannerEnabled || bannerMessage.length === 0 || !inWindow) {
         return null;
     }
 

@@ -20,9 +20,12 @@ export async function GET() {
   try {
     await requireRouteSession();
     const results = await Promise.all(checks.map(async ([name, check]) => {
-      const startedAt = Date.now();
-      try { return { name, latencyMs: Date.now() - startedAt, health: await check() }; }
-      catch { return { name, latencyMs: Date.now() - startedAt, health: { source: name, state: "unavailable", generatedAt: null, fetchedAt: new Date().toISOString(), ageSeconds: null } }; }
+      const startedAt = performance.now();
+      try {
+        const health = await check();
+        return { name, latencyMs: Math.round(performance.now() - startedAt), health };
+      }
+      catch { return { name, latencyMs: Math.round(performance.now() - startedAt), health: { source: name, state: "unavailable", generatedAt: null, fetchedAt: new Date().toISOString(), ageSeconds: null } }; }
     }));
     return sendRouteSuccess({ checkedAt: new Date().toISOString(), sources: results });
   } catch (error) {

@@ -158,6 +158,7 @@ The shared helper `libs/api/fetchWithRevalidate.js` keeps this upstream fetch po
    - Alert emails are transactional and use a Resend-compatible HTTP integration. Required env vars are `SITE_URL`, `RESEND_API_KEY`, `ALERTS_FROM_EMAIL`, and `CRON_SECRET`.
    - Management links are email-scoped, 30-minute tokens stored separately from alert subscriptions so users can view and remove their alerts without a full account system. Confirmation links expire after 24 hours.
    - Operational APIs return additive `health` metadata (`source`, `generatedAt`, `fetchedAt`, `ageSeconds`, and `state`). Most feeds are stale after 30 minutes; predictor forecasts use a one-hour window. HPP status is fresh when its MongoDB query succeeds because its source only writes on 2.2m boundary transitions. The authenticated `/api/admin/operational-health` endpoint is the safe operator diagnostic view.
+   - Operational-health diagnostics check the five sources concurrently and report integer `latencyMs` measured after each awaited check using a monotonic clock. A failed source returns sanitized `unavailable` health without concealing other results; unauthenticated requests return the standard `401` envelope before checking sources.
 
 8. **Admin editing experience**
    - Admin pages now use a more consistent editing pattern across events and site banner workflows.

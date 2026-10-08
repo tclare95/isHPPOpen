@@ -2,7 +2,7 @@
 
 ## Intent
 
-Evolve the concepts behind isHPPOpen into **one reusable river/environmental data backend**, initially serving isHPPOpen but independent of that UI, a single gauge, or one water company. Implement an appropriately modular **.NET backend repository with independently invoked collector/reader Lambda entry points**, not a monolithic scraper and not multiple independently managed microservices.
+Evolve the concepts behind isHPPOpen into **one unified, reusable river/environmental data backend**, initially serving isHPPOpen but independent of that UI, a single gauge, or one water company. Implement an appropriately modular **.NET backend repository with independently invoked collector/reader Lambda entry points**, not a monolithic scraper and not multiple independently managed microservices.
 
 **Implementation repo naming remains open.** Current gauge foundation/OpenSpec plans call it `tclare95/river-observations`; `river-data-platform` is a possible later rename, **not automatically authorised by this planning change**. Do not duplicate project scaffolds or alter already agreed gauge keys/storage/IAM merely to establish the broader direction.
 

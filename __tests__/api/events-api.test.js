@@ -1,8 +1,10 @@
 jest.mock('../../libs/services/eventsService');
+jest.mock('next/cache', () => ({ revalidateTag: jest.fn() }));
 jest.mock('next-auth', () => ({ getServerSession: jest.fn() }));
 
 const eventsService = require('../../libs/services/eventsService');
 const { getServerSession } = require('next-auth');
+const { revalidateTag } = require('next/cache');
 const { ValidationError } = require('yup');
 const { GET, POST, DELETE } = require('../../app/api/events/route');
 
@@ -37,6 +39,7 @@ describe('Events API route handler', () => {
     expect(res.status).toBe(401);
     expect(payload.ok).toBe(false);
     expect(payload.error.message).toBe('Unauthorized');
+    expect(revalidateTag).not.toHaveBeenCalled();
   });
 
   test('POST updates event when authenticated', async () => {
@@ -55,6 +58,8 @@ describe('Events API route handler', () => {
     expect(res.status).toBe(200);
     expect(payload.ok).toBe(true);
     expect(payload.data.id).toBe('evt-1');
+    expect(revalidateTag).toHaveBeenNthCalledWith(1, 'events', { expire: 0 });
+    expect(revalidateTag).toHaveBeenNthCalledWith(2, 'home-snapshot', { expire: 0 });
   });
 
   test('POST returns success when event content is unchanged', async () => {
@@ -93,5 +98,26 @@ describe('Events API route handler', () => {
 
     expect(res.status).toBe(404);
     expect(payload.error.message).toBe('Event Not Found');
+    expect(revalidateTag).not.toHaveBeenCalled();
+  });
+
+  test('successful DELETE immediately invalidates event and homepage tags', async () => {
+    getServerSession.mockResolvedValue({ user: { email: 'admin@test.com' } });
+    eventsService.deleteEventById.mockResolvedValue({ deletedCount: 1 });
+    const res = await DELETE(makeRequest('http://localhost/api/events?id=event-1'));
+    expect(res.status).toBe(200);
+    expect(revalidateTag).toHaveBeenNthCalledWith(1, 'events', { expire: 0 });
+    expect(revalidateTag).toHaveBeenNthCalledWith(2, 'home-snapshot', { expire: 0 });
+  });
+
+  test('a failed invalidation does not undo a persisted write or skip the next tag', async () => {
+    getServerSession.mockResolvedValue({ user: { email: 'admin@test.com' } });
+    eventsService.upsertEvent.mockResolvedValue({ acknowledged: true, modifiedCount: 1, matchedCount: 1 });
+    revalidateTag.mockImplementationOnce(() => { throw new Error('Cache unavailable'); });
+    const res = await POST(makeRequest('http://localhost/api/events', { new_event_id: 'event-1', new_event_name: 'Saved event' }));
+    expect(res.status).toBe(200);
+    expect(revalidateTag).toHaveBeenCalledTimes(2);
+    expect(revalidateTag).toHaveBeenLastCalledWith('home-snapshot', { expire: 0 });
+    expect(console.warn).toHaveBeenCalled();
   });
 });

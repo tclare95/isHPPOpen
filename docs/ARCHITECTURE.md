@@ -41,6 +41,8 @@ Related docs:
 For forecast handlers that call S3, `fetch()` is configured with explicit `next.revalidate = 900` to align upstream request caching with route-level revalidation.
 The shared helper `libs/api/fetchWithRevalidate.js` keeps this upstream fetch policy consistent across forecast endpoints.
 
+Editorial writes use the shared `libs/cache/revalidate.js` helper with `revalidateTag(tag, { expire: 0 })`: successful event and banner mutations expire both their domain tag and `home-snapshot`, so the first subsequent homepage read fetches fresh content. The six-hour cache remains reusable between writes. Individual invalidation failures are logged without turning a persisted write into an error, and remaining tags are still attempted.
+
 ### API/application layer
 - Public and protected server handlers are Route Handlers in `app/api/*`.
 - Shared error primitives/mapping are centralized in `libs/api/http.js`.

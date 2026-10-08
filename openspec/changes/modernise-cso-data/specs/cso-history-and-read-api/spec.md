@@ -75,7 +75,7 @@ The CSO event API SHALL return available verified history plus explicit coverage
 
 #### Scenario: Expected S3 archive corrupt
 - **WHEN** a committed event manifest references a missing, denied or corrupt expected object
-- **THEN** the API returns a storage-integrity error and no successful-looking partial event timeline.
+- **THEN** the API returns **503 ARCHIVE_INTEGRITY** and no successful-looking partial event timeline.
 
 ### Requirement: Immutable event revision visibility
 The system SHALL expose read-only event detail and bounded revision-summary endpoints to authorised callers, with source evidence references rather than raw internal S3 paths.

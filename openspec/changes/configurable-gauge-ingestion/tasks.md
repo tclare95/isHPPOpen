@@ -1,25 +1,26 @@
-# Tasks: Configurable gauge ingestion
+# Tasks: Configurable EA gauge ingestion in the .NET service (#49)
 
-## 1. Contracts and source configuration (backend-neutral)
+## 1. Registry and contracts
 
-- [ ] 1.1 Define an EA-only initial registry format and schema validation in the scraper repository; include unique source/station/measurement identity, unit/parameter and source-owned identifiers. Document examples for Colwick and both Shardlow level/flow without enabling new production collection.
-- [ ] 1.2 Define and test normalised observation contract, UTC timestamps, provenance, duplicate/correction policy and provider-adapter errors; keep status transitions, CSO events and forecast records outside the scalar observation type.
-- [ ] 1.3 Implement fixture-driven EA adapter and version-controlled registry tests with bounded rates/timeouts; verify a configured new measure requires no custom per-station handler.
+- [ ] 1.1 Start from the independently buildable `river-observations` .NET 10 solution specified by [#64](https://github.com/tclare95/isHPPOpen/issues/64). Implement version-controlled, startup-validated EA measurement definitions, including Colwick and distinct Shardlow level and flow examples; new configurations must not enable production collection.
+- [ ] 1.2 Define/test normalised source/station/measurement/observation IDs, exact UTC observed vs ingested timestamps, units/datum/quality/source provenance and corrections, with no synthetic timestamps.
+- [ ] 1.3 Add EA adapter behind a typed provider interface, fixture tests for measurements and failure/429/invalid data, `HttpClientFactory` and bounded retry/timeout.
 
-## 2. Storage decision gate
+## 2. Staging DynamoDB adapter
 
-- [ ] 2.1 Verify the [storage evaluation](../evaluate-data-storage/proposal.md) outcome is reviewed and its observation identity, retention and write/read access contracts are stable. **Do not implement a production persistence adapter until this is decided.**
-- [ ] 2.2 Implement persistence through the selected store only after gate 2.1, with per-measurement uniqueness, bounded overlap, corrections/replays and no advancing watermarks before successful writes. Test collisions for same station/time with different measures.
+- [ ] 2.1 Define on-demand Dynamo observation monthly measurement key and latest pointer, **365-day full-resolution** retention model, stage-isolated IaC/IAM and safe key encoding. Include support for level+flow sharing a station and observed UTC timestamp.
+- [ ] 2.2 Implement idempotent conditional writes, source corrections, latest monotonicity, safe retry/unprocessed item handling, and persisting per-measurement collection cursor only after confirmed writes.
+- [ ] 2.3 Implement bounded chronological monthly `Query`/GetLatest path with explicit continuation tokens and 24h/7d/365-day range tests. No unbounded Scan and **no TTL activation** in this change.
 
-## 3. Collection orchestration and diagnostics
+## 3. Orchestration and health
 
-- [ ] 3.1 Introduce bounded per-measurement orchestration, independent errors, retry and incremental collection; test timeout, 429, no new readings and partial failure.
-- [ ] 3.2 Record per-measurement last run and last observation timestamp, lag, outcome and counts; add safe operator diagnostics/alarms consistent with chosen infrastructure. Verify freshness is not inferred from HTTP success.
+- [ ] 3.1 Add scheduled coordinator with bounded parallelism and overlap, independent per-measurement failure handling, run cancellation and watermark recovery. Tests: stale reading, timeout, rate-limit, replay and partial persistence failure.
+- [ ] 3.2 Record structured per-measure last attempted run, outcome, observationAt, durable ingestAt, counts and freshness. Test distinction between healthy HTTP but outdated source data and a complete healthy update.
 
-## 4. Shadow rollout and verification
+## 4. Delivery boundaries
 
-- [ ] 4.1 Compare a limited shadow ingestion run with the existing EA and scraper data without changing consumer responses or existing Mongo/S3 contracts. Record explicit replay and parity evidence.
-- [ ] 4.2 Pass backend tests, syntax/SAM/CI checks and verify no inadvertent new consumer cutover, archived data deletion or predictor change. Link backend PR and evidence in [#49](https://github.com/tclare95/isHPPOpen/issues/49).
-- [ ] 4.3 Document the **separate** work needed for historical backfill [#50](https://github.com/tclare95/isHPPOpen/issues/50), web consumers [#51](https://github.com/tclare95/isHPPOpen/issues/51) and broader gauge onboarding [#52](https://github.com/tclare95/isHPPOpen/issues/52). Do not complete those changes here.
+- [ ] 4.1 Run .NET build/test/format checks, SAM validation and staging-only fixture/integration tests. Keep production schedule disabled, add no changes to legacy Node.js Lambda/CSO/HPP/forecast code or public legacy S3.
+- [ ] 4.2 Document writer data contract and explicit handoff to [#65](https://github.com/tclare95/isHPPOpen/issues/65): permanent S3 archive/manifest first, then enable TTL eligibility/production shadow writes only after approval.
+- [ ] 4.3 Link tests, deployment guardrails and implementation PR in [#49](https://github.com/tclare95/isHPPOpen/issues/49). Leave historical backfill to #50, web cutover to #51 and additional visible gauges to #52.
 
-This is a coordinated cross-repo OpenSpec change: the central specification is in isHPPOpen; the scraper owns code and manual AWS releases. No production deployment is authorized by this document.
+**No production cloud mutation or collector activation without a separately reviewed apply.** This is an additive new .NET backend change, not a refactor of `ishppopenScraper`.

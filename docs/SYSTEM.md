@@ -12,7 +12,7 @@ The suite documentation lives in the web repository, avoiding a fourth source
 repository just for the local coordination folder. Each backend owns its own
 `DEPLOYMENT.md`, infrastructure and workflow files. AWS workflows use explicitly reviewed prepare/apply steps; consult each backend's dated deployment status before assuming a deployment is enabled.
 
-The canonical [specification registry](specs/README.md) covers new product changes. See [shared contracts](CONTRACTS.md) for producer/consumer rules.
+New product changes are planned in the canonical [OpenSpec change directory](../openspec/changes/) using the [spec-driven configuration](../openspec/config.yaml). Current capabilities are synced to `openspec/specs/` on archival. See [shared contracts](CONTRACTS.md) for producer/consumer rules.
 
 ## Runtime contracts
 

@@ -5,10 +5,16 @@ const config = defineConfig([
   ...nextCoreWebVitals,
   {
     rules: {
-      "react/no-unescaped-entities": "off",
-      "react/display-name": "off",
+      // Behavioral follow-ups and audit evidence: docs/ENGINEERING_BACKLOG.md (#56).
       "react-hooks/set-state-in-effect": "off",
       "react-hooks/purity": "off",
+    },
+  },
+  {
+    files: ["__tests__/**"],
+    rules: {
+      // Anonymous component mocks are intentional; enforce names in application code.
+      "react/display-name": "off",
     },
   },
   globalIgnores([

@@ -72,3 +72,9 @@ Keep this file focused on actionable guardrails. If architecture behavior change
 - A cross-repository feature has one descriptively named OpenSpec change and separate implementation PRs in web, scraper and/or predictor repositories. Link the change path in each PR; do not create a competing specification registry.
 - Confirm producer formats and downstream readers before changing S3 keys, CSV fields, MongoDB collections, cadence, station IDs, units or timestamp semantics. Prefer additive producer changes and coordinated consumer migration.
 - Deployments are independently authorized: merging web main may deploy to Vercel; AWS backends require reviewed manual release workflows. Do not deploy or mutate production as an incidental part of a documentation/spec task.
+
+
+## Suite idea backlog
+
+- GitHub [roadmap / ideas index #57](https://github.com/tclare95/isHPPOpen/issues/57) links near-term OpenSpec changes and individually tracked future ideas. Capture ideas as GitHub issues, not an additional Markdown backlog; link selected issues to a canonical OpenSpec change.
+- Backend-neutral storage evaluation is [evaluate-data-storage](openspec/changes/evaluate-data-storage/proposal.md) (investigation only). Do not select or implement a database while the decision remains open. The [configurable-gauge-ingestion](openspec/changes/configurable-gauge-ingestion/proposal.md) persistence work depends on it.

@@ -31,3 +31,7 @@ No modifications or retirement of the old Node.js Lambdas, HPP/CSO/forecast refa
 ## Compatibility / release
 
 Additive service deployed to isolated stage/preview resources by a **separately approved manual release**. Existing Mongo `riverschemas`, public `levels/latest.json`, HPP, CSO and forecast outputs remain authoritative until explicitly migrated. A normal code merge never starts production collection.
+
+## Lightweight integration-stage boundary
+
+[Lightweight integration deployment #75](../lightweight-integration-deployment/proposal.md) replaces any expectation of a continuously populated staging mirror. Implement #49 with a **small stage-specific allowlist** (initially 1–3 EA measurements) and isolated on-demand DynamoDB; stage collection is disabled by default and only manually/boundedly invoked after approval. There is **no requirement to copy production gauge history or poll the production set twice**. #49's test-only Dynamo model and fixtures do not authorise a continuous live collector or change the production 365-day hot retention. Full **real-data stage ingestion smoke** waits for verified #65 archive-before-hot persistence; no production activation from #49 alone.

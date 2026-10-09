@@ -31,3 +31,7 @@ No historic Severn Trent EDM import/old Mongo or Glacier restore; no 2024/2025 h
 ## Delivery boundary
 
 One backend implementation may supply the new event store, collector and CSO read routes in staging, with tests for archive-first durability, source corrections, outages, read consistency and stage IAM. Source history migration and website/alert cutover are separately reviewed later.
+
+## Small, on-demand integration stage
+
+CSO integration tests reuse the lightweight stage of [#75](https://github.com/tclare95/isHPPOpen/issues/75) rather than mirroring production spill history. A few configured outfalls can be polled manually; event reconciliation, late correction and the **24 UTC calendar-month** hot/archive cutover are exercised using synthetic historical events and an injected clock in separate stage stores. Source evidence/revisions and archive-integrity semantics remain identical to the production contract. The permissioned cleanup of disposable stage test records is **not** a new automatic CSO event TTL or a deletion policy for canonical S3 history. No live staging poll cadence, historical data replication or production writes are prerequisites.

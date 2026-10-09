@@ -48,3 +48,7 @@ No automatic collection on discovery. A missing catalogue does not become an emp
 
 ## Acceptance boundaries
 Fixture and recorded-schema tests for pagination, disappearing IDs, duplicate selection, stale catalogue, config validation and source API errors. Staging-only externally reviewed release; existing Node polling remains unchanged until independently approved consumer migration.
+
+## Minimal, independently selected integration stage
+
+Use stage-local **version-controlled collection sets** with a few explicit test outfall IDs; do not dynamically select all discovered Severn Trent assets or infer stage selection from production config. The provider's complete catalogue can be discovered on demand in bounded pages, optionally seeded from fixture snapshots during ordinary CI. The initial daily catalogue / 15-minute operational polling values are **production defaults, not a requirement for continuously running staging schedules**. Leave EventBridge stage collection disabled by default; a reviewed integration smoke manually invokes a bounded run and reports plan/config/collection health. Stage catalogue snapshots and any later spill evidence belong only to stage-specific Dynamo/S3 resources and IAM (same AWS account allowed with isolation). See [#75](https://github.com/tclare95/isHPPOpen/issues/75).

@@ -13,3 +13,8 @@ All tasks are **unchecked future implementation tasks** in the unified backend, 
 - [ ] Document one-time reviewed Sewage Map ID import into explicit config, retaining provenance and **no runtime dependency**.
 - [ ] Run dotnet test/build/format and SAM validation without production secrets, then separately approved staging smoke only. No legacy service changes.
 - [ ] Link evidence and backend PR to [#71](https://github.com/tclare95/isHPPOpen/issues/71), keeping [#72](https://github.com/tclare95/isHPPOpen/issues/72) spill-event persistence separate.
+
+## Lightweight integration acceptance
+
+- [ ] Verify that stage may discover a **complete provider asset catalogue** while polling **only a handful of explicitly selected outfall IDs**, with zero default background collection and a bounded manual test invocation.
+- [ ] Preserve isolated stage role/storage/config and record a narrow #71 source-adapter smoke plan under [#75](https://github.com/tclare95/isHPPOpen/issues/75); do not provision production-sized staging history or reuse production writable access.

@@ -23,3 +23,7 @@ Unit/fixture tests and mocked S3 requests prove manifest checksum/count/time-win
 ## Follow-on responsibilities
 
 [#50](https://github.com/tclare95/isHPPOpen/issues/50) imports historical Mongo and legacy S3 snapshots with dedup/coverage reports; [#51](https://github.com/tclare95/isHPPOpen/issues/51) wires the web year-history and older-than-year API to new Dynamo/S3 readers. Old HPP status, CSO, forecast and alert stores are unchanged.
+
+## Lightweight stage verification, not a full history replica
+
+Stage verification uses a handful of stage-only immutable S3 objects and manifests, one or more synthetic date partitions beyond 365 days and an injected clock/controlled Dynamo fixture. Test archive-first durability, corrections, replay, reader rollover and source coverage; do **not** create a year of real staging polling or duplicate legacy archives. Stage provider selection remains 1–3 explicit EA measures by default with a manually triggered bounded run after #49+#65. Stage/prod may use the same approved AWS account but require separate writable resources and IAM. Environment-managed disposal of explicitly labelled stage test fixtures (after approval and recorded integrity checks) must be kept separate from the canonical indefinite archive/TTL logic. See [#75](https://github.com/tclare95/isHPPOpen/issues/75).

@@ -36,3 +36,7 @@ No implementation in this documentation change. No changes to old Node Lambdas, 
 ## Release and rollback
 
 This is **architecture/specification only**, with no AWS operations. Future backend implementation is tested in CI without credentials, then stage-tested only after separately approved manual prepare/apply. An API version may be deployed without routing web traffic to it. Production invoke roles and web migration require separate approval. Rollback disables web read preference or read API exposure without stopping the old scraper or deleting canonical observations.
+
+## Integration-stage boundary
+
+Read API testing does **not** require a complete staging database. Use compact seeded stage-only Dynamo/S3 fixture partitions (including an older-than-365-day archive object), explicit partial coverage and failure scenarios under [#75](https://github.com/tclare95/isHPPOpen/issues/75). Stage API and Vercel OIDC roles must be distinct from production and cannot be granted production dataset access, even when hosted in the same approved AWS account. Staging endpoint need only exist for **approved on-demand smoke tests**; no continuously populated parallel platform or web preview access to production data is required.

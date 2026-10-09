@@ -24,3 +24,8 @@
 - [ ] 4.3 Link implementer evidence in [#65](https://github.com/tclare95/isHPPOpen/issues/65) and hand off historical reconstruction to [#50](https://github.com/tclare95/isHPPOpen/issues/50) and web readers to [#51](https://github.com/tclare95/isHPPOpen/issues/51).
 
 This is a cross-repository plan: canonical OpenSpec lives in isHPPOpen; new .NET backend owns tests/code/release. A reviewed documentation PR is not deployment approval.
+
+## Cost-controlled integration tests
+
+- [ ] 4.4 Verify hot/archive boundaries with **small synthetic older-than-365-day stage fixtures** or a fake clock, not 365 days of staging polling. Confirm the same production retention/integrity code path is used.
+- [ ] 4.5 Prepare [#75](https://github.com/tclare95/isHPPOpen/issues/75) Stage-B smoke evidence: a few configured EA measurements, stage-only Dynamo/S3/IAM, manually bounded invocation, idempotent replay, disabled end state and no full archive clone or indiscriminate object lifecycle deletion.

@@ -8,16 +8,24 @@ context: |
   MongoDB, scraper S3 JSON and predictor S3 CSV contracts have independent consumers.
   Existing production spans tclare95/isHPPOpen (web), ishppopenScraper (Node / AWS SAM)
   and trent-predictor (Python / AWS Lambda); see docs/SYSTEM.md.
-  Planned unified river data backend: tclare95/river-data-platform (.NET 10 AWS
-  Lambda) in ONE new repository after authorised creation (#64). Initially
-  isHPPOpen is its first consumer; future domain modules include independent
-  hydrological observations, CSO events, forecast publication and site assessments.
+  Unified backend tclare95/river-data-platform (.NET 10 AWS Lambda) exists;
+  its inert foundation PR #1 was merged, but no AWS integration/prod stack was
+  deployed by that implementation. isHPPOpen is the first consumer; future
+  modules include observations, CSO events, forecast publication and assessments.
   Keep existing bootstrap-dotnet-observation-service OpenSpec ID for continuity.
   Do not force all domains into scalar observation data schemas or retention.
   Do not modify or repurpose legacy riverscraper Terraform/state/account or CI.
-  Web main merges can deploy automatically to Vercel. All existing and planned
-  backend production deployments require separate authorisation, account/region
-  assertions and reviewed manual apply; no PR/main-triggered AWS apply.
+  Web main merges can deploy automatically to Vercel. Backend staging AND
+  production AWS prepare/apply require explicit separate approval, target
+  account/region assertions and reviewed manual apply; no PR/main auto-apply.
+  Use local/CI fixtures by default and one tiny on-demand isolated integration
+  stage (#75), not a 24/7 production-sized staging clone. Stage/prod may share
+  an AWS account but NOT writable IAM/data storage/configuration. Stage collection
+  schedules default DISABLED; test only small explicit source allowlists.
+  Archive/TTL semantics remain domain-specific and unchanged in production:
+  gauges 365-day hot and permanent canonical S3, CSO events 24 months hot
+  from confirmed end then verified S3. Stage-only disposable cleanup needs
+  its own explicit approval; never shorten canonical retention to save test cost.
   Existing behaviour is documented in docs/ARCHITECTURE.md and docs/CONTRACTS.md.
   Avoid large refactors, data migration or changed production behaviour as
   collateral to maintenance tasks.

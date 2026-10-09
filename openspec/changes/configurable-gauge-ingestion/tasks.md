@@ -24,3 +24,8 @@
 - [ ] 4.3 Link tests, deployment guardrails and implementation PR in [#49](https://github.com/tclare95/isHPPOpen/issues/49). Leave historical backfill to #50, web cutover to #51 and additional visible gauges to #52.
 
 **No production cloud mutation or collector activation without a separately reviewed apply.** This is an additive new .NET backend change, not a refactor of `ishppopenScraper`.
+
+## Stage-cost and deployment handoff (#75)
+
+- [ ] 4.4 Provide stage-specific **1–3 measurement** allowlist/config and test that no continuous production-sized poll set or live schedule is enabled by deployment/normal CI. Confirm stage table + IAM isolation even if staging and production share an AWS account.
+- [ ] 4.5 Hand off bounded real-source integration verification to [#75](https://github.com/tclare95/isHPPOpen/issues/75) **after #65**; use fixtures/mock Dynamo before that. No complete history replica, no automatic short test-data TTL in shared observation code and no AWS apply without separate authorisation.

@@ -29,3 +29,8 @@
 - [ ] 4.3 Run .NET format/build/test, SAM validation, fixture and policy tests without production credentials. Stage smoke test only through separately authorised manual deployment/account checks; no production activation.
 - [ ] 4.4 Keep legacy Mongo+Node CSO, S3 archive and public water-quality/alerts unchanged. Record shadow-comparison and reversible web cutover as separate follow-on work; no current production data movement.
 - [ ] 4.5 Link verified implementation and evidence to [#72](https://github.com/tclare95/isHPPOpen/issues/72); keep historical EDM/Mongo/Glacier reconciliation and site impact assessment separate specs.
+
+## Cost-controlled deployment and verification (#75)
+
+- [ ] 4.6 Verify CSO event/correction/TTL/archive paths with compact synthetic older-than-24-month stage fixtures and injected time, **not** two years of live stage collection. Prove open/unresolved events cannot be expired.
+- [ ] 4.7 Stage only a few explicit outfall IDs; demonstrate a bounded, manually approved source polling run with stage-only Dynamo/S3/IAM, schedule disabled afterwards, low-volume logs, and no full historical/legacy clone. Record smoke/stop evidence against [#75](https://github.com/tclare95/isHPPOpen/issues/75).

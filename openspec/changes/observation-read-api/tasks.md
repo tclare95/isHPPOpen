@@ -39,3 +39,8 @@
 ## Explicit boundaries
 
 No old scraper changes, production data reads/writes, TTL activation, archive cleanup, history backfill, new public API, user authentication or web consumer cutover. Keep former production Next.js routes unchanged until #51's separate feature-flag/rollback reviews.
+
+## Minimal-stage API handoff (#75)
+
+- [ ] 5.5 Add an optional, separately approved **on-demand** stage API smoke using compact IAM-scoped Dynamo/S3 fixture history and negative wrong-stage invocation checks. Do not require full staging history replication, automatic continuous collection or a production mirror.
+- [ ] 5.6 Verify stage OIDC/role/table/bucket isolation from production if sharing one AWS account, and record stage API evidence in [#75](https://github.com/tclare95/isHPPOpen/issues/75).

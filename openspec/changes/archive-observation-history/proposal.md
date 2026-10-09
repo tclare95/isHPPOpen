@@ -28,3 +28,7 @@ Full historical backfill from Mongo/legacy S3 ([#50](https://github.com/tclare95
 ## Release / rollback
 
 Archive-only writes and reads can be staged independently while legacy producer output remains unchanged. Production TTL and any migration require separate explicit approval. Disable new collection or archive reads on failure; do not expire or delete any old data until archive coverage is known to be safe.
+
+## Low-footprint stage requirement
+
+The archive must be testable using small verified S3 objects, Dynamo on-demand, an injected clock and synthetic historical partitions in the **isolated, normally idle integration stage** defined by [#75](https://github.com/tclare95/isHPPOpen/issues/75). Do not provision or backfill a production-sized staging S3 archive. The **canonical indefinite S3 Standard retention** and 365-day hot expiry rules remain identical in domain logic, including staging tests; separately approved cleanup of tagged **disposable staging fixtures** is an environment operation, not a shorter archive retention policy. The first real EA collector smoke runs only after archive-before-Dynamo safety is implemented.

@@ -25,3 +25,7 @@ No collection event persistence, event revisions, history imports, automatic sel
 
 ## Release
 Documentation only. Agent implementation requires CI fixture verification and optionally separately approved isolated staging deployment; no automatic production polling, data deletion or legacy switch-off.
+
+## Lightweight stage and source-selection rule
+
+Stage AWS integration is **on demand**, using the shared minimal environment described in [#75](https://github.com/tclare95/isHPPOpen/issues/75). Complete Severn Trent **asset catalogue discovery may still enumerate all provider assets** (bounded, rarely refreshed), but active stage CSO status polling MUST remain limited to a tiny explicitly enabled test set. A verified production catalogue must not implicitly trigger a matching staging operational collection set. No continuous 15-minute stage poll schedule is required; staged jobs are manually invoked or temporarily enabled with an explicit end. Tests do not require a production-sized staging archive, and staging/prod writable IAM and storage remain isolated.

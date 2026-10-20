@@ -41,3 +41,12 @@ The existing web/Node/Mongo/forecast and alert contracts remain unchanged until 
 6. **Later:** CSO historical EDM/Mongo/Glacier reconciliation; site-to-CSO relationships and assessment logic; modular replacements for legacy HPP, CSO and forecast-publisher duties ([#68](https://github.com/tclare95/isHPPOpen/issues/68)); predictor publish/query contract and additional provider adapters.
 
 These are *modular parts of one platform*, not proof that the same physical database table, IAM role or retention lifecycle suits every domain.
+
+## Gauge migration and future consumers (20 October 2026)
+
+- [Historical backfill #50](../openspec/changes/migrate-observation-storage/proposal.md): recover all reasonably available legacy gauge evidence. **Automatic imports only fill absent canonical measurement/timestamps**, with reviewed correction required for any conflict with RDP; archive-first and source/gap reconciliation.
+- [Multi-gauge parity #52](../openspec/changes/expand-multi-gauge-support/proposal.md): complete the existing six dashboard measurements and make provider/station/measurement registration independent of collection and private-catalogue publication. Existing web presentation remains curated.
+- [Web read migration #51](../openspec/changes/unify-gauge-consumers/proposal.md): server-only Vercel AWS IAM client, independently configured legacy/shadow/rdp readers, fresh legacy **display** fallback and deliberately conservative **alert** evaluation; roll out Trent → observed levels → gauge alerts. #52 six-series parity precedes full cutover; #50 older history can continue in parallel once necessary recent windows have been verified.
+- isHPPOpen is RDP's **sole initial consumer**. A future standalone [RDP playground #77](https://github.com/tclare95/isHPPOpen/issues/77) should use the same canonical internal data APIs, potentially through a server-side gateway. The [public API/developer-access idea #78](https://github.com/tclare95/isHPPOpen/issues/78) is **separate**, with its own future decisions on anonymous/registered authentication, gateway, limits and costs. Do not expose IAM credentials, raw Lambdas or data storage through a browser/public API as a side effect of this migration.
+
+These changes are documentation-only until their own implementation/release approvals. The RDP #49/#65 source merges did not themselves approve or execute AWS deployment.

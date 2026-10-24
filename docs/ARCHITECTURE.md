@@ -72,6 +72,12 @@ Editorial writes use the shared `libs/cache/revalidate.js` helper with `revalida
 - These services encapsulate validation + persistence calls used by API handlers.
 
 ### Data layer
+
+- The unused `libs/rdp/` foundation provides server-only Vercel OIDC → STS →
+  SigV4 reads of the internal RDP API, strict Preview/staging versus
+  Production/production configuration, and six explicit gauge aliases.
+  [Slice #51-A](RDP-CLIENT-51A.md) documents the contract and separately approved
+  Preview smoke. Existing routes/alerts remain legacy; later slices own adoption.
 - MongoDB connectivity is centralized in `libs/database.js`.
 - It uses a global cached promise/connection pattern to avoid reconnecting on every request.
 - Failed connection attempts are cleared from the cache so later requests can retry after transient Mongo outages.

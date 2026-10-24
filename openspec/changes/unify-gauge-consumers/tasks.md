@@ -1,12 +1,14 @@
 # Tasks: Reversible RDP web consumer migration (#51)
 
-Docs only: all future implementation tasks unchecked. Keep web implementation in `isHPPOpen`, backend #69 separate.
+Slice A implemented with fixture tests; genuine Preview build federation remains separately approval-gated. B–E remain future work. Keep web implementation in `isHPPOpen`, backend #69 separate.
 
 ## A. Shared server-side client and rollout controls
-- [ ] 1.1 Implement Vercel OIDC/STS SigV4 client for the #69 API, with bounded timeouts/retries, stage-specific endpoints/roles and server-only credential handling.
-- [ ] 1.2 Implement validated canonical alias mappings for all six dashboard series, preserving distinct Shardlow level/flow.
-- [ ] 1.3 Add independent `RDP_TRENT_SOURCE`, `RDP_LEVELS_SOURCE`, `RDP_GAUGE_ALERTS_SOURCE` `legacy|shadow|rdp` modes, default legacy, with strict environment isolation and redeploy-based rollback.
-- [ ] 1.4 Cover 403, 429, 5xx, timeout, partial latest, bad measurement, cursor/archival corruption and wrong-stage IAM in contract tests; no browser tokens or public RDP URL.
+- [x] 1.1 Implement Vercel OIDC/STS SigV4 client for the #69 API, with bounded timeouts/retries, stage-specific endpoints/roles and server-only credential handling.
+- [x] 1.2 Implement validated canonical alias mappings for all six dashboard series, preserving distinct Shardlow level/flow.
+- [x] 1.3 Add independent `RDP_TRENT_SOURCE`, `RDP_LEVELS_SOURCE`, `RDP_GAUGE_ALERTS_SOURCE` `legacy|shadow|rdp` modes, default legacy, with strict environment isolation and redeploy-based rollback.
+- [x] 1.4 Cover 403, 429, 5xx, timeout, partial latest, bad measurement, cursor/archival corruption and wrong-stage IAM in contract tests; no browser tokens or public RDP URL.
+
+Slice A's controls are validated helpers only; no consumer reads them yet. See [implementation/evidence runbook](../../../docs/RDP-CLIENT-51A.md). Three reserved aliases still require #52 backend publication; production API configuration is fixture-tested only.
 
 ## B. Trent dashboard
 - [ ] 2.1 Adapt bounded paginated 7d RDP history to existing six-series newest-first `/api/trentweirs` public contract, including 1h/1d index-based rates and units.

@@ -1,0 +1,29 @@
+{
+  "registry": {
+    "data": [
+      { "measurementId": "ea-colwick-level", "provider": "environment-agency", "sourceId": "ea-flood-monitoring", "stationId": "ea-colwick", "parameter": "level", "unit": "mASD", "datum": "ASD", "expectedIntervalSeconds": 900, "name": "Colwick" },
+      { "measurementId": "ea-shardlow-flow", "provider": "environment-agency", "sourceId": "ea-flood-monitoring", "stationId": "ea-shardlow", "parameter": "flow", "unit": "m3/s", "datum": "unknown", "expectedIntervalSeconds": 900, "name": "Shardlow" },
+      { "measurementId": "ea-shardlow-level", "provider": "environment-agency", "sourceId": "ea-flood-monitoring", "stationId": "ea-shardlow", "parameter": "level", "unit": "mASD", "datum": "ASD", "expectedIntervalSeconds": 900, "name": "Shardlow" }
+    ],
+    "meta": { "retrievedAt": "2026-10-24T10:00:00Z" }
+  },
+  "latest": {
+    "data": [
+      { "measurementId": "ea-colwick-level", "status": "available", "observedAt": "2026-10-24T09:45:00Z", "value": -0.02, "unit": "mASD", "quality": "Good", "freshness": "fresh", "errorCode": null },
+      { "measurementId": "ea-shardlow-level", "status": "unavailable", "observedAt": null, "value": null, "unit": "mASD", "quality": null, "freshness": "unknown", "errorCode": "STORAGE_UNAVAILABLE" },
+      { "measurementId": "ea-shardlow-flow", "status": "no_observations", "observedAt": null, "value": null, "unit": "m3/s", "quality": null, "freshness": "unknown", "errorCode": null }
+    ],
+    "meta": { "retrievedAt": "2026-10-24T10:00:00Z", "partial": true }
+  },
+  "health": {
+    "data": { "measurementId": "ea-colwick-level", "lastAttemptAt": "2026-10-24T09:59:00Z", "lastPersistedAt": "2026-10-24T09:46:00Z", "lastObservedAt": "2026-10-24T09:45:00Z", "lastSourceObservedAt": "2026-10-24T09:45:00Z", "sourceState": "failed", "persistenceState": "failed", "freshness": "fresh", "ingestLagSeconds": 60, "lastErrorCode": "SOURCE_UNAVAILABLE" },
+    "meta": { "retrievedAt": "2026-10-24T10:00:00Z" }
+  },
+  "history": {
+    "data": [
+      { "observedAt": "2026-10-24T09:30:00Z", "value": -0.03, "unit": "mASD", "datum": "ASD", "quality": "Good", "sourceId": "ea-flood-monitoring", "providerMeasureId": "4009-level-stage-i-15_min-mASD", "ingestedAt": "2026-10-24T09:31:00Z", "sourceReference": "https://environment.data.gov.uk/flood-monitoring", "revision": 1 },
+      { "observedAt": "2026-10-24T09:45:00Z", "value": -0.02, "unit": "mASD", "datum": "ASD", "quality": "Good", "sourceId": "ea-flood-monitoring", "providerMeasureId": "4009-level-stage-i-15_min-mASD", "ingestedAt": "2026-10-24T09:46:00Z", "sourceReference": "https://environment.data.gov.uk/flood-monitoring", "revision": 1 }
+    ],
+    "meta": { "measurementId": "ea-colwick-level", "from": "2026-10-24T09:00:00Z", "to": "2026-10-24T10:00:00Z", "requestAsOf": "2026-10-24T10:00:00Z", "cutoff": "2025-10-24T10:00:00Z", "coverage": { "status": "unknown", "gaps": [{ "from": "2026-10-24T09:00:00Z", "to": "2026-10-24T10:00:00Z", "reason": "unknown" }] }, "pageIntegrity": "verified", "nextCursor": "opaque_cursor-fixture" }
+  }
+}

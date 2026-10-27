@@ -50,3 +50,13 @@ These are *modular parts of one platform*, not proof that the same physical data
 - isHPPOpen is RDP's **sole initial consumer**. A future standalone [RDP playground #77](https://github.com/tclare95/isHPPOpen/issues/77) should use the same canonical internal data APIs, potentially through a server-side gateway. The [public API/developer-access idea #78](https://github.com/tclare95/isHPPOpen/issues/78) is **separate**, with its own future decisions on anonymous/registered authentication, gateway, limits and costs. Do not expose IAM credentials, raw Lambdas or data storage through a browser/public API as a side effect of this migration.
 
 These changes are documentation-only until their own implementation/release approvals. The RDP #49/#65 source merges did not themselves approve or execute AWS deployment.
+
+## Production deployment decision (27 October 2026)
+
+[Production observation deployment OpenSpec](../openspec/changes/production-observation-deployment/proposal.md), tracking [#81](https://github.com/tclare95/isHPPOpen/issues/81), governs **same-account but resource/IAM-isolated** Production in the approved `eu-west-1` AWS account. Independent production stacks/roles/data stores and IAM-backed read API are required; staging stays idle except approved integration checks. The existing [RDP #69 read service](https://github.com/tclare95/river-data-platform/pull/10) was deployed to staging and passed signed smoke via [PR #16](https://github.com/tclare95/river-data-platform/pull/16), but this neither authorises production nor verifies Vercel Preview identity.
+
+Production is enabled in separately approved phases: inert foundation, retained Dynamo/S3 observation storage, bounded three-measure collection smoke, 15-minute monitored schedule, six-series expansion after #52, production authenticated read API, and finally independent #51 web shadow/cutover. Initial collection keeps Dynamo TTL **off**; archive-first, 365-day hot and indefinite S3 Standard policy remain unchanged.
+
+For outages, normal retries operate within the collector's bounded lookback; **beyond lookback, preserve cursors and require operator-reviewed bounded catch-up**. If the source cannot supply all readings, explicit UTC gap evidence and approval precede a guarded cursor resumption. No silent jump-to-now or automatic overwrite of existing canonical measurements. #50 historical reconstruction and the legacy Node scraper remain separate.
+
+The production OpenSpec and its documentation PR authorise **zero AWS setup, prepare/apply, scheduled invocation, new production IAM, TTL, backfill or web cutover**.

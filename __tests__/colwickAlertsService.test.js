@@ -5,7 +5,7 @@ jest.mock("../libs/services/alertMailerService", () => ({
   sendThresholdAlertEmail: jest.fn(),
 }));
 jest.mock("../libs/services/trentWeirsService", () => ({
-  getTrentWeirsSnapshot: jest.fn(),
+  getLegacyTrentWeirsSnapshot: jest.fn(),
 }));
 jest.mock("../libs/services/forecastService", () => ({
   getLatestForecastSnapshot: jest.fn(),
@@ -17,7 +17,7 @@ const {
   sendManageAlertsAccessEmail,
   sendThresholdAlertEmail,
 } = require("../libs/services/alertMailerService");
-const { getTrentWeirsSnapshot } = require("../libs/services/trentWeirsService");
+const { getLegacyTrentWeirsSnapshot } = require("../libs/services/trentWeirsService");
 const { getLatestForecastSnapshot } = require("../libs/services/forecastService");
 const {
   createColwickAlertSubscription,
@@ -102,7 +102,7 @@ describe("colwickAlertsService", () => {
         }),
       },
     });
-    getTrentWeirsSnapshot.mockResolvedValue({
+    getLegacyTrentWeirsSnapshot.mockResolvedValue({
       fallback: false,
       partial: false,
       stations: [
@@ -152,7 +152,7 @@ describe("colwickAlertsService", () => {
         }),
       },
     });
-    getTrentWeirsSnapshot.mockResolvedValue({
+    getLegacyTrentWeirsSnapshot.mockResolvedValue({
       fallback: false,
       partial: false,
       stations: [
@@ -205,7 +205,7 @@ describe("colwickAlertsService", () => {
         }),
       },
     });
-    getTrentWeirsSnapshot.mockResolvedValue({ fallback: true, partial: false, stations: [] });
+    getLegacyTrentWeirsSnapshot.mockResolvedValue({ fallback: true, partial: false, stations: [] });
     getLatestForecastSnapshot.mockResolvedValue({
       metadata: { forecast_time: "2026-03-08T12:00:00.000Z" },
       forecast_data: [

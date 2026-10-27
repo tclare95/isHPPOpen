@@ -9,7 +9,8 @@ export function buildOperationalHealth({ source, generatedAt = null, fetchedAt =
   const fetchedDate = validDate(fetchedAt) || new Date();
   const generatedDate = validDate(generatedAt);
   const ageSeconds = generatedDate ? Math.max(0, Math.floor((fetchedDate.getTime() - generatedDate.getTime()) / 1000)) : null;
-  const state = unavailable ? "unavailable" : fallback ? "fallback" : !generatedDate || ageSeconds > staleAfterMs / 1000 ? "stale" : "fresh";
+  // Stale outranks fallback so old saved data can never present as acceptable fallback data.
+  const state = unavailable ? "unavailable" : !generatedDate || ageSeconds > staleAfterMs / 1000 ? "stale" : fallback ? "fallback" : "fresh";
 
   return { source, generatedAt: generatedDate?.toISOString() ?? null, fetchedAt: fetchedDate.toISOString(), ageSeconds, state };
 }

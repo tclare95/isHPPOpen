@@ -1,6 +1,6 @@
 # Tasks: Reversible RDP web consumer migration (#51)
 
-Slice A implemented with fixture tests; genuine Preview build federation remains separately approval-gated. B–E remain future work. Keep web implementation in `isHPPOpen`, backend #69 separate.
+Slice A implemented with fixture tests; genuine Preview build federation remains separately approval-gated. Slice B code (2.1–2.3) implemented with fixture tests; its live evidence (2.4) and C–E remain future work. Keep web implementation in `isHPPOpen`, backend #69 separate.
 
 ## A. Shared server-side client and rollout controls
 - [x] 1.1 Implement Vercel OIDC/STS SigV4 client for the #69 API, with bounded timeouts/retries, stage-specific endpoints/roles and server-only credential handling.
@@ -11,10 +11,12 @@ Slice A implemented with fixture tests; genuine Preview build federation remains
 Slice A's controls are validated helpers only; no consumer reads them yet. See [implementation/evidence runbook](../../../docs/RDP-CLIENT-51A.md). Three reserved aliases still require #52 backend publication; production API configuration is fixture-tested only.
 
 ## B. Trent dashboard
-- [ ] 2.1 Adapt bounded paginated 7d RDP history to existing six-series newest-first `/api/trentweirs` public contract, including 1h/1d index-based rates and units.
-- [ ] 2.2 Implement non-mutating legacy-authoritative shadow comparisons on matched timestamps, lag, missing history, per-source health and derived rates.
-- [ ] 2.3 In RDP mode provide per-complete-measurement validated fresh legacy display fallback; stale last-known must remain stale. Fix fallback-vs-stale health precedence.
+- [x] 2.1 Adapt bounded paginated 7d RDP history to existing six-series newest-first `/api/trentweirs` public contract, including 1h/1d index-based rates and units.
+- [x] 2.2 Implement non-mutating legacy-authoritative shadow comparisons on matched timestamps, lag, missing history, per-source health and derived rates.
+- [x] 2.3 In RDP mode provide per-complete-measurement validated fresh legacy display fallback; stale last-known must remain stale. Fix fallback-vs-stale health precedence.
 - [ ] 2.4 Document and test 48h shadow review and 7d sample parity evidence, six-series readiness and per-consumer Vercel/cache rollback.
+
+Slice B: see [implementation runbook](../../../docs/RDP-TRENT-51B.md). All deployed modes remain `legacy`. The 2.4 review procedure and fixture parity tests exist; live shadow evidence needs #52 publication of the three reserved IDs, Preview function-runtime federation and separate approval.
 
 ## C. Observed Colwick levels
 - [ ] 3.1 Read `level_data` from RDP while preserving legacy `forecast_data` and exact public `/api/levels` field shapes.

@@ -52,8 +52,9 @@ function getTrentSeries() {
   }));
 }
 
-// Never rejects: only a fixed error code leaves this boundary.
-async function readRdpSeries(series) {
+// Never rejects: only a fixed error code leaves this boundary. Shared with observed levels
+// (#51-C) so both consumers reuse one cached Colwick history per 900s window.
+export async function readRdpSeries(series) {
   try {
     const readings = await withDeadline(readCachedHistory(series.measure.measurementId), RDP_TRENT_READ_DEADLINE_MS);
     return readings.length ? { readings } : { error: "NO_OBSERVATIONS" };

@@ -1,5 +1,6 @@
 import { HttpError } from "../api/http";
 import { fetchWithOperationalRevalidate } from "../api/fetchWithRevalidate";
+import { createRequestLogger } from "../api/logger";
 import {
   getTrentStationDefinitions,
   TRENT_DASHBOARD_READING_LIMIT,
@@ -9,6 +10,7 @@ import {
 import { buildOperationalHealth, getNewestTimestamp } from "../operationalHealth";
 
 const EA_BASE_URL = "https://environment.data.gov.uk/flood-monitoring/id/stations";
+const TRENT_SOURCE_MODES = ["legacy", "shadow", "rdp"];
 let lastSuccessfulSnapshot = null;
 
 function buildStationReadingsUrl(stationId, measureType) {
@@ -19,7 +21,7 @@ function roundToSingleDecimal(value) {
   return Number(value.toFixed(1));
 }
 
-function buildMeasureSnapshot(items, measureType) {
+export function buildMeasureSnapshot(items, measureType) {
   const readings = items
     .map((item) => ({
       dateTime: item.dateTime,
@@ -63,6 +65,10 @@ function buildStationSnapshot(stationDefinition, readingsByMeasureType) {
   };
 }
 
+function buildLegacyHealth(stations, fallback) {
+  return buildOperationalHealth({ source: "environment-agency-trent", generatedAt: getNewestTimestamp(stations.map((station) => Object.values(station.measures).flatMap((measure) => measure.readings?.[0]?.dateTime))), fallback });
+}
+
 function buildSnapshot(stations, fallback = false, partial = false) {
   const generatedAt = new Date().toISOString();
   return {
@@ -70,30 +76,36 @@ function buildSnapshot(stations, fallback = false, partial = false) {
     fallback,
     partial,
     stations,
-    health: buildOperationalHealth({ source: "environment-agency-trent", generatedAt: getNewestTimestamp(stations.map((station) => Object.values(station.measures).flatMap((measure) => measure.readings?.[0]?.dateTime))), fallback: fallback || partial }),
+    health: buildLegacyHealth(stations, fallback || partial),
   };
+}
+
+// Raw Environment Agency items for one complete measurement series, newest first.
+export async function fetchLegacyMeasureItems(stationId, measureType) {
+  const response = await fetchWithOperationalRevalidate(buildStationReadingsUrl(stationId, measureType));
+
+  if (!response.ok) {
+    throw new HttpError(502, `Failed to fetch Trent data for station ${stationId}`);
+  }
+
+  const payload = await response.json();
+  return payload?.items ?? [];
 }
 
 async function fetchStationSnapshot(stationDefinition) {
   const measureEntries = await Promise.all(
-    stationDefinition.measureTypes.map(async (measureType) => {
-      const response = await fetchWithOperationalRevalidate(
-        buildStationReadingsUrl(stationDefinition.stationId, measureType)
-      );
-
-      if (!response.ok) {
-        throw new HttpError(502, `Failed to fetch Trent data for station ${stationDefinition.stationId}`);
-      }
-
-      const payload = await response.json();
-      return [measureType, payload?.items ?? []];
-    })
+    stationDefinition.measureTypes.map(async (measureType) => [
+      measureType,
+      await fetchLegacyMeasureItems(stationDefinition.stationId, measureType),
+    ])
   );
 
   return buildStationSnapshot(stationDefinition, Object.fromEntries(measureEntries));
 }
 
-export async function getTrentWeirsSnapshot() {
+// Legacy Environment Agency snapshot. Gauge alerts read this directly so a Trent
+// display source change never alters alert inputs (RDP_GAUGE_ALERTS_SOURCE is separate).
+export async function getLegacyTrentWeirsSnapshot() {
   const stationDefinitions = getTrentStationDefinitions();
   const results = await Promise.allSettled(
     stationDefinitions.map((stationDefinition) => fetchStationSnapshot(stationDefinition))
@@ -115,6 +127,8 @@ export async function getTrentWeirsSnapshot() {
       fallback: true,
       partial: false,
       generatedAt: lastSuccessfulSnapshot.generatedAt,
+      // Re-evaluate at the current time: saved data must age into stale, not keep its original fresh state.
+      health: buildLegacyHealth(lastSuccessfulSnapshot.stations, true),
     };
   }
 
@@ -124,6 +138,28 @@ export async function getTrentWeirsSnapshot() {
 
   const firstRejection = results.find((result) => result.status === "rejected");
   throw firstRejection?.reason ?? new HttpError(502, "Failed to fetch Trent weir data");
+}
+
+// Read independently of the other RDP consumers; an invalid value keeps the display on legacy.
+export function getTrentSourceMode(env = process.env) {
+  const mode = env.RDP_TRENT_SOURCE ?? "legacy";
+  return TRENT_SOURCE_MODES.includes(mode) ? mode : null;
+}
+
+export async function getTrentWeirsSnapshot() {
+  const mode = getTrentSourceMode();
+
+  if (mode === null) {
+    createRequestLogger({ method: "GET" }, "rdp/trent").error("Invalid RDP_TRENT_SOURCE; serving legacy");
+  }
+
+  if (mode === "shadow" || mode === "rdp") {
+    // Loaded only outside legacy so the default path never touches the server-only RDP client.
+    const { getRdpTrentWeirsSnapshot, getShadowTrentWeirsSnapshot } = await import("../rdp/trentSource");
+    return mode === "rdp" ? getRdpTrentWeirsSnapshot() : getShadowTrentWeirsSnapshot();
+  }
+
+  return getLegacyTrentWeirsSnapshot();
 }
 
 export function buildEmptyTrentWeirsPayload() {

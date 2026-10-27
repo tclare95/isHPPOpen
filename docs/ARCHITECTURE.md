@@ -73,11 +73,13 @@ Editorial writes use the shared `libs/cache/revalidate.js` helper with `revalida
 
 ### Data layer
 
-- The unused `libs/rdp/` foundation provides server-only Vercel OIDC → STS →
+- The `libs/rdp/` foundation provides server-only Vercel OIDC → STS →
   SigV4 reads of the internal RDP API, strict Preview/staging versus
   Production/production configuration, and six explicit gauge aliases.
   [Slice #51-A](RDP-CLIENT-51A.md) documents the contract and separately approved
-  Preview smoke. Existing routes/alerts remain legacy; later slices own adoption.
+  Preview smoke. [Slice #51-B](RDP-TRENT-51B.md) lets `/api/trentweirs` read it
+  when `RDP_TRENT_SOURCE` is `shadow` or `rdp` (default and all deployed targets:
+  `legacy`). Observed levels and gauge alerts remain legacy.
 - MongoDB connectivity is centralized in `libs/database.js`.
 - It uses a global cached promise/connection pattern to avoid reconnecting on every request.
 - Failed connection attempts are cleared from the cache so later requests can retry after transient Mongo outages.
@@ -154,6 +156,7 @@ Editorial writes use the shared `libs/cache/revalidate.js` helper with `revalida
 7. **Trent gauge dashboard cache**
    - `app/api/trentweirs/route.js` is the app-owned cache boundary for Trent gauge pages.
    - `libs/services/trentWeirsService.js` fetches Environment Agency readings server-side per required measure type so mixed stations do not lose `level` history to `flow` rows.
+   - `RDP_TRENT_SOURCE` (`legacy|shadow|rdp`, default `legacy`) selects the display source; `libs/rdp/trentSource.js` is loaded only outside legacy. Gauge alerts call `getLegacyTrentWeirsSnapshot()` so the display switch never changes alert inputs. See [RDP-TRENT-51B.md](RDP-TRENT-51B.md).
    - `app/trentweirs/page.js` is now the overview-first Trent dashboard, combining summary cards and a comparison workspace on one page.
    - `components/functional/trentDashboard.js` centralizes the shared Trent dashboard controls so gauge selection, time window, and comparison mode are coordinated instead of repeated per card.
    - `app/trentcharts/page.js` now redirects to `app/trentweirs/page.js`, preserving the old route while keeping one primary Trent dashboard experience.

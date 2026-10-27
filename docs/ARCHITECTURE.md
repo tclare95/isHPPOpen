@@ -55,7 +55,7 @@ Editorial writes use the shared `libs/cache/revalidate.js` helper with `revalida
   - `app/api/events/route.js`: read/update/delete events.
   - `app/api/sitebanner/route.js`: get/update banner messages.
   - `app/api/hppstatus/route.js`: computes closure days over time windows.
-   - `app/api/levels/route.js`: reads the latest river snapshot via `libs/services/levelsService.js`.
+   - `app/api/levels/route.js`: reads the latest river snapshot via `libs/services/levelsService.js`. `RDP_LEVELS_SOURCE` (`legacy|shadow|rdp`, default `legacy`) selects the observed `level_data` source only; `libs/rdp/levelsSource.js` is loaded only outside legacy. See [RDP-LEVELS-51C.md](RDP-LEVELS-51C.md).
    - `app/api/trentweirs/route.js`: serves the cached Trent gauge snapshot via `libs/services/trentWeirsService.js`.
    - `app/api/waterquality/route.js`: reads water-quality snapshots via `libs/services/waterQualityService.js`.
    - `app/api/trentlockapi/route.js`: persists Trent Lock submissions via `libs/services/trentLockService.js`.
@@ -79,7 +79,9 @@ Editorial writes use the shared `libs/cache/revalidate.js` helper with `revalida
   [Slice #51-A](RDP-CLIENT-51A.md) documents the contract and separately approved
   Preview smoke. [Slice #51-B](RDP-TRENT-51B.md) lets `/api/trentweirs` read it
   when `RDP_TRENT_SOURCE` is `shadow` or `rdp` (default and all deployed targets:
-  `legacy`). Observed levels and gauge alerts remain legacy.
+  `legacy`). [Slice #51-C](RDP-LEVELS-51C.md) does the same for observed
+  Colwick `level_data` in `/api/levels` via `RDP_LEVELS_SOURCE`; `forecast_data`
+  stays on the scraper snapshot. Gauge alerts remain legacy.
 - MongoDB connectivity is centralized in `libs/database.js`.
 - It uses a global cached promise/connection pattern to avoid reconnecting on every request.
 - Failed connection attempts are cleared from the cache so later requests can retry after transient Mongo outages.

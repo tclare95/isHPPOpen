@@ -1,6 +1,6 @@
 # Tasks: Reversible RDP web consumer migration (#51)
 
-Slice A implemented with fixture tests; genuine Preview build federation remains separately approval-gated. Slice B code (2.1–2.3) implemented with fixture tests; its live evidence (2.4) and C–E remain future work. Keep web implementation in `isHPPOpen`, backend #69 separate.
+Slice A implemented with fixture tests; genuine Preview build federation remains separately approval-gated. Slice B code (2.1–2.3) and slice C (3.1–3.3) are implemented with fixture tests; B's live evidence (2.4), C's live shadow evidence and D–E remain future work. Keep web implementation in `isHPPOpen`, backend #69 separate.
 
 ## A. Shared server-side client and rollout controls
 - [x] 1.1 Implement Vercel OIDC/STS SigV4 client for the #69 API, with bounded timeouts/retries, stage-specific endpoints/roles and server-only credential handling.
@@ -19,9 +19,11 @@ Slice A's controls are validated helpers only; no consumer reads them yet. See [
 Slice B: see [implementation runbook](../../../docs/RDP-TRENT-51B.md). All deployed modes remain `legacy`. The 2.4 review procedure and fixture parity tests exist; live shadow evidence needs #52 publication of the three reserved IDs, Preview function-runtime federation and separate approval.
 
 ## C. Observed Colwick levels
-- [ ] 3.1 Read `level_data` from RDP while preserving legacy `forecast_data` and exact public `/api/levels` field shapes.
-- [ ] 3.2 Keep observation and forecast health independent, with fresh legacy display fallback and honest stale/unavailable states.
-- [ ] 3.3 Add fixture contract tests for independent failures and selection/rollback; no predictor changes.
+- [x] 3.1 Read `level_data` from RDP while preserving legacy `forecast_data` and exact public `/api/levels` field shapes.
+- [x] 3.2 Keep observation and forecast health independent, with fresh legacy display fallback and honest stale/unavailable states.
+- [x] 3.3 Add fixture contract tests for independent failures and selection/rollback; no predictor changes.
+
+Slice C: see [implementation runbook](../../../docs/RDP-LEVELS-51C.md). All deployed modes remain `legacy`. Live shadow evidence needs Preview function-runtime federation and separate approval; Colwick (`ea-colwick-level`) is not one of the three #52-reserved IDs.
 
 ## D. Live gauge alerts
 - [ ] 4.1 Add alert-safe per-measure live gauge reader that does not inherit dashboard legacy or cached-display automatic fallback; pin source choice per alert run.

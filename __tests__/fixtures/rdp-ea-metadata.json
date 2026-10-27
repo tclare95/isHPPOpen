@@ -1,0 +1,9 @@
+{
+  "verifiedAt": "2026-10-24",
+  "description": "Read-only EA metadata snapshots for the three reserved #52 aliases; not RDP publication evidence.",
+  "items": [
+    { "@id": "http://environment.data.gov.uk/flood-monitoring/id/measures/4126-level-stage-i-15_min-mASD", "parameter": "level", "period": 900, "qualifier": "Stage", "station": "http://environment.data.gov.uk/flood-monitoring/id/stations/4126", "unitName": "mASD" },
+    { "@id": "http://environment.data.gov.uk/flood-monitoring/id/measures/4067-level-stage-i-15_min-mASD", "parameter": "level", "period": 900, "qualifier": "Stage", "station": "http://environment.data.gov.uk/flood-monitoring/id/stations/4067", "unitName": "mASD" },
+    { "@id": "http://environment.data.gov.uk/flood-monitoring/id/measures/4074-level-stage-i-15_min-mASD", "parameter": "level", "period": 900, "qualifier": "Stage", "station": "http://environment.data.gov.uk/flood-monitoring/id/stations/4074", "unitName": "mASD" }
+  ]
+}

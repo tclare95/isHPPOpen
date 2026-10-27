@@ -13,11 +13,16 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "lint": "eslint .",
+    "rdp:preview-smoke": "node --conditions=react-server scripts/rdp-preview-smoke.mjs",
     "db:indexes:water-quality": "node scripts/create-water-quality-indexes.mjs",
     "calibrate:water-quality": "node scripts/calibrate-water-quality.mjs"
   },
   "dependencies": {
+    "@aws-sdk/client-sts": "3.1156.0",
+    "@smithy/hash-node": "4.5.2",
+    "@smithy/signature-v4": "5.7.4",
     "@vercel/analytics": "^1.6.1",
+    "@vercel/oidc": "4.0.3",
     "axios": "^1.13.5",
     "bootstrap": "^5.3.8",
     "eslint": "^9.39.2",
@@ -36,6 +41,7 @@
     "react-gtm-module": "^2.0.11",
     "react-leaflet": "^5.0.0",
     "react-leaflet-cluster": "^4.0.0",
+    "server-only": "0.0.1",
     "swr": "^2.4.0",
     "yup": "^1.7.1"
   },

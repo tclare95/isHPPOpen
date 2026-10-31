@@ -6,6 +6,19 @@ This repository is the canonical OpenSpec planning home for isHPPOpen, its exist
 - `changes/<change-name>/` — proposed changes, each with a proposal, capability deltas, design and tracked tasks.
 - `specs/<capability>/spec.md` — current requirements after changes are implemented and archived.
 
+## Writing product-focused specifications
+
+**OpenSpec describes the product behaviour and its acceptance criteria; it is not an implementation prescription.** Make the requirement clear enough to test while leaving the coding agent latitude to choose the simplest maintainable solution within existing architecture.
+
+- **Proposal:** why the change matters, intended users/operators, scope, non-goals and compatibility impact.
+- **Capability specs:** observable behaviour, rules, boundaries and failure cases written as testable WHEN/THEN scenarios. State *what must hold*, not the method used.
+- **Design:** explain consequential trade-offs and constraints where they matter (e.g. security, correctness, data integrity, external contracts or an explicitly approved architectural choice). Distinguish firm decisions from illustrative implementation options.
+- **Tasks:** small verifiable outcomes and tests, without prescribing code structure, exact PR decomposition or arbitrary tuning parameters. Put detailed implementation plans in the implementation work/PR when needed.
+
+**Default:** do not mandate extra abstractions, database fields, classes, locks, queues, file paths, specific algorithms, or numbers of PRs merely because they are one plausible solution. Mention such details only when necessary to satisfy a real invariant, protect a contract, or preserve an agreed decision; briefly explain *why*. Reuse existing patterns and avoid speculative future-proofing.
+
+**Review question:** Could a different, simpler implementation still satisfy the product requirement and pass the acceptance tests? If yes, the spec should normally allow it.
+
 ## Active proposals
 
 **Implemented baseline:** [audit-web-engineering-standards](changes/archive/2026-10-08-audit-web-engineering-standards/proposal.md) is archived after implementation and Astra review. Its checked tasks record verification; [operational-health](specs/operational-health/spec.md) is now a current capability. Deferred findings remain in [the engineering backlog](../docs/ENGINEERING_BACKLOG.md).

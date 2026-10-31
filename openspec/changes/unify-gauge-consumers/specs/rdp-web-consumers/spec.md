@@ -20,8 +20,8 @@ The website SHALL select `legacy`, `shadow` or `rdp` independently for Trent, ob
 - **WHEN** an operator changes one consumer's server-side source configuration and deploys the change
 - **THEN** the affected consumer returns to legacy behaviour after deployment/cache propagation without altering other consumers or deleting RDP records.
 
-### Requirement: Shadow evaluation has no user side effects
-Shadow mode SHALL preserve legacy as the authoritative served/evaluated source while comparing bounded RDP results at equal observed timestamps and keeping all state/delivery unchanged.
+### Requirement: Shadow comparison has no additional user side effects
+In shadow mode legacy SHALL continue to evaluate and send normally as the sole authoritative path. The **additional RDP comparison** MUST be read-only, with no RDP-shadow subscription, delivery, `alertRuns`, observation-progress or email side effects.
 
 #### Scenario: RDP shadow read fails
 - **WHEN** RDP times out or returns integrity failure during shadow evaluation
@@ -53,20 +53,45 @@ The website SHALL migrate only observed Colwick `level_data` to RDP while preser
 - **WHEN** the existing forecast source fails while RDP observations are usable
 - **THEN** the public response retains observed readings and communicates the forecast failure separately, without manufacturing forecast values.
 
-### Requirement: Alert source failure and switching never manufacture events
-Live gauge alerts MUST use a fixed selected source for each evaluation, MUST NOT inherit dashboard automatic legacy fallback and MUST skip unsafe affected rules without triggering, rearming or mutating their last condition state.
+### Requirement: Alert-safe per-measurement evaluation
+Live gauge alerts MUST select one authoritative source per evaluation, MUST NOT reuse read-only display fallback or stale display snapshots, and MUST validate observations independently for each gauge. Only measurements with verified identity, units, acceptable quality and a valid observed timestamp no more than 30 minutes old may affect alert state. Unusable measurements MUST NOT trigger, rearm or advance their dependent rules.
 
-#### Scenario: Gauge unhealthy while other alert domains healthy
-- **WHEN** one selected RDP measurement is stale or unavailable but other gauge measurements and independent HPP/forecast/water sources are healthy
-- **THEN** only rules depending on that measurement are skipped; valid other alerts continue using their original semantics.
+#### Scenario: Some sources unusable
+- **WHEN** one gauge is stale/unknown/invalid while another gauge, forecast, HPP or water-quality source is usable
+- **THEN** the unusable gauge rules do not change and all unrelated eligible rules continue.
 
-#### Scenario: Source switch replays older observation
-- **WHEN** a rollback or cache replay produces an observedAt no newer than an already evaluated reading
-- **THEN** the rule does not rearm or send a new alert merely because the data source changed, and delivery idempotency remains effective.
+#### Scenario: Repeated unchanged observation
+- **WHEN** several 15-minute cron runs see the same observation
+- **THEN** they do not repeat a notification, rearm the rule or advance observation progress.
 
-#### Scenario: RDP alert shadow evaluation
-- **WHEN** alert source mode is `shadow`
-- **THEN** RDP condition comparisons are recorded without writing any alert/run/delivery state or sending email from the shadow path.
+### Requirement: Preserve and reconcile existing alert state
+The migration MUST preserve subscription status, existing triggered/armed state, hysteresis, alert keys and delivery history. It SHALL track processed source-observation progress durably, reject older/conflicting readings, and use bounded chronological catch-up without silently skipping unknown state. Only a crossing still met by the **latest eligible fresh observation** may result in a catch-up email.
+
+#### Scenario: Existing state cannot be reconciled
+- **WHEN** an existing subscription lacks an observation marker and trustworthy historical evidence cannot establish continuity
+- **THEN** the affected rule is held for review without a manufactured crossing, reset or rearm.
+
+#### Scenario: Late observations contain a transient crossing
+- **WHEN** a bounded catch-up reveals a past threshold crossing but the latest fresh observation has already cleared
+- **THEN** no retrospective notification is sent.
+
+#### Scenario: Insufficient catch-up evidence
+- **WHEN** history is over budget, incomplete for a required state decision, or conflicts at the same timestamp
+- **THEN** the rule is held without silently advancing beyond uncertain progress.
+
+### Requirement: Safe source switching and rollback
+Source selection MUST remain fixed through an evaluator invocation. A source change from legacy to RDP or back MUST NOT itself count as a crossing or rearm; it SHALL require demonstrated observation/condition continuity or operator-reviewed reconciliation. A newer but inconsistent reading is not sufficient, and old and new deployments MUST NOT concurrently overwrite authoritative state.
+
+#### Scenario: RDP-to-legacy rollback
+- **WHEN** legacy returns older readings or later readings inconsistent with the accepted RDP state
+- **THEN** affected rules are held without trigger/rearm/send, while independent alert types remain operational.
+
+### Requirement: #47 reliability prerequisite and uncertain delivery
+The separately reviewed reliability-only implementation under #47 MUST precede live RDP alert activation and prove safe overlapping-run, delivery-intent and subscription-state handling. It MUST NOT require the optional five-minute cron change. Delivery identity remains stable across equivalent source readings. After provider idempotency protection expires, uncertain sends MUST be held for operator review instead of blindly retried.
+
+#### Scenario: Concurrent runs or uncertain provider response
+- **WHEN** overlapping cron runs evaluate the same crossing, or provider acceptance is uncertain
+- **THEN** there is no independent duplicate delivery intent, state writes remain consistent, and recovery does not blindly resend after idempotency expiry.
 
 ### Requirement: Evidence-based independently approved rollout
 The website SHALL preserve existing public HTTP envelopes and 900-second operational cache baseline and require independently reviewable cutover and rollback evidence for each consumer.

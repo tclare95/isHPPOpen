@@ -2,77 +2,97 @@
 
 ## ADDED Requirements
 
-### Requirement: Inventory reasonably recoverable historical evidence
-The system SHALL provide a bounded, read-only inventory of accessible legacy river observation snapshots and supported upstream history, retaining evidence of coverage and recovery limits.
+### Requirement: Inventory reasonably available source history
 
-#### Scenario: Repeated cached history
-- **WHEN** many Mongo/S3 snapshot documents repeat readings from the same gauge and observed UTC timestamps
-- **THEN** the inventory records their source evidence without treating each snapshot as a separate canonical reading.
+The system SHALL support bounded read-only inventory of accessible legacy Mongo/S3 evidence and supported official EA historical readings, showing available ranges, limitations and excluded sources. Initial import eligibility SHALL be limited to Colwick; the other registered measurements may be inventoried without becoming import targets.
 
-#### Scenario: Unavailable historical period
-- **WHEN** no reasonably accessible source can establish an older interval
-- **THEN** the importer reports a reasoned gap or `unknown` rather than inventing samples or blocking all other imports.
+#### Scenario: Repeated history and inaccessible source
+- **WHEN** snapshots repeat a reading across many saved runs
+- **THEN** the inventory counts the evidence without claiming additional observations.
+- **WHEN** a source or interval cannot be inspected
+- **THEN** that limitation is reported as unavailable or unknown, not silently treated as an empty period.
 
-### Requirement: Verified identity and individual provenance
-The importer MUST normalise source observations using a verified canonical measurement ID, original observed UTC timestamp, numeric value, unit/datum and source evidence; a snapshot timestamp is not a measurement revision.
+### Requirement: Verified measurement identity and truthful provenance
 
-#### Scenario: Cached reading in a direct-source-labelled snapshot
-- **WHEN** `level_source=flood-api` contains a reading merged from earlier cached S3 history
-- **THEN** the importer does not treat the snapshot label/time as proof that the individual reading was refetched directly.
+Every eligible reading SHALL map to a registered measurement, its original observed UTC timestamp, numeric value and compatible parameter, unit and datum. The system SHALL preserve source references and uncertainty about original fetching rather than constructing source evidence it does not possess.
 
-#### Scenario: Ambiguous government-page identity
-- **WHEN** legacy fallback uses a government-page station reference not yet demonstrated equivalent to the registered EA measurement
-- **THEN** its observations remain quarantined, with the conflicting station/datum evidence recorded.
+#### Scenario: Colwick station alias
+- **WHEN** a candidate originates from the government gauge page identified as station 2102
+- **THEN** the known Colwick 2102/4009 station alias is recognised, but its measured series, units and datum must still be established before admission.
+- **WHEN** that equivalence cannot be established
+- **THEN** the affected candidate is quarantined, not silently converted.
 
-### Requirement: Deterministic deduplication and candidate conflict handling
-The importer SHALL deduplicate by canonical measurement ID and exact UTC observed time, preserve source evidence, choose the strongest verified candidate for an **unoccupied** canonical identity and quarantine equally credible conflicting values.
+#### Scenario: Cached-only observations
+- **WHEN** a snapshot repeats a previously cached level reading and its measurement identity is verified
+- **THEN** the reading may be considered lower-confidence gap-fill; `model_date`, `level_source` and snapshot storage time are not represented as its original direct EA fetch.
 
-#### Scenario: Duplicate same reading
-- **WHEN** the same source reading is repeated in 100 snapshots
-- **THEN** it creates at most one canonical observation and preserves a compact evidence count/reference set.
+### Requirement: Deterministic selection and conflict reporting
 
-#### Scenario: Two credible different values
-- **WHEN** two credible legacy candidates disagree on one measurement and observed timestamp without decisive source evidence
-- **THEN** neither is automatically installed; the conflict report lists candidate values and evidence.
+For each registered `measurementId + observedAt UTC`, the system SHALL deduplicate equivalent readings while retaining evidence, use a documented, deterministic precedence among verified candidates, and hold unresolved same-priority conflicts for review. An apparently stronger import candidate SHALL NOT take precedence over an occupied canonical RDP identity.
 
-### Requirement: Existing canonical observations are protected
-Automatic historical backfill MUST NOT overwrite, revise or replace an existing committed RDP canonical observation, including during concurrent live collection. Such changes require an independently authorised correction path.
+#### Scenario: Duplicate evidence
+- **WHEN** the same observed value occurs in 100 compatible snapshots
+- **THEN** at most one import candidate remains and the evidence summary records the duplicates.
 
-#### Scenario: Stronger imported value conflicts with RDP
-- **WHEN** a verified historic EA value differs from an already committed RDP value at the same measurement/timestamp
-- **THEN** the importer retains the existing value and records the conflict without changing archive, hot store or latest.
+#### Scenario: Contradictory candidates
+- **WHEN** two eligible candidates have materially different values and neither has decisive higher-priority evidence
+- **THEN** neither is imported automatically; both values and their provenance appear in the review report.
 
-#### Scenario: Concurrent live write wins
-- **WHEN** a live collector commits a reading between dry-run analysis and historical import
-- **THEN** atomic canonical conditional insertion prevents the import from overwriting it and reports an existing-canonical outcome.
+### Requirement: Canonical observations are never changed by automatic import
 
-### Requirement: Durable, safe, restartable migration
-The importer SHALL offer deterministic dry-run and separately authorised execution, bounded batches and resumable checkpoints, using archive-first integrity and hot-store repair without changing collector progress.
+The importer MUST add only absent canonical identities and MUST NOT change any existing canonical value, revision or evidence, including when the existing value is identical. It SHALL preserve live collection behaviour during concurrent imports. Corrections to existing canonical observations require a separate authorisation and workflow.
 
-#### Scenario: Interrupted mid-batch
-- **WHEN** execution stops after an S3 commit but before the required hot write or checkpoint acknowledgement
-- **THEN** restarting verifies archived data, completes safe repair and advances the checkpoint only for fully accepted work.
+#### Scenario: Existing canonical identity
+- **WHEN** the archive already contains an observation for the candidate measurement and timestamp
+- **THEN** it is retained unchanged and reported as already canonical or conflicting; import does not rewrite its evidence.
 
-#### Scenario: Observation older than 365 days
-- **WHEN** an accepted historical reading falls outside the rolling hot window
-- **THEN** it is durably accessible in verified S3 history without requiring a new Dynamo hot observation.
+#### Scenario: Live collector wins the race
+- **WHEN** live collection commits a reading after dry-run but before conditional import
+- **THEN** the importer preserves the collector's committed reading and reports the new occupancy or conflict.
 
-#### Scenario: Backfill after normal live collection
-- **WHEN** the importer processes historical months while normal ingestion continues
-- **THEN** source collection cursors, health records and the live latest pointer do not regress or represent import work as a new source poll.
+### Requirement: Reviewed, bounded and restartable import
 
-### Requirement: Reconciliation and coverage evidence
-The importer SHALL report per-measurement ranges, accepted/duplicate/conflict/invalid counts, sampled parity, archive verification and known or unknown historical gaps for the read API.
+The system SHALL provide a reproducible dry-run report and separately authorised, bounded execution of that reviewed scope. It SHALL verify archive durability before making any eligible hot representation available, support safe restart after partial progress, and refuse unauthorised or materially altered plans.
 
-#### Scenario: Missing source history vs missing committed archive
-- **WHEN** a source never supplied an old interval
-- **THEN** coverage may be partial/unknown and verified available rows remain queryable.
-- **WHEN** a committed manifest references a missing or corrupt required archive object
-- **THEN** the condition is an integrity error, not a successful partial gap.
+#### Scenario: Interrupted archive-first execution
+- **WHEN** a batch has committed to the archive but import stops before hot persistence or checkpoint completion
+- **THEN** replay identifies the existing committed readings, verifies them, safely completes eligible missing work and never re-creates an existing canonical revision.
 
-### Requirement: No incidental production mutation
-The change SHALL NOT start AWS deployment, production import, source deletion or live web cutover when its code or specification is merged.
+#### Scenario: Historical hot boundary
+- **WHEN** an eligible observation is outside the rolling 365-day hot range
+- **THEN** it remains available through verified archive history without requiring a new hot row.
 
-#### Scenario: Implementation PR merged
-- **WHEN** the future importer PR is merged without separately approved operator execution
-- **THEN** source stores and production RDP data remain unchanged.
+#### Scenario: Existing hot row without archive evidence
+- **WHEN** hot storage contains a timestamp without corresponding committed canonical archive history
+- **THEN** import holds that inconsistency for review and does not overwrite it.
+
+### Requirement: Keep import separate from live operations and outage recovery
+
+Historical import SHALL NOT change live cursor, collection health or latest pointers, acknowledge operational outage gaps, or resume a held collector. Normal recovery and ordinary collection SHALL remain independent.
+
+#### Scenario: Import while collection continues
+- **WHEN** a historical month is imported during a live collection run
+- **THEN** normal collector progress and health are unaffected, and imported history does not masquerade as a current source poll.
+
+### Requirement: Honest reconciliation and separately reviewed coverage publication
+
+The system SHALL report accepted, already-canonical, conflicting, invalid and unavailable candidates; source evidence; observed-time ranges; archive verification; and known or unknown history gaps. It SHALL produce evidence-backed coverage recommendations for separate review, without automatically publishing `complete` intervals or changing the read API's existing coverage inventory.
+
+#### Scenario: Unavailable source history versus broken archive
+- **WHEN** no recoverable source evidence is available for an interval
+- **THEN** the interval can remain unknown or be labelled with a supported gap reason, while verified neighbouring observations remain readable.
+- **WHEN** committed canonical archive content is missing or corrupt
+- **THEN** the reader/importer reports an integrity failure rather than a legitimate source gap.
+
+#### Scenario: Completed import with intermittent samples
+- **WHEN** all approved candidates are imported but source intervals are not proven complete
+- **THEN** import completion does not imply complete historical coverage.
+
+### Requirement: No automatic deployment or data mutation
+
+Publishing this specification, merging implementation or deploying code SHALL NOT start private data inventory, production imports, source deletion or consumer cutover without separate explicit operator authorisation.
+
+#### Scenario: Slice A or B merged
+- **WHEN** a documentation or code PR is merged without execution approval
+- **THEN** legacy sources, RDP canonical history and production operation remain unchanged.
+

@@ -20,8 +20,8 @@ The website SHALL select `legacy`, `shadow` or `rdp` independently for Trent, ob
 - **WHEN** an operator changes one consumer's server-side source configuration and deploys the change
 - **THEN** the affected consumer returns to legacy behaviour after deployment/cache propagation without altering other consumers or deleting RDP records.
 
-### Requirement: Shadow evaluation has no user side effects
-Shadow mode SHALL preserve legacy as the authoritative served/evaluated source while comparing bounded RDP results at equal observed timestamps and keeping all state/delivery unchanged.
+### Requirement: Shadow comparison has no additional user side effects
+In shadow mode legacy SHALL continue to evaluate and send normally as the sole authoritative path. The **additional RDP comparison** MUST be read-only, with no RDP-shadow subscription, delivery, `alertRuns`, observation-progress or email side effects.
 
 #### Scenario: RDP shadow read fails
 - **WHEN** RDP times out or returns integrity failure during shadow evaluation
@@ -92,13 +92,6 @@ The separately reviewed reliability-only implementation under #47 MUST precede l
 #### Scenario: Concurrent runs or uncertain provider response
 - **WHEN** overlapping cron runs evaluate the same crossing, or provider acceptance is uncertain
 - **THEN** there is no independent duplicate delivery intent, state writes remain consistent, and recovery does not blindly resend after idempotency expiry.
-
-### Requirement: Shadow comparison with zero shadow side effects
-In `shadow` mode legacy SHALL remain authoritative. The additional RDP comparison MUST NOT write subscriptions, deliveries, `alertRuns`, observation progress or send notifications; a shadow failure MUST NOT interrupt authoritative legacy evaluation.
-
-#### Scenario: RDP shadow fails or disagrees
-- **WHEN** the RDP shadow fetch fails or produces an inconsistent decision
-- **THEN** the discrepancy is safely recorded, with no RDP-shadow state/delivery side effects and no change to the legitimate legacy evaluation.
 
 ### Requirement: Evidence-based independently approved rollout
 The website SHALL preserve existing public HTTP envelopes and 900-second operational cache baseline and require independently reviewable cutover and rollback evidence for each consumer.

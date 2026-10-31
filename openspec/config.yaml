@@ -36,12 +36,15 @@ rules:
     - Describe compatibility, release and rollback consequences.
   specs:
     - Use SHALL or MUST requirements with testable WHEN/THEN scenarios.
-    - Specify observable behaviour, not implementation internals.
+    - Specify observable product/operator behaviour, invariants and failure cases, not implementation internals.
+    - Prefer testable outcomes over prescribed schemas, classes, algorithms, PR counts or speculative abstractions. Allow the coding agent to choose the simplest approach meeting the criteria.
+    - Include a technical choice as binding only when it is an accepted decision or necessary for correctness, security, data integrity or external compatibility; explain the constraint.
     - Preserve existing API and producer/consumer contracts unless explicitly changing them.
   design:
     - Justify decisions, include failure handling and migration/rollback where relevant.
+    - Explain important constraints and trade-offs without turning illustrative options into mandatory architecture.
     - Reuse patterns appropriate to the target repository. Use Next.js service/route conventions in the web repo, and small DI/adapter/Lambda conventions for the new .NET backend.
   tasks:
-    - Use small, independently verifiable checked tasks with focused tests and documentation beside each change.
+    - Use small, independently verifiable tasks framed as outcomes with focused tests; do not prescribe exact code edits or PR splitting unless necessary.
     - Run the target repository's existing relevant verification: Jest/ESLint/Next.js build for web; dotnet restore/build/test/format and SAM validation for the .NET backend.
     - Never deploy, change production data, rotate credentials or upload models without explicit authorization.

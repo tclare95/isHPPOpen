@@ -25,16 +25,23 @@ Slice B: see [implementation runbook](../../../docs/RDP-TRENT-51B.md). All deplo
 
 Slice C: see [implementation runbook](../../../docs/RDP-LEVELS-51C.md). All deployed modes remain `legacy`. Live shadow evidence needs Preview function-runtime federation and separate approval; Colwick (`ea-colwick-level`) is not one of the three #52-reserved IDs.
 
-## D. Live gauge alerts
-- [ ] 4.1 Add alert-safe per-measure live gauge reader that does not inherit dashboard legacy or cached-display automatic fallback; pin source choice per alert run.
-- [ ] 4.2 Preserve existing subscription state, hysteresis, alert keys and email delivery idempotency; record/use an observed-time watermark to avoid source-switch false crossings/rearming.
-- [ ] 4.3 On unavailable/old/stale/unknown data skip only affected gauge rules, leave state unchanged and allow unaffected gauge/HPP/water/forecast rules.
-- [ ] 4.4 Shadow-evaluate safely without sending emails or changing subscriptions, deliveries, alertRuns or watermarks; test mocked threshold transitions, rollback and duplicate sends.
+## D. Live gauge alerts — approved design, not implemented
+**Prerequisite:** implement the **reliability-only** parts of #47 in an independent reviewed PR, with concurrency/retry, delivery-claim, state consistency and `alertRuns` recovery evidence. Leave `vercel.json` at 15 minutes; a five-minute trial is separate. Do not mandate a particular lease, schema or PR split: choose the smallest correct implementation.
+
+- [ ] 4.1 Introduce a per-measurement alert-safe legacy/RDP reader, pin source per evaluation and refuse automatic display/cached legacy fallback. Validate identities, units, quality and locally checked ≤30-minute observation age.
+- [ ] 4.2 Preserve existing subscription/delivery state, reconcile initial observation progress without resetting/rearming, and use bounded chronological catch-up. Notify only if the latest eligible fresh observation remains above/below threshold; hold ambiguous history rather than guessing.
+- [ ] 4.3 Prevent source-switch/rollback false crossings from old **or newer but inconsistent** readings, including overlapping deployments; allow operator-reviewed reconciliation and preserve non-gauge independence.
+- [ ] 4.4 Add a **read-only RDP shadow** path while legacy stays authoritative. Verify zero shadow-side subscription, delivery, `alertRuns`, progress writes or sends, plus mismatch/lag reporting without sensitive data.
+- [ ] 4.5 Add deterministic regression tests for stale/unknown/quality errors, 15-minute repeats, out-of-order/gaps, both hysteresis directions, late-cleared crossings, uncertain/expired email retry, concurrency, shadow and rollback. Choose/document reasonable catch-up bounds using observed lag rather than hard-coded speculative values.
+
+**Accepted 31 October decisions:** #47 reliability first (no cadence change); preserve/reconcile existing state; bounded chronological catch-up with latest-condition-only notification; 30-minute latest-observation freshness; hold incompatible source switches/rollback; operator review rather than blind resend after idempotency expiry.
+
+
 
 ## E. Evidence/release
 - [ ] 5.1 Run Jest, ESLint and Next.js production build; attach contract snapshots, measurement-alias review, expected lag/coverage and shadow report to #51.
 - [ ] 5.2 Document Preview/stage versus Production/prod access denial, server-only permissions, role deployment, 900s cache behaviour, configuration promotion and tested manual rollback.
-- [ ] 5.3 Independently activate in order Trent → observed levels → gauge alerts only after #69/#52 and necessary #50 coverage exist and separate production approvals are recorded.
+- [ ] 5.3 Independently activate in order Trent → observed levels → gauge alerts only after #69/#52, suitable recent production observations, separately approved production access and the #47 reliability-only prerequisite. Preserve independent rollback and hold/reconciliation evidence; full #50 backfill is not required.
 
 ## Non-goals
 No new backend read Lambda, public API, dynamic feature flag service, changes to old Node scraper, HPP state events, water quality or forecast engine.

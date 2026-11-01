@@ -23,7 +23,17 @@ State and notification are distinct: the HPP service decides state; the website 
 3. Only after approved continuity/history evidence, arrange a single-writer switch and separately migrate the website status reader. The service may temporarily provide a legacy-compatible projection, or the web may adapt its reader; neither is required by this spec.
 4. Reconcile the last known state, event sequence and alert source before activating, and prove rollback can use the preserved historical source without creating new notifications.
 
-Consider the smallest durable state mechanism that can preserve transitions and the carry-in lookup. A database, table shape, transport, runtime, deployment region, schedule and repository name are **not** selected here. Existing separate deployment isolation and manual approval practices remain binding on operational work.
+### Decisions recorded 1 November 2026
+
+- **Storage (agreed):** MongoDB remains the isHPPOpen application database. After an approved cutover the HPP service is the single writer to the existing `openIndicator` collection, keeping `{ timestamp, value }` for current readers and adding provenance fields (`observedAt`, `evaluatedAt`, `level`, `ruleId`, `source`). Shadow decisions go to a separate, non-authoritative collection or log. No new storage or AWS resources.
+- **Hosting (stated direction):** the HPP service is expected to run within the isHPPOpen Vercel deployment, reusing its server-side RDP read client and Mongo connection. HPP rules stay outside RDP. The schedule mechanism, and how a single writer is guaranteed across overlapping invocations, remain to be designed and approved with the shadow slice.
+- **Source:** the legacy rule input is the station 4009 level, equivalent to RDP `ea-colwick-level` (`4009-level-stage-i-15_min-mASD`, mASD/ASD). The RDP read API is available.
+- **Accepted risks:** EA publication lag against the 30-minute freshness baseline is not a concern; a small number of duplicate HPP emails at cutover or rollback is acceptable while usage is low.
+- **Decision core:** `libs/hpp/hppDecision.js` holds the pure rule, evidence assessment and transition decision (no I/O, clock or storage), with deterministic tests for tasks 3 and 4.
+
+Read-only `openIndicator` inventory (1 November 2026): 126 documents, only the `_id` index; 5 older-shape `{ readingDate, openIndicatorField }` rows (14–17 March 2024) that readers ignore and that conflict with the main series; about 15 flips under 30 minutes apart (the rule has no hysteresis); a 285-day gap from February to November 2025. Treat these as recorded anomalies, not data to rewrite.
+
+Existing separate deployment isolation and manual approval practices remain binding on operational work.
 
 ## Non-overlap
 

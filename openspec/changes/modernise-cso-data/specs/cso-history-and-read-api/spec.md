@@ -1,85 +1,101 @@
-# Specification delta: CSO history and authenticated read API
+# Specification delta: CSO tiered history and authenticated reads
 
 ## ADDED Requirements
 
-### Requirement: Verified tiered event retention
-The system SHALL keep completed CSO events queryable in hot DynamoDB for **24 UTC calendar months after their end**, with older history retrievable from committed S3 archives. Event expiry MUST be gated on separately verified S3 integrity.
+### Requirement: Event-specific, verified 24-calendar-month hot history
+The system SHALL provide CSO-specific hot event queries in DynamoDB until **24 UTC calendar months after each event's verified end**, with authoritative older history directly readable from private committed S3 archives. TTL eligibility requires verified archive recoverability. Source evidence and previous revisions remain retained unless a separate approved policy changes that rule.
 
-#### Scenario: Completed event past retention boundary
-- **WHEN** an event ended over 24 calendar months ago and its authoritative revision/evidence have verified committed S3 archive references
-- **THEN** Dynamo TTL eligibility may be set and the event remains queryable through direct S3 archival reads.
+#### Scenario: Completed event reaches cutoff
+- **WHEN** a verified completed event reaches its `endedAt + 24 UTC calendar months` boundary and its current event and required revision/evidence history are verified in S3
+- **THEN** it may become hot-expiry eligible without losing queryable canonical event history.
 
-#### Scenario: Event still ongoing or unresolved
-- **WHEN** an event has no verified completion timestamp or still requires reconciliation
-- **THEN** it is not hot-expiry eligible regardless of original start time.
+#### Scenario: Open or unresolved event is old
+- **WHEN** an event is ongoing, unresolved or lacks a verified end, even if it began more than two years ago
+- **THEN** it is not TTL-eligible and remains discoverable in the hot event query path.
 
-#### Scenario: Archive unavailable at expiry
-- **WHEN** the expected S3 archive is missing or cannot be verified
-- **THEN** the event is not made hot-expiry eligible and integrity health reports the failure.
+#### Scenario: Archived event corrected or reopened
+- **WHEN** a previously completed or already archived event receives an authoritative correction or reopens
+- **THEN** it retains the same event ID, the corrected authoritative generation is recoverable, and hot visibility/expiry eligibility are restored or adjusted before declaring successful reconciliation.
 
-#### Scenario: Late correction after archival
-- **WHEN** a completed archived event is corrected or reopened
-- **THEN** its stable event ID and immutable revision chain are retained, a new committed archive generation is created, and any hot expiry or index/materialisation state is corrected before claiming success.
+#### Scenario: Archive not verified
+- **WHEN** the required archive or evidence cannot be read and verified
+- **THEN** no new TTL eligibility is assigned and an integrity failure is surfaced rather than treating the data as absent.
 
-### Requirement: First-party IAM-authenticated CSO reads
-The system SHALL extend the existing platform HTTP API with CSO domain GET routes protected by AWS_IAM and first-party workload SigV4, and SHALL keep the new CSO data inaccessible directly to browsers.
+#### Scenario: TTL not physically executed at the cutoff
+- **WHEN** Dynamo has not yet removed an eligible hot event
+- **THEN** historical reads still return that event once, not twice or not at all.
 
-#### Scenario: Correct stage caller
-- **WHEN** an authorised server-side production caller invokes a CSO GET route with a valid SigV4 signature
-- **THEN** it can read the permitted CSO status/events without obtaining direct Dynamo/S3 write permissions.
+### Requirement: Private, auditable CSO event history
+The system SHALL preserve canonical event versions, provider evidence linkage, archive integrity and directly readable S3 history independently of scalar gauge observations or legacy Glacier-transitioned snapshots.
 
-#### Scenario: Preview caller hits production
-- **WHEN** a Preview stage role attempts to invoke a production CSO endpoint or an unsigned caller accesses it
-- **THEN** API Gateway denies the request before Lambda execution.
+#### Scenario: Previous revision requested
+- **WHEN** a corrected event's audit history is requested by an authorised consumer
+- **THEN** earlier material event versions and their source provenance remain available without exposing raw S3 storage paths or provider bodies.
 
-#### Scenario: Requested unknown asset
-- **WHEN** a caller requests an asset absent from the published verified catalogue
-- **THEN** the read API returns ASSET_NOT_FOUND, not a false no-spill response.
+#### Scenario: Expected committed archive is missing
+- **WHEN** an archive manifest references a missing, inaccessible, corrupt or inconsistent expected event object
+- **THEN** the affected read fails with an integrity error, not an apparently successful but incomplete timeline.
 
-### Requirement: Honest CSO status and health
-The CSO API SHALL distinguish last reported monitor state, effective state, source freshness, collection attempt and successful durable ingest.
+### Requirement: Six first-party authenticated CSO read capabilities
+The platform SHALL provide bounded read-only CSO catalogue, batch current-status, per-outfall events, event detail, event revisions and per-outfall health endpoints under `/v1/cso/*`, using its existing server-to-server AWS_IAM and SigV4 contract. Browsers SHALL NOT receive direct archive/table access.
 
-#### Scenario: Polling success without new source update
-- **WHEN** a fetch succeeds but the provider's source timestamp has not advanced
-- **THEN** the response preserves last source update and marks freshness independently from fetch success.
+#### Scenario: Authorised first-party caller
+- **WHEN** the correct stage's server-side IAM caller makes an allowed CSO GET request
+- **THEN** it can read domain data without storage write permissions.
 
-#### Scenario: Partial batch latest
-- **WHEN** a batch current-state request contains available and temporarily unavailable outfalls
-- **THEN** it returns per-asset status and explicit partial metadata while preserving the good results.
+#### Scenario: Wrong-stage, unsigned or unapproved caller
+- **WHEN** an unauthorised or wrong-environment caller invokes a CSO route
+- **THEN** the request is denied by the API boundary before domain data is read.
 
-### Requirement: Unified bounded current/archived event timeline
-The system SHALL query CSO spill intervals overlapping a bounded requested UTC window through one endpoint, joining authoritative Dynamo and private S3 results without duplicate event IDs or lost carry-in events.
+#### Scenario: Unknown versus never collected
+- **WHEN** an outfall is absent from the verified catalogue, versus configured but not yet collected
+- **THEN** the API distinguishes not-found from known-without-observations, rather than claiming not spilling.
 
-#### Scenario: Event starts before requested window and ends inside it
-- **WHEN** a completed event starts before the inclusive from timestamp and ends inside the exclusive to timestamp
-- **THEN** it appears exactly once in the event history with its full authoritative event start/end and provenance.
+#### Scenario: Partial current-state batch
+- **WHEN** some outfalls have verifiable current projections and others have transient storage failures
+- **THEN** successful results remain available with per-asset failure details; a total dependency failure is not misreported as healthy.
 
-#### Scenario: Query crosses hot archive boundary
-- **WHEN** the request spans the rolling two-year boundary and both stores contain an event
-- **THEN** the API resolves the latest authoritative revision by stable eventId and returns one consistently ordered result.
+### Requirement: Bounded unified event history, including carried-in events
+The system SHALL provide interval-overlap history ordered consistently across live and archived tiers, with one authoritative version per stable event ID, bounded pages and opaque continuation.
 
-#### Scenario: Valid next page
-- **WHEN** a paginated history request continues with an unexpired authenticated-encrypted cursor
-- **THEN** it keeps the same cutoff/archive generations and does not repeat or omit a boundary event.
+#### Scenario: Event begins before query window
+- **WHEN** an event starts before `from` but overlaps `[from,to)` as completed or still ongoing
+- **THEN** it is returned once with the authoritative full boundary and uncertainty metadata.
 
-#### Scenario: Invalid or stale cursor
-- **WHEN** a cursor is tampered with, expired or references an unavailable archive generation
-- **THEN** the API returns a stable invalid, expired or stale cursor error rather than silently restarting or leaking internal keys.
+#### Scenario: Event spans the 24-month tier boundary
+- **WHEN** a historical window contains events in both hot and archived materialisations, including an event whose start predates the cutoff but end does not
+- **THEN** each relevant event appears once, ordered consistently, regardless of its storage location.
 
-### Requirement: Historical gaps differ from expected archive corruption
-The CSO event API SHALL return available verified history plus explicit coverage-gap metadata for genuinely uncollected or unknown periods, but SHALL fail if an expected committed archive is missing or corrupt.
+#### Scenario: Corrected archived event
+- **WHEN** an archive-backed event's authoritative start/end changes and a newer generation has been committed
+- **THEN** its current identity and revised interval are discoverable without stale duplicates or missing overlap.
 
-#### Scenario: Historic period was never collected
-- **WHEN** verified past spill events exist alongside time spans not collected by the platform or reconstructible from legacy data
-- **THEN** a successful response includes verified events and explicit partial/unknown coverage intervals without claiming every spill was observed.
+#### Scenario: Continuation across tier change
+- **WHEN** a caller continues a bounded query through valid pages while physical TTL or concurrent ingestion changes the stores
+- **THEN** the contract prevents silent omission or duplication from the tier rollover and gives an explicit stale/invalid continuation outcome when its view cannot be safely continued.
 
-#### Scenario: Expected S3 archive corrupt
-- **WHEN** a committed event manifest references a missing, denied or corrupt expected object
-- **THEN** the API returns **503 ARCHIVE_INTEGRITY** and no successful-looking partial event timeline.
+### Requirement: Coverage gaps and archive corruption are different
+The API SHALL distinguish observed/verified available events from time periods not collected, not proven complete or not reconstructible; it MUST NOT imply that a polling cadence captures every discharge.
 
-### Requirement: Immutable event revision visibility
-The system SHALL expose read-only event detail and bounded revision-summary endpoints to authorised callers, with source evidence references rather than raw internal S3 paths.
+#### Scenario: Earlier history is unknown
+- **WHEN** some requested time periods precede collection or have unproven reporting coverage
+- **THEN** the API returns verified events alongside explicit unknown or partial coverage ranges, without inventing zero-spill intervals.
 
-#### Scenario: Provider correction examined
-- **WHEN** a consumer retrieves a corrected spill event and its revisions
-- **THEN** it can identify the previous/current boundaries, source claim times, revision order and change provenance without losing the event's stable identity.
+#### Scenario: Missing expected archive
+- **WHEN** a manifest committed for the requested event history references an unavailable or invalid object
+- **THEN** the request fails explicitly with `ARCHIVE_INTEGRITY`, not `200` plus a coverage-gap explanation.
+
+#### Scenario: One page verified
+- **WHEN** a history page has been integrity-checked but later pages have not yet been read
+- **THEN** page-level integrity applies only to the records and archive objects actually verified.
+
+### Requirement: Current status, event data and health remain honest
+The read API SHALL expose provider-reported status, source age/freshness, effective state, event reconciliation/identity uncertainty, and latest attempted versus durably successful collection separately.
+
+#### Scenario: Current state stale while event remains unresolved
+- **WHEN** an asset's last report indicates active spilling, but its telemetry has become stale and an end remains unverified
+- **THEN** current effective state is unknown, the original reported state/time remain visible, and no invented completed event is returned.
+
+#### Scenario: Collection failures and catalogue staleness
+- **WHEN** source polling fails, a configured outfall is unresolved, or the last verified catalogue is stale
+- **THEN** the health endpoint makes these independent conditions identifiable without modifying stored event facts.

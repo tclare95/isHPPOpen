@@ -1,6 +1,21 @@
 import { HttpError } from "../api/http";
 
 const RESEND_API_URL = "https://api.resend.com/emails";
+export const ALERT_EMAIL_TIMEOUT_MS = 10 * 1000;
+
+/**
+ * Email failure carrying whether the provider could have accepted the message.
+ * - "rejected": the provider definitely did not accept it (configuration error or a 4xx response).
+ * - "uncertain": the provider may have accepted it (timeout, network failure, 5xx or idempotency conflict).
+ */
+export class AlertEmailError extends HttpError {
+  constructor(statusCode, message, outcome, reason) {
+    super(statusCode, message);
+    this.name = "AlertEmailError";
+    this.deliveryOutcome = outcome;
+    this.reason = reason;
+  }
+}
 
 function getAlertsBaseUrl() {
   const baseUrl = process.env.SITE_URL || process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXTAUTH_URL;
@@ -13,11 +28,11 @@ function getRequiredMailConfig() {
   const replyTo = process.env.ALERTS_REPLY_TO_EMAIL;
 
   if (!apiKey) {
-    throw new HttpError(500, "Alert email provider is not configured");
+    throw new AlertEmailError(500, "Alert email provider is not configured", "rejected", "config");
   }
 
   if (!from) {
-    throw new HttpError(500, "Alert sender email is not configured");
+    throw new AlertEmailError(500, "Alert sender email is not configured", "rejected", "config");
   }
 
   return { apiKey, from, replyTo };
@@ -25,21 +40,29 @@ function getRequiredMailConfig() {
 
 async function sendEmail({ to, subject, text, idempotencyKey }) {
   const { apiKey, from, replyTo } = getRequiredMailConfig();
-  const response = await fetch(RESEND_API_URL, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-      ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}),
-    },
-    body: JSON.stringify({
-      from,
-      to: [to],
-      subject,
-      text,
-      ...(replyTo ? { reply_to: replyTo } : {}),
-    }),
-  });
+  let response;
+
+  try {
+    response = await fetch(RESEND_API_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+        ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}),
+      },
+      body: JSON.stringify({
+        from,
+        to: [to],
+        subject,
+        text,
+        ...(replyTo ? { reply_to: replyTo } : {}),
+      }),
+      signal: AbortSignal.timeout(ALERT_EMAIL_TIMEOUT_MS),
+    });
+  } catch (error) {
+    const timedOut = error?.name === "TimeoutError" || error?.name === "AbortError";
+    throw new AlertEmailError(502, "Alert email provider did not respond", "uncertain", timedOut ? "timeout" : "network");
+  }
 
   if (!response.ok) {
     let message = "Failed to send alert email";
@@ -51,7 +74,9 @@ async function sendEmail({ to, subject, text, idempotencyKey }) {
       message = "Failed to send alert email";
     }
 
-    throw new HttpError(502, message);
+    // 409 is an idempotency conflict (in progress or reused key): the original request may have succeeded.
+    const outcome = response.status === 409 || response.status >= 500 ? "uncertain" : "rejected";
+    throw new AlertEmailError(502, message, outcome, `http_${response.status}`);
   }
 }
 

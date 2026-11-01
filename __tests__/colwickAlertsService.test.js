@@ -1,3 +1,5 @@
+import { createFakeDb } from "../testUtils/fakeMongo";
+
 jest.mock("../libs/database");
 jest.mock("../libs/services/alertMailerService", () => ({
   sendAlertConfirmationEmail: jest.fn(),
@@ -79,29 +81,19 @@ describe("colwickAlertsService", () => {
   });
 
   test("runColwickAlerts sends a live alert when the threshold is crossed", async () => {
-    const updateOne = jest.fn().mockResolvedValue({ acknowledged: true });
-    connectToDatabase.mockResolvedValue({
-      db: {
-        collection: jest.fn().mockReturnValue({
-          find: jest.fn().mockReturnValue({
-            toArray: jest.fn().mockResolvedValue([
-              {
-                alertKey: "a",
-                email: "user@example.com",
-                gaugeKey: "4009-level",
-                source: "live",
-                direction: "above",
-                threshold: 1.5,
-                status: "active",
-                lastConditionState: "armed",
-                unsubscribeToken: "unsubscribe-token",
-              },
-            ]),
-          }),
-          updateOne,
-        }),
-      },
+    const fake = createFakeDb();
+    fake.docs("alertSubscriptions").push({
+      alertKey: "a",
+      email: "user@example.com",
+      gaugeKey: "4009-level",
+      source: "live",
+      direction: "above",
+      threshold: 1.5,
+      status: "active",
+      lastConditionState: "armed",
+      unsubscribeToken: "unsubscribe-token",
     });
+    connectToDatabase.mockResolvedValue({ db: fake.db });
     getLegacyTrentWeirsSnapshot.mockResolvedValue({
       fallback: false,
       partial: false,
@@ -129,29 +121,19 @@ describe("colwickAlertsService", () => {
   });
 
   test("runColwickAlerts rearms a triggered live alert after conditions clear", async () => {
-    const updateOne = jest.fn().mockResolvedValue({ acknowledged: true });
-    connectToDatabase.mockResolvedValue({
-      db: {
-        collection: jest.fn().mockReturnValue({
-          find: jest.fn().mockReturnValue({
-            toArray: jest.fn().mockResolvedValue([
-              {
-                alertKey: "a",
-                email: "user@example.com",
-                gaugeKey: "4009-level",
-                source: "live",
-                direction: "above",
-                threshold: 1.5,
-                status: "active",
-                lastConditionState: "triggered",
-                unsubscribeToken: "unsubscribe-token",
-              },
-            ]),
-          }),
-          updateOne,
-        }),
-      },
+    const fake = createFakeDb();
+    fake.docs("alertSubscriptions").push({
+      alertKey: "a",
+      email: "user@example.com",
+      gaugeKey: "4009-level",
+      source: "live",
+      direction: "above",
+      threshold: 1.5,
+      status: "active",
+      lastConditionState: "triggered",
+      unsubscribeToken: "unsubscribe-token",
     });
+    connectToDatabase.mockResolvedValue({ db: fake.db });
     getLegacyTrentWeirsSnapshot.mockResolvedValue({
       fallback: false,
       partial: false,
@@ -173,38 +155,23 @@ describe("colwickAlertsService", () => {
 
     expect(result.rearmed).toBe(1);
     expect(sendThresholdAlertEmail).not.toHaveBeenCalled();
-    expect(updateOne).toHaveBeenCalledWith(
-      { alertKey: "a" },
-      expect.objectContaining({
-        $set: expect.objectContaining({ lastConditionState: "armed" }),
-      })
-    );
+    expect(fake.docs("alertSubscriptions")[0]).toMatchObject({ alertKey: "a", lastConditionState: "armed" });
   });
 
   test("runColwickAlerts sends a forecast alert when the forecast crosses the threshold", async () => {
-    const updateOne = jest.fn().mockResolvedValue({ acknowledged: true });
-    connectToDatabase.mockResolvedValue({
-      db: {
-        collection: jest.fn().mockReturnValue({
-          find: jest.fn().mockReturnValue({
-            toArray: jest.fn().mockResolvedValue([
-              {
-                alertKey: "forecast-a",
-                email: "user@example.com",
-                gaugeKey: "4009-level",
-                source: "forecast",
-                direction: "below",
-                threshold: 1.5,
-                status: "active",
-                lastConditionState: "armed",
-                unsubscribeToken: "unsubscribe-token",
-              },
-            ]),
-          }),
-          updateOne,
-        }),
-      },
+    const fake = createFakeDb();
+    fake.docs("alertSubscriptions").push({
+      alertKey: "forecast-a",
+      email: "user@example.com",
+      gaugeKey: "4009-level",
+      source: "forecast",
+      direction: "below",
+      threshold: 1.5,
+      status: "active",
+      lastConditionState: "armed",
+      unsubscribeToken: "unsubscribe-token",
     });
+    connectToDatabase.mockResolvedValue({ db: fake.db });
     getLegacyTrentWeirsSnapshot.mockResolvedValue({ fallback: true, partial: false, stations: [] });
     getLatestForecastSnapshot.mockResolvedValue({
       metadata: { forecast_time: "2026-03-08T12:00:00.000Z" },

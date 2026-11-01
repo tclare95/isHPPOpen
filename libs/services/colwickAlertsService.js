@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 import * as yup from "yup";
 import { HttpError } from "../api/http";
 import { connectToDatabase } from "../database";
@@ -67,7 +67,7 @@ async function limitRequests(db, email, ip, now) {
 export async function createColwickAlertSubscription(payload, { now = new Date(), ip } = {}) {
   const parsed = await subscriptionSchema.validate(payload, { stripUnknown: true }); const email = normalizedEmail(parsed.email); const rule = normalizeRule(parsed); const { db } = await connectToDatabase();
   await limitRequests(db, email, ip, now); const confirmationToken = createToken(); const unsubscribeToken = createToken(); const key = alertKey(email, rule);
-  await db.collection(ALERT_SUBSCRIPTIONS_COLLECTION).updateOne({ alertKey: key }, { $set: { ...rule, email, alertKey: key, status: "pending_confirmation", confirmationTokenHash: hashToken(confirmationToken), confirmationExpiresAt: timestamp(new Date(now.getTime() + ALERT_CONFIRMATION_MS)), unsubscribeToken, updatedAt: timestamp(now), confirmedAt: null, unsubscribedAt: null, lastConditionState: "armed", lastTriggeredAt: null, lastEvaluatedAt: null }, $setOnInsert: { createdAt: timestamp(now) } }, { upsert: true });
+  await db.collection(ALERT_SUBSCRIPTIONS_COLLECTION).updateOne({ alertKey: key }, { $set: { ...rule, email, alertKey: key, status: "pending_confirmation", confirmationTokenHash: hashToken(confirmationToken), confirmationExpiresAt: timestamp(new Date(now.getTime() + ALERT_CONFIRMATION_MS)), unsubscribeToken, updatedAt: timestamp(now), confirmedAt: null, unsubscribedAt: null, lastConditionState: "armed", lastTriggeredAt: null, lastEvaluatedAt: null }, $setOnInsert: { createdAt: timestamp(now) }, $inc: { stateRevision: 1 } }, { upsert: true });
   await sendAlertConfirmationEmail({ email, gaugeName: nameOf(rule), source: rule.source || "status", direction: rule.direction, threshold: rule.threshold, confirmationToken, unsubscribeToken, ruleDescription: descriptionOf(rule) });
   return { message: "Check your email to confirm this alert." };
 }
@@ -89,10 +89,282 @@ const usable = (result) => result.status === "fulfilled" && (!result.value?.heal
 function gaugeCondition(rule, trent, forecast) { const definition = stationFor(rule.gaugeKey); const stationId = rule.stationId ?? definition?.stationId; const measureType = rule.measureType ?? definition?.measureType ?? "level"; if (rule.source === "forecast") { const row = forecast?.forecast_data?.find((item) => rule.direction === "below" ? Number(item.forecast_reading) <= rule.threshold : Number(item.forecast_reading) >= rule.threshold); return row ? { met: true, value: Number(row.forecast_reading), at: row.forecast_date, forecastRunAt: forecast?.metadata?.forecast_time || null } : { met: false }; } const measure = trent?.stations?.find((station) => station.stationId === stationId)?.measures?.[measureType]; const value = measure?.latestValue; if (!Number.isFinite(value)) return null; const margin = measureType === "flow" ? 1 : 0.03; const met = rule.direction === "below" ? value <= rule.threshold : value >= rule.threshold; return { met, clear: rule.direction === "below" ? value >= rule.threshold + margin : value <= rule.threshold - margin, value, at: measure.readings?.[0]?.dateTime || null }; }
 function risk(rows, now = new Date()) { const assessment = getCsoActivityAssessment(rows, now); return assessment.level === "high" ? "red" : assessment.level === "elevated" ? "amber" : assessment.level === "lower" ? "green" : null; }
 function condition(rule, sources, now) { const type = typeOf(rule); if (type === "gauge") return rule.source === "forecast" ? usable(sources.forecast) ? gaugeCondition(rule, null, sources.forecast.value) : null : usable(sources.trent) ? gaugeCondition(rule, sources.trent.value, null) : null; if (type === "hpp_status") { const value = sources.hpp.value?.data?.currentStatus; return usable(sources.hpp) && typeof value === "boolean" ? { met: rule.desiredStatus === (value ? "open" : "closed"), clear: rule.desiredStatus !== (value ? "open" : "closed"), value: value ? "open" : "closed", at: sources.hpp.value.data.health.generatedAt } : null; } const value = usable(sources.water) && sources.cso.status === "fulfilled" ? risk(sources.cso.value, now) : null; if (!value) return null; const rank = { green: 0, amber: 1, red: 2 }; return { met: rank[value] >= rank[rule.riskLevel], clear: rank[value] < rank[rule.riskLevel], value, at: sources.water.value.ScrapeTimestamp }; }
-async function sendOnce(db, rule, state, now) { const transitionId = `${rule.alertKey}:${state.at || timestamp(now)}:${state.value}`; const deliveries = db.collection(ALERT_DELIVERIES_COLLECTION); const defaultKey = createHash("sha256").update(transitionId).digest("hex"); const existing = typeof deliveries.findOne === "function" ? await deliveries.findOne({ alertKey: rule.alertKey, transitionId }) : null; if (existing?.state === "sent" || existing?.state === "claimed") return false; const key = existing?.idempotencyKey || defaultKey; if (existing) await deliveries.updateOne({ alertKey: rule.alertKey, transitionId }, { $set: { state: "claimed", updatedAt: timestamp(now) } }); else { const result = await deliveries.updateOne({ alertKey: rule.alertKey, transitionId }, { $setOnInsert: { alertKey: rule.alertKey, transitionId, idempotencyKey: key, state: "claimed", createdAt: timestamp(now), updatedAt: timestamp(now) } }, { upsert: true }); if (result?.upsertedCount === 0) return false; } try { await sendThresholdAlertEmail({ email: rule.email, gaugeName: nameOf(rule), source: rule.source || "status", direction: rule.direction, threshold: rule.threshold, observedValue: typeof state.value === "number" ? state.value : null, observedAt: state.at, forecastRunAt: state.forecastRunAt, unsubscribeToken: rule.unsubscribeToken, ruleDescription: descriptionOf(rule), idempotencyKey: key }); await deliveries.updateOne({ alertKey: rule.alertKey, transitionId }, { $set: { state: "sent", sentAt: timestamp(now), updatedAt: timestamp(now) } }); return true; } catch (error) { await deliveries.updateOne({ alertKey: rule.alertKey, transitionId }, { $set: { state: "failed", updatedAt: timestamp(now) } }); throw error; } }
+
+// ---------------------------------------------------------------------------
+// Scheduled evaluation: concurrency, delivery and run-record safety (#47).
+//
+// Subscription state changes use compare-and-set on `stateRevision`, so an overlapping or
+// stale invocation can never overwrite a newer armed/triggered transition. A threshold
+// transition is gated on the subscription first (`pendingTransitionId`), then recorded as
+// an immutable delivery intent, then sent. While a rule has a pending delivery it is not
+// re-evaluated: later runs only resume that delivery, with the same idempotency key and
+// payload, until it is sent, definitively rejected, or held for operator review.
+// See docs/ALERT_EVALUATION_RELIABILITY.md.
+// ---------------------------------------------------------------------------
+
+/** Resend keeps idempotency keys for 24 hours; stop automatic retries an hour before that. */
+export const PROVIDER_IDEMPOTENCY_WINDOW_MS = 24 * 60 * 60 * 1000;
+export const PROVIDER_IDEMPOTENCY_MARGIN_MS = 60 * 60 * 1000;
+export const MAX_DELIVERY_ATTEMPTS = 5;
+/** A claim or gate older than this is treated as abandoned by a crashed or timed-out invocation. */
+export const DELIVERY_CLAIM_STALE_MS = 10 * 60 * 1000;
+/** A run still marked "running" after this was interrupted before it could record its outcome. */
+export const ALERT_RUN_STALE_MS = 30 * 60 * 1000;
+export const ALERT_DELIVERIES_INDEX_KEY = { alertKey: 1, transitionId: 1 };
+
+const ageMs = (value, now) => (value ? now.getTime() - new Date(value).getTime() : Number.POSITIVE_INFINITY);
+const isDuplicateKeyError = (error) => error?.code === 11000;
+const sendOutcomeOf = (error) => (error?.deliveryOutcome === "rejected" ? "rejected" : "uncertain");
+const errorCategoryOf = (error) => error?.reason || (isDuplicateKeyError(error) ? "duplicate_key" : error?.name || "error");
+
+function thresholdEmailPayload(rule, state) {
+  return { gaugeName: nameOf(rule), source: rule.source || "status", direction: rule.direction, threshold: rule.threshold, observedValue: typeof state.value === "number" ? state.value : null, observedAt: state.at, forecastRunAt: state.forecastRunAt, unsubscribeToken: rule.unsubscribeToken, ruleDescription: descriptionOf(rule) };
+}
+
+let deliveryIndexVerified = false;
+/** Read-only check that the unique delivery index exists; provision it with `npm run db:indexes:alerts`. */
+async function deliveryIndexStatus(deliveries) {
+  if (deliveryIndexVerified) return "present";
+  if (typeof deliveries.listIndexes !== "function") return "unverified";
+  try {
+    const indexes = await deliveries.listIndexes().toArray();
+    const expected = JSON.stringify(ALERT_DELIVERIES_INDEX_KEY);
+    deliveryIndexVerified = indexes.some((index) => index.unique && JSON.stringify(index.key) === expected);
+    return deliveryIndexVerified ? "present" : "missing";
+  } catch {
+    return "unverified";
+  }
+}
+
+function createEvaluation(db, now) {
+  const subscriptions = db.collection(ALERT_SUBSCRIPTIONS_COLLECTION);
+  const deliveries = db.collection(ALERT_DELIVERIES_COLLECTION);
+  const at = timestamp(now);
+  const deliveryFilter = (rule, transitionId) => ({ alertKey: rule.alertKey, transitionId });
+
+  /** Release a pending transition back to armed; nothing was sent for it. */
+  async function releaseTransition(rule, transitionId) {
+    const result = await subscriptions.updateOne(
+      { alertKey: rule.alertKey, pendingTransitionId: transitionId },
+      { $set: { lastConditionState: "armed", updatedAt: at }, $unset: { pendingTransitionId: "", pendingSince: "" }, $inc: { stateRevision: 1 } }
+    );
+    return result?.matchedCount === 1;
+  }
+
+  /** The delivery for the pending transition reached the provider: keep the rule triggered. */
+  async function completeTransition(rule, transitionId) {
+    await subscriptions.updateOne(
+      { alertKey: rule.alertKey, pendingTransitionId: transitionId },
+      { $set: { lastTriggeredAt: at, lastEvaluatedAt: at, updatedAt: at }, $unset: { pendingTransitionId: "", pendingSince: "" } }
+    );
+  }
+
+  async function holdForReview(rule, delivery, reason) {
+    await deliveries.updateOne(
+      { ...deliveryFilter(rule, delivery.transitionId), state: delivery.state, attempts: delivery.attempts ?? null },
+      { $set: { state: "held_for_review", heldAt: at, heldReason: reason, updatedAt: at } }
+    );
+    return "held";
+  }
+
+  /**
+   * Send one claimed attempt and record its outcome. The caller must hold the claim for `attempt`.
+   * `priorMayHaveSent` is true when an earlier attempt for this delivery had an uncertain outcome.
+   */
+  async function attemptSend(rule, delivery, attempt, priorMayHaveSent) {
+    const transitionId = delivery.transitionId;
+    const claimed = { ...deliveryFilter(rule, transitionId), state: "claimed", attempts: attempt };
+    try {
+      await sendThresholdAlertEmail({ ...delivery.payload, email: rule.email, idempotencyKey: delivery.idempotencyKey });
+    } catch (error) {
+      const outcome = sendOutcomeOf(error);
+      const lastError = errorCategoryOf(error);
+      if (outcome === "rejected" && !priorMayHaveSent) {
+        // Definitely never sent: re-arm so a later reading can retry, as before.
+        await deliveries.updateOne(claimed, { $set: { state: "failed", lastError, updatedAt: at } });
+        await releaseTransition(rule, transitionId);
+        return "failed";
+      }
+      if (outcome === "rejected") {
+        // A rejection after an earlier uncertain attempt cannot prove the first attempt failed.
+        await deliveries.updateOne(claimed, { $set: { state: "held_for_review", heldAt: at, heldReason: "rejected_after_uncertain", lastError, updatedAt: at } });
+        return "held";
+      }
+      await deliveries.updateOne(claimed, { $set: { state: "uncertain", lastError, updatedAt: at } });
+      return "uncertain";
+    }
+    // Any successful attempt means the provider accepted the message under this idempotency key.
+    await deliveries.updateOne({ ...deliveryFilter(rule, transitionId), state: { $ne: "sent" } }, { $set: { state: "sent", sentAt: at, updatedAt: at }, $unset: { lastError: "" } });
+    await completeTransition(rule, transitionId);
+    return "sent";
+  }
+
+  /** Resume an existing delivery record for the rule's pending transition. */
+  async function resumeDelivery(rule, delivery, fallbackPayload) {
+    const transitionId = delivery.transitionId;
+    switch (delivery.state) {
+      case "sent":
+        await completeTransition(rule, transitionId);
+        return "suppressed";
+      case "held_for_review":
+        return "held";
+      case "abandoned":
+        // An operator confirmed nothing was sent: return the rule to normal evaluation.
+        return (await releaseTransition(rule, transitionId)) ? "released" : "conflict";
+      case "claimed":
+        if (ageMs(delivery.attemptStartedAt || delivery.updatedAt, now) < DELIVERY_CLAIM_STALE_MS) return "in_flight";
+        break;
+      case "uncertain":
+      case "failed":
+        break;
+      default:
+        return holdForReview(rule, delivery, "unknown_state");
+    }
+    const payload = delivery.payload || fallbackPayload;
+    if (!payload) return holdForReview(rule, delivery, "missing_payload");
+    const previousAttempts = delivery.attempts ?? (delivery.state === "failed" ? 0 : 1);
+    const firstAttemptAt = delivery.firstAttemptAt || delivery.createdAt || at;
+    // "failed" is only ever recorded for deliveries with no uncertain attempt.
+    const mayHaveBeenSent = delivery.state !== "failed";
+    if (mayHaveBeenSent) {
+      if (ageMs(firstAttemptAt, now) >= PROVIDER_IDEMPOTENCY_WINDOW_MS - PROVIDER_IDEMPOTENCY_MARGIN_MS) return holdForReview(rule, delivery, "idempotency_window_expired");
+      if (previousAttempts >= MAX_DELIVERY_ATTEMPTS) return holdForReview(rule, delivery, "max_attempts");
+    }
+    const attempt = previousAttempts + 1;
+    const claim = await deliveries.updateOne(
+      { ...deliveryFilter(rule, transitionId), state: delivery.state, attempts: delivery.attempts ?? null, attemptStartedAt: delivery.attemptStartedAt ?? null },
+      { $set: { state: "claimed", attempts: attempt, attemptStartedAt: at, firstAttemptAt, payload, updatedAt: at } }
+    );
+    if (claim?.matchedCount !== 1) return "in_flight";
+    return attemptSend(rule, { ...delivery, payload, attempts: attempt }, attempt, mayHaveBeenSent);
+  }
+
+  /** A rule that already has a pending transition: resume it instead of evaluating a new one. */
+  async function resumePending(rule) {
+    const transitionId = rule.pendingTransitionId;
+    const delivery = await deliveries.findOne(deliveryFilter(rule, transitionId));
+    if (delivery) return resumeDelivery(rule, delivery, null);
+    // Gate taken but the delivery intent was never recorded, so no email can have been sent.
+    if (ageMs(rule.pendingSince, now) < DELIVERY_CLAIM_STALE_MS) return "in_flight";
+    return (await releaseTransition(rule, transitionId)) ? "released" : "conflict";
+  }
+
+  /** Newly met condition on an armed rule: gate, record the intent, then send. */
+  async function trigger(rule, state) {
+    const transitionId = `${rule.alertKey}:${state.at || at}:${state.value}`;
+    const gate = await subscriptions.updateOne(
+      { alertKey: rule.alertKey, status: "active", stateRevision: rule.stateRevision ?? null, lastConditionState: rule.lastConditionState ?? null, pendingTransitionId: null },
+      { $set: { lastConditionState: "triggered", pendingTransitionId: transitionId, lastTransitionId: transitionId, pendingSince: at, lastEvaluatedAt: at, updatedAt: at }, $inc: { stateRevision: 1 } }
+    );
+    if (gate?.matchedCount !== 1) return "conflict";
+    const payload = thresholdEmailPayload(rule, state);
+    const intent = { alertKey: rule.alertKey, transitionId, idempotencyKey: createHash("sha256").update(transitionId).digest("hex"), state: "claimed", attempts: 1, firstAttemptAt: at, attemptStartedAt: at, payload, createdAt: at, updatedAt: at };
+    let inserted = false;
+    try {
+      const result = await deliveries.updateOne(deliveryFilter(rule, transitionId), { $setOnInsert: intent }, { upsert: true });
+      inserted = result?.upsertedCount === 1;
+    } catch (error) {
+      if (!isDuplicateKeyError(error)) throw error;
+    }
+    if (inserted) return attemptSend(rule, intent, 1, false);
+    // A record for this exact transition already exists (e.g. from an earlier partial run).
+    const existing = await deliveries.findOne(deliveryFilter(rule, transitionId));
+    return existing ? resumeDelivery(rule, existing, payload) : "in_flight";
+  }
+
+  async function rearm(rule) {
+    const result = await subscriptions.updateOne(
+      { alertKey: rule.alertKey, status: "active", stateRevision: rule.stateRevision ?? null, lastConditionState: "triggered", pendingTransitionId: null },
+      { $set: { lastConditionState: "armed", lastEvaluatedAt: at, updatedAt: at }, $inc: { stateRevision: 1 } }
+    );
+    return result?.matchedCount === 1 ? "rearmed" : "conflict";
+  }
+
+  async function touch(rule) {
+    await subscriptions.updateOne({ alertKey: rule.alertKey }, { $set: { lastEvaluatedAt: at, updatedAt: at } });
+  }
+
+  async function evaluate(rule, sources) {
+    if (rule.pendingTransitionId) return resumePending(rule);
+    const next = condition(rule, sources);
+    if (!next) {
+      await touch(rule);
+      return "skipped";
+    }
+    if (rule.lastConditionState === "triggered" && next.clear) return rearm(rule);
+    if (next.met && rule.lastConditionState !== "triggered") return trigger(rule, next);
+    await touch(rule);
+    return "unchanged";
+  }
+
+  return { evaluate, deliveries };
+}
+
+async function outstandingDeliveries(deliveries, now) {
+  if (typeof deliveries.countDocuments !== "function") return null;
+  const staleBefore = timestamp(new Date(now.getTime() - DELIVERY_CLAIM_STALE_MS));
+  const [staleClaims, uncertain, heldForReview] = await Promise.all([
+    deliveries.countDocuments({ state: "claimed", updatedAt: { $lt: staleBefore } }),
+    deliveries.countDocuments({ state: "uncertain" }),
+    deliveries.countDocuments({ state: "held_for_review" }),
+  ]);
+  return { staleClaims, uncertain, heldForReview };
+}
+
+const OUTCOME_COUNTERS = { sent: "sent", rearmed: "rearmed", skipped: "skipped", suppressed: "suppressed", conflict: "suppressed", failed: "failed", uncertain: "uncertain", held: "heldForReview", in_flight: "inFlight", released: "released", error: "errors" };
+
 export async function runColwickAlerts({ now = new Date() } = {}) {
-  const started = Date.now(); const { db } = await connectToDatabase(); const deliveries = db.collection(ALERT_DELIVERIES_COLLECTION); if (typeof deliveries.createIndex === "function") await deliveries.createIndex({ alertKey: 1, transitionId: 1 }, { unique: true }); const rules = await db.collection(ALERT_SUBSCRIPTIONS_COLLECTION).find({ status: "active" }).toArray();
-  const [trent, forecast, hpp, water, cso] = await Promise.allSettled([getLegacyTrentWeirsSnapshot(), getLatestForecastSnapshot(), getHppStatusSnapshot(), getLatestWaterQualitySnapshot(), getWaterQualityDensitySeries(3)]); const sources = { trent, forecast, hpp, water, cso }; const collection = db.collection(ALERT_SUBSCRIPTIONS_COLLECTION); let sent = 0, rearmed = 0, skipped = 0, suppressed = 0;
-  for (const rule of rules) { const next = condition(rule, sources); if (!next) { skipped += 1; await collection.updateOne({ alertKey: rule.alertKey }, { $set: { lastEvaluatedAt: timestamp(now), updatedAt: timestamp(now) } }); continue; } if (rule.lastConditionState === "triggered" && next.clear) { rearmed += 1; await collection.updateOne({ alertKey: rule.alertKey }, { $set: { lastConditionState: "armed", lastEvaluatedAt: timestamp(now), updatedAt: timestamp(now) } }); continue; } if (next.met && rule.lastConditionState !== "triggered") { try { if (await sendOnce(db, rule, next, now)) sent += 1; else suppressed += 1; await collection.updateOne({ alertKey: rule.alertKey }, { $set: { lastConditionState: "triggered", lastTriggeredAt: timestamp(now), lastEvaluatedAt: timestamp(now), updatedAt: timestamp(now) } }); } catch { skipped += 1; } continue; } await collection.updateOne({ alertKey: rule.alertKey }, { $set: { lastEvaluatedAt: timestamp(now), updatedAt: timestamp(now) } }); }
-  const sourceFailures = Object.entries(sources).filter(([, result]) => !usable(result)).map(([name]) => name); const result = { scanned: rules.length, sent, rearmed, skipped, suppressed, sourceFailures, durationMs: Date.now() - started }; const runs = db.collection(ALERT_RUNS_COLLECTION); if (typeof runs.insertOne === "function") await runs.insertOne({ ...result, startedAt: timestamp(now), completedAt: new Date().toISOString(), status: sourceFailures.length ? "degraded" : "success" }); return result;
+  const started = Date.now();
+  const { db } = await connectToDatabase();
+  const runs = db.collection(ALERT_RUNS_COLLECTION);
+  const runId = randomUUID();
+  const startedAt = timestamp(now);
+
+  // Make interrupted earlier runs identifiable, then record this run before any side effects.
+  const staleRuns = await runs.updateMany(
+    { status: "running", startedAt: { $lt: timestamp(new Date(now.getTime() - ALERT_RUN_STALE_MS)) } },
+    { $set: { status: "incomplete", reconciledAt: startedAt, reconciledByRunId: runId } }
+  );
+  await runs.insertOne({ runId, status: "running", startedAt });
+
+  try {
+    const { evaluate, deliveries } = createEvaluation(db, now);
+    const deliveryIndex = await deliveryIndexStatus(deliveries);
+    const rules = await db.collection(ALERT_SUBSCRIPTIONS_COLLECTION).find({ status: "active" }).toArray();
+    const [trent, forecast, hpp, water, cso] = await Promise.allSettled([getLegacyTrentWeirsSnapshot(), getLatestForecastSnapshot(), getHppStatusSnapshot(), getLatestWaterQualitySnapshot(), getWaterQualityDensitySeries(3)]);
+    const sources = { trent, forecast, hpp, water, cso };
+    const counts = { sent: 0, rearmed: 0, skipped: 0, suppressed: 0, failed: 0, uncertain: 0, heldForReview: 0, inFlight: 0, released: 0, errors: 0 };
+    const errorCategories = {};
+
+    for (const rule of rules) {
+      let outcome;
+      try {
+        outcome = await evaluate(rule, sources);
+      } catch (error) {
+        // Isolate per-rule database failures; durable state lets a later run resume.
+        outcome = "error";
+        const category = errorCategoryOf(error);
+        errorCategories[category] = (errorCategories[category] || 0) + 1;
+      }
+      const counter = OUTCOME_COUNTERS[outcome];
+      if (counter) counts[counter] += 1;
+      if (outcome === "failed" || outcome === "error") counts.skipped += 1;
+    }
+
+    const sourceFailures = Object.entries(sources).filter(([, result]) => !usable(result)).map(([name]) => name);
+    const outstanding = await outstandingDeliveries(deliveries, now).catch(() => null);
+    const degraded = sourceFailures.length || counts.errors || counts.failed || counts.uncertain || counts.heldForReview || deliveryIndex === "missing";
+    const result = {
+      runId, scanned: rules.length, ...counts, sourceFailures, errorCategories, deliveryIndex,
+      outstandingDeliveries: outstanding,
+      needsReview: Boolean(outstanding && (outstanding.staleClaims || outstanding.heldForReview)),
+      incompleteRunsReconciled: staleRuns?.modifiedCount ?? 0,
+      durationMs: Date.now() - started,
+    };
+    await runs.updateOne({ runId }, { $set: { ...result, status: degraded ? "degraded" : "success", completedAt: new Date().toISOString() } });
+    return result;
+  } catch (error) {
+    await runs.updateOne({ runId }, { $set: { status: "failed", errorCategory: errorCategoryOf(error), durationMs: Date.now() - started, completedAt: new Date().toISOString() } }).catch(() => {});
+    throw error;
+  }
 }

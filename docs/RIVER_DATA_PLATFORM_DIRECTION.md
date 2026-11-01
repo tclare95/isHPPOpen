@@ -2,7 +2,7 @@
 
 ## Intent
 
-Evolve the concepts behind isHPPOpen into **one unified, reusable river/environmental data backend**, initially serving isHPPOpen but independent of that UI, a single gauge, or one water company. Implement an appropriately modular **.NET backend repository with independently invoked collector/reader Lambda entry points**, not a monolithic scraper and not multiple independently managed microservices.
+Evolve the concepts behind isHPPOpen into **one unified, reusable river/environmental data backend**, initially serving isHPPOpen but independent of that UI, a single gauge, or one water company. Implement an appropriately modular **.NET backend repository with independently invoked collector/reader Lambda entry points** for reusable source/data capabilities, not a monolithic scraper or an unnecessary proliferation of provider microservices. **Exception agreed for HPP:** site-specific HPP status and transition events belong to a separately operated service consuming RDP observations.
 
 **Implementation repository:** **`tclare95/river-data-platform`**, with its [inert .NET 10 foundation merged](https://github.com/tclare95/river-data-platform/pull/1). Bootstrap is tracked by [#64](https://github.com/tclare95/isHPPOpen/issues/64) and stable change slug `bootstrap-dotnet-observation-service`. This code merge did **not** deploy AWS resources or activate collection; preserve the established gauge/CSO domain separation.
 

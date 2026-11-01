@@ -3,18 +3,20 @@
 ## 1. Baseline and invariants
 
 - [ ] 1.1 Document existing 15-minute schedule, source/update intervals, Vercel runtime costs, current `alertRuns` metrics and typical evaluation durations. Distinguish measured figures from estimates.
-- [ ] 1.2 Trace `sendOnce` / subscription update ordering and index creation. Record concrete races, stale `claimed` recovery gaps, provider-idempotency assumptions and the required no-duplicate guarantees.
+- [x] 1.2 Trace `sendOnce` / subscription update ordering and index creation. Record concrete races, stale `claimed` recovery gaps, provider-idempotency assumptions and the required no-duplicate guarantees.
 
 ## 2. Reliability improvements
 
-- [ ] 2.1 Make delivery claims and subscription transitions safe across overlapping invocations. Add deterministic concurrency and retry tests; keep delivery and alert API compatibility.
-- [ ] 2.2 Implement explicit failure/unknown-send handling and reviewable stale-claim recovery, including a safe index-provisioning approach. Add regression tests without sending external emails.
+- [x] 2.1 Make delivery claims and subscription transitions safe across overlapping invocations. Add deterministic concurrency and retry tests; keep delivery and alert API compatibility.
+- [x] 2.2 Implement explicit failure/unknown-send handling and reviewable stale-claim recovery, including a safe index-provisioning approach. Add regression tests without sending external emails.
 - [ ] 2.3 Verify freshness of each alert input and independence across healthy/failed source types; test no new notifications/re-arm from stale data and preservation of the current thresholds.
 
 ## 3. Operational visibility
 
-- [ ] 3.1 Persist bounded, non-sensitive run health (success/degraded/failure, durations, source failures and counters); ensure an operator can detect an absent expected run without exposing subscriber details.
-- [ ] 3.2 Test internal endpoint authentication and run reporting under success, stale data and partial/full failure.
+- [x] 3.1 Persist bounded, non-sensitive run health (success/degraded/failure, durations, source failures and counters); ensure an operator can detect an absent expected run without exposing subscriber details.
+- [x] 3.2 Test internal endpoint authentication and run reporting under success, stale data and partial/full failure.
+
+**Reliability-only implementation (#47 prerequisite for #51 Slice D):** 1.2, 2.1, 2.2, 3.1 and 3.2 are implemented with deterministic tests; see [ALERT_EVALUATION_RELIABILITY.md](../../../docs/ALERT_EVALUATION_RELIABILITY.md). A missing run is identified from the latest `alertRuns.startedAt` and from `running` records later marked `incomplete`; no automatic missing-run notification is added. 1.1 still needs measured production figures (not available to the implementing agent). For 2.3, input freshness rules are unchanged and source-failure independence is tested; per-gauge observed-time freshness belongs to #51 Slice D. The cron remains `*/15 * * * *`.
 
 ## 4. Schedule decision and validation
 

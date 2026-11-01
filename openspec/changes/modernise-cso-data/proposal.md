@@ -22,7 +22,7 @@ The legacy Node scraper fetches Severn Trent storm overflow snapshots and append
 - [#69](../observation-read-api/proposal.md) provides the implemented HTTP API Gateway / AWS_IAM / Vercel OIDC+SigV4 conventions, not a general-purpose river observation table.
 - [#65](../archive-observation-history/proposal.md) provides tested S3 integrity and archive-first recovery principles, **not** gauge observation keys, read model or 365-day retention.
 - [#75](../lightweight-integration-deployment/proposal.md) and [#81](../production-observation-deployment/proposal.md) govern stage/prod isolation, manual release approval and disabled-by-default source activation. Their EA observation flags/schedules do not activate CSO collection.
-- [#68](../../../../docs/LEGACY_SCRAPER_RETIREMENT.md) and later consumer migration govern site assessment parity, public compatibility, alerting and eventual scraper retirement.
+- [#68](https://github.com/tclare95/isHPPOpen/issues/68) and later consumer migration govern site assessment parity, public compatibility, alerting and eventual scraper retirement.
 
 ## Deliberate non-goals
 

@@ -32,6 +32,15 @@ Source references: [predictor runtime](https://github.com/tclare95/trent-predict
 
 Source selection should be transparent per logical measurement and forecast run, including which observation timestamps were actually used; avoid mixing incompatible datums or assuming that successful HTTP responses imply contemporaneous features. At decision time, disallow readings dated after the feature/forecast anchor. Do not invent synthetic samples to make source comparison look complete. A conditional choice can be **retain direct EA as primary** if high-water evidence shows unacceptable RDP lag.
 
+## Candidate follow-on implementation slices (not authorised here)
+
+These are **options for later issues/PRs**, not compulsory layers or a mandated PR count:
+
+1. **Prerequisites in RDP:** only the missing, justified measurement identities and collector/provider capability (notably rainfall) plus any narrow read/caller authorisation improvements; validate source and datum parity before expanding production collection.
+2. **Predictor read-only shadow:** obtain existing RDP history/latest and derive the current model's inputs alongside the unchanged direct-EA production run. Compare observation ages, feature rows, runtime/price and failure cases without writing forecasts or changing the authoritative source.
+3. **Conditional fallback and controlled activation:** after a measured incident-safe acceptance decision, permit explicit RDP-first selection with direct-EA fallback, source/age diagnostics, bounded errors and a separately reviewed switch/rollback. Keep the deployed model, output keys and hourly schedule stable.
+4. **Later forecast publication/query (independent):** only if justified by a consumer, implement the neutral RDP forecast boundary from #90 and migrate readers separately; never make this a prerequisite for the predictor observation switch.
+
 ## Distinct future forecast outputs boundary
 
 [Forecast publication #90](../forecast-publication-contract/proposal.md) already describes model-agnostic run semantics and legacy/public compatibility. A separately approved **future** RDP publication/query capability may be the home for independently authored forecast runs (government or ML), with producer/run identity, issued-at, observation/source context, target-time series, units/datum, model/version when applicable, uncertainty and revision/freshness. It should use a forecast-appropriate contract and retention, **not** persist forecasts as scalar observed samples. `trent-predictor` remains the Python training/inference/scheduling/model-release owner and continues writing current CSV keys until an independent publish and consumer cutover. Neither this investigation nor #90 creates a live forecast API.

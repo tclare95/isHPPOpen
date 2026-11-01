@@ -50,7 +50,7 @@ Scraper source locations: [SAM schedule](https://github.com/tclare95/ishppopenSc
 ## Known hazards and scope limits
 
 - Node HPP transitions are recorded at processing time and can derive from S3/Mongo fallback. The successor must not treat old fallback as fresh or silently reinterpret historical timestamps.
-- Existing HPP rolling-year calculations omit the prior carried-in transition: [#63](https://github.com/tclare95/isHPPOpen/issues/63); this is a correctness prerequisite, not proof of parity.
+- HPP rolling-year calculations previously omitted the prior carried-in transition: [#63](https://github.com/tclare95/isHPPOpen/issues/63) corrects the web reader; this is a correctness prerequisite, not proof of parity.
 - Node CSO worker's partial-batch response is not enabled in its SQS event-source mapping: [scraper #10](https://github.com/tclare95/ishppopenScraper/issues/10).
 - Node CSO archiver verifies HEAD count metadata rather than bytes/IDs/restore and may attempt cleanup after source deletion: [scraper #11](https://github.com/tclare95/ishppopenScraper/issues/11). Do not treat all legacy S3 history as proven available.
 - RDP collects only three of six registered web dashboard measurement series in the latest production evidence. Predictor independently requires four levels and six rainfall series, and its future RDP-input migration is a **separate** backlog item [#53](https://github.com/tclare95/isHPPOpen/issues/53).

@@ -118,10 +118,11 @@ Editorial writes use the shared `libs/cache/revalidate.js` helper with `revalida
 ## 3) Important functionality
 
 1. **Open/closed status insights**
-   - `app/api/hppstatus/route.js` processes historical status records and returns:
+   - `app/api/hppstatus/route.js` delegates to `libs/services/hppStatusService.js`, which processes `openIndicator` transitions and returns:
      - current status
      - effective last open date
      - closure-day counts for 7/28/182/365 day windows
+   - The service reads only the 365-day window plus the single latest valid transition before it, so every window starts from the status carried into it ([#63](https://github.com/tclare95/isHPPOpen/issues/63)). Records without a valid timestamp and boolean `value` are ignored.
 
 2. **Event management**
    - Public users can fetch upcoming events.

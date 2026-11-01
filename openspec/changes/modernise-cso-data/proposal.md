@@ -1,37 +1,33 @@
-# Proposal: Modernise CSO ingestion, spill events and tiered history
+# Proposal: CSO source evidence, reliable spill events and verified history (#72)
 
 ## Why
 
-The current Node scraper fetches Severn Trent ArcGIS CSO point-in-time records at roughly 15-minute intervals, appends repeated Mongo `csoData` documents, and archives older snapshots in S3. Those snapshots are not reliable event identities, and provider outages must not be interpreted as definite event endings. The new river data platform needs first-class **outfall state** and **spill event** domains.
+The legacy Node scraper fetches Severn Trent storm overflow snapshots and appends Mongo `csoData` rows. Its weekly archive stores old snapshots, not canonical spill identities or revisions. A monitor reporting offline or disappearing from polling is not evidence that a discharge ended. RDP needs its own CSO domain with auditable source evidence, honest current state and an event timeline that survives corrections and retries.
 
-This is the CSO domain module of a **unified backend** for multiple rivers, provider observations, CSOs, model-independent forecasts and site assessments. It does **not** force all data into a single table or move independent Python prediction execution into .NET. The agreed `river-data-platform` repository is the shared implementation target after foundation #64; the older `river-observations` proposal is superseded.
+**Implementation target:** `tclare95/river-data-platform`. **Product specification:** the two normative `specs/` documents below; [design.md](design.md) is non-normative engineering guidance and [tasks.md](tasks.md) is the phased verification plan.
 
-## Agreed decisions (8 October 2026)
+## Product outcomes
 
-1. Implement **Severn Trent first**, with a provider adapter seam; operational polling uses **explicit version-controlled selected outfalls** from the separate [#71](https://github.com/tclare95/isHPPOpen/issues/71) catalogue/selection change. Sewage Map is not a runtime dependency.
-2. Preserve provider-reported snapshot status, source update timestamps and raw evidence separately from **current effective status**, monitoring freshness and **spill event** history.
-3. Prefer valid provider-reported start and end timestamps over an inferred polling instant; capture a start/end reported entirely between polls. **Offline, stale, unknown and failed polls never imply a spill ended**.
-4. Assign stable internal event IDs. Event times can be corrected without changing identity; immutable revisions and source provenance are preserved. Do not silently merge ambiguous matches or use event start timestamp alone as an immutable ID.
-5. **Tiered event retention:** approximately two years of completed events queryable in DynamoDB, older events via private S3 direct GetObject and verified manifests. Open/unresolved events never expire. The cutoff is defined as **24 UTC calendar months after endedAt**, conditional on successful archive verification. Source-evidence/revision records must not be auto-deleted until a separately approved retention policy exists.
-6. Extend the existing *internal* first-party IAM/SigV4 read API with CSO-specific read routes. Keep public Next.js APIs, HPP/CSO site assessments, email alerts, Mongo/S3 and existing Node Lambdas unchanged until separately approved cutovers.
+1. Collect **only** verified, explicitly selected Severn Trent outfalls supplied by [#71](../cso-asset-catalogue-and-selection/proposal.md). Catalogue discovery must not enable polling. Changed or unresolved upstream identities are held, not guessed.
+2. Preserve immutable provider evidence and per-run outcome independently of current monitor state and distinct spill events. A successful request does not by itself prove source freshness; unchanged reports do not create duplicate events.
+3. Show the **last reported** state with its source time and an independent **freshness/effective** state. Offline, stale, unknown, failed polling, disabled selection and missing reports never imply either a confirmed no-spill or a spill-event end.
+4. Use valid source-reported event boundaries, including a complete start/end claim first discovered after both occurred. Do not promise reconstruction of discharges absent from all source reports. Keep uncertain, contradictory and inferred intervals visibly uncertain.
+5. Give events stable internal IDs, preserve source linkage and immutable material revisions, prevent duplicate reports/replays from duplicating events, and hold ambiguous matching for reconciliation rather than merging or inventing boundaries. Corrections to completed or archived events revise the **same identity**, never silently form new discharges.
+6. Keep **24 UTC calendar months from verified event end** queryable in CSO-specific hot DynamoDB storage. Open/unresolved events are never TTL-eligible. Only verified, directly readable private S3 archive history can allow completed events to expire from hot storage; retain raw evidence and previous revisions without automatic deletion until separate governance approval.
+7. Provide a bounded, authenticated, first-party CSO read API with current status, events and revisions, source/collection health and explicit coverage/integrity semantics. Do not change existing public web APIs or legacy CSO consumers.
 
-## New capabilities
+## Dependencies and boundaries
 
-- `cso-state-and-events`: replay-safe CSO polling evidence, reported/current states, lifecycle, corrections and per-asset health.
-- `cso-history-and-read-api`: verified archival, safe 24-month hot expiry, unified event retrieval across DynamoDB and S3, first-party IAM-protected CSO read endpoints.
-
-## Ownership and dependencies
-
-Implementation: new shared .NET river backend (planned `tclare95/river-data-platform`); canonical OpenSpec planning: `tclare95/isHPPOpen`. Tracking [#72](https://github.com/tclare95/isHPPOpen/issues/72). Depends on configured selection [#71](https://github.com/tclare95/isHPPOpen/issues/71), accepted read security [#69](https://github.com/tclare95/isHPPOpen/issues/69), and verified-archive patterns [#65](https://github.com/tclare95/isHPPOpen/issues/65). Existing gauge-only ADR-001 does **not** itself decide CSO retention; the CSO-specific policy is recorded here.
+- [#71](../cso-asset-catalogue-and-selection/proposal.md) owns verified provider catalogue identities, reviewed mapping, versioned named selection sets, last-good S3 snapshots and selection-plan handoff. #72 owns **only** selected-asset status/event polling, evidence, reconciliation, CSO event retention and CSO reads. Catalogue being stale must be visible; no unverified asset becomes eligible automatically.
+- [#69](../observation-read-api/proposal.md) provides the implemented HTTP API Gateway / AWS_IAM / Vercel OIDC+SigV4 conventions, not a general-purpose river observation table.
+- [#65](../archive-observation-history/proposal.md) provides tested S3 integrity and archive-first recovery principles, **not** gauge observation keys, read model or 365-day retention.
+- [#75](../lightweight-integration-deployment/proposal.md) and [#81](../production-observation-deployment/proposal.md) govern stage/prod isolation, manual release approval and disabled-by-default source activation. Their EA observation flags/schedules do not activate CSO collection.
+- [#68](../../../../docs/LEGACY_SCRAPER_RETIREMENT.md) and later consumer migration govern site assessment parity, public compatibility, alerting and eventual scraper retirement.
 
 ## Deliberate non-goals
 
-No historic Severn Trent EDM import/old Mongo or Glacier restore; no 2024/2025 historical reconciliation; no geographic impact derivation or downstream water-quality risk algorithm; no public/third-party API, new web client, alert sending, HPP threshold logic, predictor migration, edit/admin UI, full national collection, or stopping/reconfiguring the legacy scraper. No production deployments/data migration authorised by documentation.
+No scraper/Mongo/archive modification or deletion; no live collector activation, AWS apply, production migration, historic EDM import or Glacier restore; no all-provider polling, GIS-based upstream inference, Sewage Map runtime dependency, browser-accessible raw CSO API, alerts, HPP/site risk computation changes, forecast execution or admin reconciliation UI. No extra generic event framework or new independently deployed API handler by default.
 
-## Delivery boundary
+## Delivery
 
-One backend implementation may supply the new event store, collector and CSO read routes in staging, with tests for archive-first durability, source corrections, outages, read consistency and stage IAM. Source history migration and website/alert cutover are separately reviewed later.
-
-## Small, on-demand integration stage
-
-CSO integration tests reuse the lightweight stage of [#75](https://github.com/tclare95/isHPPOpen/issues/75) rather than mirroring production spill history. A few configured outfalls can be polled manually; event reconciliation, late correction and the **24 UTC calendar-month** hot/archive cutover are exercised using synthetic historical events and an injected clock in separate stage stores. Source evidence/revisions and archive-integrity semantics remain identical to the production contract. The permissioned cleanup of disposable stage test records is **not** a new automatic CSO event TTL or a deletion policy for canonical S3 history. No live staging poll cadence, historical data replication or production writes are prerequisites.
+Four independently reviewable stages: **(1) evidence/current state; (2) event identity and corrections; (3) archive and six IAM reads; (4) bounded, separately authorised stage verification**. Implemented and accepted RDP behaviour, not merely merged docs, is required before closing #72. Fixture tests must cover competing retries, late completed-event corrections, S3/Dynamo partial failure and cross-tier event queries. Stage remains small, with no continuous collection or two-year replica. Documentation or its merge authorises **none** of these runtime changes.

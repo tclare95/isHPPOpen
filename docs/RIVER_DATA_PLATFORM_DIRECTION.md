@@ -2,7 +2,7 @@
 
 ## Intent
 
-Evolve the concepts behind isHPPOpen into **one unified, reusable river/environmental data backend**, initially serving isHPPOpen but independent of that UI, a single gauge, or one water company. Implement an appropriately modular **.NET backend repository with independently invoked collector/reader Lambda entry points**, not a monolithic scraper and not multiple independently managed microservices.
+Evolve the concepts behind isHPPOpen into **one unified, reusable river/environmental data backend**, initially serving isHPPOpen but independent of that UI, a single gauge, or one water company. Implement an appropriately modular **.NET backend repository with independently invoked collector/reader Lambda entry points** for reusable source/data capabilities, not a monolithic scraper or an unnecessary proliferation of provider microservices. **Exception agreed for HPP:** site-specific HPP status and transition events belong to a separately operated service consuming RDP observations.
 
 **Implementation repository:** **`tclare95/river-data-platform`**, with its [inert .NET 10 foundation merged](https://github.com/tclare95/river-data-platform/pull/1). Bootstrap is tracked by [#64](https://github.com/tclare95/isHPPOpen/issues/64) and stable change slug `bootstrap-dotnet-observation-service`. This code merge did **not** deploy AWS resources or activate collection; preserve the established gauge/CSO domain separation.
 
@@ -14,8 +14,10 @@ Evolve the concepts behind isHPPOpen into **one unified, reusable river/environm
 | Observations | River level/flow/rainfall and other timestamped scalar readings, 365d Dynamo and indefinite private S3 per accepted ADR-001 | Event intervals, forecast runs or water-quality assessments |
 | CSO / spill events | Source status evidence, current monitor state, spill intervals, identity/revisions, 24-calendar-month hot event queries and older S3 history | Physical water quality measurements or site-specific risk |
 | Forecasts | Provider/model-neutral forecast run, issue time, target time, model/version, predicted value and optional uncertainty/provenance | Model training and inference execution |
-| Site assessments | Reproducible derived condition/risk for an explicitly configured location using identified source data and assessment revision | A source provider's raw state or proof that a CSO is upstream |
+| Site assessments | RDP holds provider-linked CSO/site membership and assessment evidence; initial website retains calibrated water-quality indication and presentation. **HPP decisions/transition events instead belong to an independent HPP service consuming RDP observations.** | A source provider's raw state, inferred upstream network or a universal risk engine |
 | Platform services | IAM API, source/range coverage and provenance, polling/retention health, archive integrity, deployment isolation | A universal scalar observation table or shared business logic for every source |
+
+**Retirement decision (1 November 2026):** HPP status/event ownership is **outside RDP** in a separate service consuming its verified Colwick observations. Stale/unverified level fallback preserves the last-known HPP status but creates no new transitions. RDP owns CSO/provider/site assessment evidence, while the website retains calibrated water-quality risk and presentation initially. The forecast work is contract-first; the Python outputs stay unchanged and a later **separate legacy public snapshot publisher** preserves `levels/latest.json` and dated `levels/` compatibility. See [retirement dependency map](LEGACY_SCRAPER_RETIREMENT.md), [HPP OpenSpec](../openspec/changes/hpp-site-status-and-transitions/proposal.md) and [forecast OpenSpec](../openspec/changes/forecast-publication-contract/proposal.md).
 
 The **existing Python predictor remains independently deployed**: it is an experiment with a useful current output, but its internal architecture is not to become the general platform prediction engine. A future bounded specification may define a publish/query forecast contract, not import model training or scheduling into the initial backend.
 

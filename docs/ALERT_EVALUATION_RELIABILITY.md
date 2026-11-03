@@ -149,6 +149,14 @@ runs `degraded`, not blocked.
 
 ## Handoff to #51 Slice D
 
+**Implemented in [RDP-GAUGE-ALERTS-51D.md](RDP-GAUGE-ALERTS-51D.md)** on this
+mechanism: progress fields ride the same `stateRevision` compare-and-set,
+notifications still go through `trigger()`, holds are re-decided each run
+rather than stored as a new state machine, the shadow path runs only pure
+functions, and live gauge retries are gated on the newest fresh observation
+still meeting the rule. Cross-source delivery identity is the normalized EA
+`dateTime` plus value. The original handoff notes follow.
+
 Slice D (alert-safe RDP reads, observed-time progress, catch-up and source
 continuity) should **reuse** this mechanism rather than add another:
 

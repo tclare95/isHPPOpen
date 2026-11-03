@@ -3,13 +3,12 @@ import { HPP_RULE_V1 } from "../libs/hpp/hppDecision";
 import { buildShadowReport, projectServiceHistory, compareWithLegacy, seedStateFromLegacy } from "../libs/hpp/hppHistory";
 import { LEASE_MS, runHppShadowEvaluation } from "../libs/hpp/hppShadowRun";
 import { calculateHppStatus } from "../libs/services/hppStatusService";
-import { createMongoShadowStore, LEGACY_COLLECTION, SHADOW_COLLECTIONS } from "../services/hpp-status/mongoShadowStore";
-import { createRdpColwickReader } from "../services/hpp-status/rdpColwickReader";
-import { createHppShadowService } from "../services/hpp-status";
+import { createMongoShadowStore, LEGACY_COLLECTION, SHADOW_COLLECTIONS } from "../libs/hpp/hppShadowStore";
+import { createRdpEvidenceReader } from "../libs/hpp/hppEvidence";
+import { createHppShadowService } from "../libs/hpp/hppShadowService";
 import { createFakeDb } from "../testUtils/fakeMongo";
 
 const MINUTE = 60 * 1000;
-const API_URL = "https://abc123.execute-api.eu-west-1.amazonaws.com/production";
 const LEGACY_AT = "2026-03-15T09:07:31.000Z";
 const NOW = new Date("2026-11-03T12:00:00.000Z");
 const at = (minutes) => new Date(NOW.getTime() + minutes * MINUTE);
@@ -284,10 +283,10 @@ describe("HPP shadow report", () => {
     expect(buildShadowReport({ state: t.state(), transitions, now: at(16) }).status).toBe("holding");
   });
 
-  it("composes store, reader and report without touching openIndicator", async () => {
+  it("composes store, RDP client reader and report without touching openIndicator", async () => {
     const t = setup();
-    const signedGet = jest.fn(async () => ({ status: 200, body: { meta: { measurementId: "ea-colwick-level", pageIntegrity: "verified" }, data: [row(1.2, at(-4))] } }));
-    const service = createHppShadowService({ db: t.fake.db, apiUrl: API_URL, signedGet });
+    const getObservations = jest.fn(async () => ({ meta: { measurementId: "ea-colwick-level", pageIntegrity: "verified" }, data: [row(1.2, at(-4))] }));
+    const service = createHppShadowService({ db: t.fake.db, getClient: async () => ({ getObservations }) });
     expect(await service.runOnce({ now: NOW })).toMatchObject({ action: "none", persisted: true });
     const report = await service.report({ now: at(1) });
     expect(report).toMatchObject({ status: "ok", comparison: { comparable: true, matches: true } });
@@ -295,45 +294,36 @@ describe("HPP shadow report", () => {
   });
 });
 
-describe("RDP Colwick reader", () => {
-  const ok = (data, meta = {}) => ({ status: 200, body: { meta: { measurementId: "ea-colwick-level", pageIntegrity: "verified", ...meta }, data } });
+describe("RDP evidence reader (web RDP client)", () => {
+  const page = (data, meta = {}) => ({ meta: { measurementId: "ea-colwick-level", pageIntegrity: "verified", ...meta }, data });
+  const readerWith = (getObservations, options = {}) => createRdpEvidenceReader({ getClient: async () => ({ getObservations }), ...options });
 
-  it("requests a bounded observations window for the rule's measurement", async () => {
-    const signedGet = jest.fn(async () => ok([row(1, at(-5))]));
-    const read = createRdpColwickReader({ apiUrl: API_URL, signedGet });
+  it("requests one bounded window for the rule's measurement and creates the client once", async () => {
+    const getObservations = jest.fn(async () => page([row(1, at(-5))]));
+    const getClient = jest.fn(async () => ({ getObservations }));
+    const read = createRdpEvidenceReader({ getClient });
     expect(await read(NOW)).toEqual({ pageIntegrity: "verified", rows: [row(1, at(-5))] });
-    const url = new URL(signedGet.mock.calls[0][0]);
-    expect(url.pathname).toBe("/production/v1/measurements/ea-colwick-level/observations");
-    expect(Object.fromEntries(url.searchParams)).toEqual({ from: at(-120).toISOString(), to: NOW.toISOString(), limit: "65" });
-  });
-
-  it("passes page integrity through for assessment rather than deciding itself", async () => {
-    const read = createRdpColwickReader({ apiUrl: API_URL, signedGet: async () => ok([], { pageIntegrity: "partial" }) });
-    expect(await read(NOW)).toEqual({ pageIntegrity: "partial", rows: [] });
+    await read(at(15));
+    expect(getClient).toHaveBeenCalledTimes(1);
+    expect(getObservations).toHaveBeenNthCalledWith(1, "ea-colwick-level", { from: at(-120).toISOString(), to: NOW.toISOString(), limit: 65 });
   });
 
   it.each([
-    [{ status: 403 }, "AUTHORIZATION_FAILED"],
-    [{ status: 429 }, "THROTTLED"],
-    [{ status: 503 }, "UPSTREAM_ERROR"],
-    [{ status: 200, body: { meta: { measurementId: "ea-shardlow-level" }, data: [] } }, "RESPONSE_CONTRACT_ERROR"],
-    [{ status: 200, body: { error: {} } }, "RESPONSE_CONTRACT_ERROR"],
-    [ok([], { nextCursor: "abc" }), "CATCHUP_BUDGET_EXCEEDED"],
-  ])("maps %j to %s", async (response, code) => {
-    const read = createRdpColwickReader({ apiUrl: API_URL, signedGet: async () => response });
-    await expect(read(NOW)).rejects.toMatchObject({ code });
+    ["an RdpError code", async () => { throw Object.assign(new Error("detail"), { code: "AUTHORIZATION_FAILED" }); }, "AUTHORIZATION_FAILED"],
+    ["an uncoded error", async () => { throw new Error("secret detail"); }, "UNEXPECTED_ERROR"],
+    ["a malformed page", async () => ({ data: [] }), "RESPONSE_CONTRACT_ERROR"],
+    ["a continuation cursor", async () => page([], { nextCursor: "abc" }), "CATCHUP_BUDGET_EXCEEDED"],
+  ])("maps %s to a fixed code", async (_label, getObservations, code) => {
+    await expect(readerWith(getObservations)(NOW)).rejects.toMatchObject({ code, message: `HPP Colwick read ${code}` });
   });
 
-  it("maps transport failures to fixed codes", async () => {
-    const read = createRdpColwickReader({ apiUrl: API_URL, signedGet: async () => { throw Object.assign(new Error("secret detail"), { code: "TIMEOUT" }); } });
-    await expect(read(NOW)).rejects.toMatchObject({ code: "TIMEOUT", message: "RDP Colwick read TIMEOUT" });
+  it("times out a slow read", async () => {
+    const read = readerWith(() => new Promise(() => {}), { deadlineMs: 5 });
+    await expect(read(NOW)).rejects.toMatchObject({ code: "TIMEOUT" });
   });
 
-  it.each([
-    "https://abc.execute-api.eu-west-2.amazonaws.com/production",
-    "https://abc.execute-api.eu-west-1.amazonaws.com/production/extra",
-    "http://abc.execute-api.eu-west-1.amazonaws.com/staging",
-  ])("rejects configuration %s", (apiUrl) => {
-    expect(() => createRdpColwickReader({ apiUrl, signedGet: async () => ok([]) })).toThrow(expect.objectContaining({ code: "CONFIGURATION_ERROR" }));
+  it("maps client construction failure to its configuration code", async () => {
+    const read = createRdpEvidenceReader({ getClient: async () => { throw Object.assign(new Error("x"), { code: "CONFIGURATION_ERROR" }); } });
+    await expect(read(NOW)).rejects.toMatchObject({ code: "CONFIGURATION_ERROR" });
   });
 });

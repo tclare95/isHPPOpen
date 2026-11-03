@@ -1,7 +1,7 @@
 // One non-authoritative HPP evaluation against injected ports (#89).
 //
-// No Mongo, RDP, AWS or Next imports: the independent runtime composes a
-// store and an evidence reader (see services/hpp-status). Nothing here writes
+// No Mongo, RDP, AWS or Next imports: hppShadowService.js composes a store
+// and an evidence reader. Nothing here writes
 // openIndicator, alert state or notifications.
 //
 // Single writer: a run first claims a lease on the state document by

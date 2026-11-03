@@ -1,7 +1,7 @@
 // HPP transition identity, history projection and legacy comparison (#89).
 //
-// Pure functions only: no I/O or clock. Used by the independent HPP status
-// service; the web's public reader is unchanged.
+// Pure functions only: no I/O or clock. Used by the in-app HPP status
+// service (hppShadowService.js); the web's public reader is unchanged.
 
 import { stateFromOpenIndicator } from "./hppDecision.js";
 import { calculateHppStatus } from "./hppWindows.js";

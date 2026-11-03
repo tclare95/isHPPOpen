@@ -3,8 +3,8 @@ import { buildOperationalHealth } from "../operationalHealth";
 
 import { calculateHppStatus, getHistoryWindowStart } from "../hpp/hppWindows.js";
 
-// The pure window calculation lives in libs/hpp so the independent HPP status
-// service reuses it unchanged (#89). Re-exported for existing callers.
+// The pure window calculation lives in libs/hpp so the HPP status service
+// reuses it unchanged (#89). Re-exported for existing callers.
 export { calculateHppStatus, getHistoryWindowStart };
 
 export const buildEmptyStatusPayload = () => ({

@@ -4,7 +4,7 @@ This file captures consequential boundaries and possible approaches. The [capabi
 
 ## Confirmed architecture
 
-- An independently operated **HPP service** (separate from `river-data-platform`) consumes the existing RDP first-party **read** contract. It owns HPP rule evaluation, durable state/transition history, and operator-facing health. RDP remains the canonical gauge-observation source and is not asked to write HPP decisions.
+- An **HPP service** independent of `river-data-platform` (hosted in the isHPPOpen app, per the 3 November decision below) consumes the existing RDP first-party **read** contract. It owns HPP rule evaluation, durable state/transition history, and operator-facing health. RDP remains the canonical gauge-observation source and is not asked to write HPP decisions.
 - The web retains public formatting and notification delivery. Direct browser access to RDP/internal HPP credentials is unnecessary; use server-to-server access appropriate to the deployment.
 - Initial HPP site: one verified Colwick series and one 2.2 m rule; do not create a cross-site rule engine.
 
@@ -26,14 +26,14 @@ State and notification are distinct: the HPP service decides state; the website 
 ### Decisions recorded 1 November 2026
 
 - **Storage (agreed):** MongoDB remains the isHPPOpen application database. After an approved cutover the HPP service is the single writer to the existing `openIndicator` collection, keeping `{ timestamp, value }` for current readers and adding provenance fields (`observedAt`, `evaluatedAt`, `level`, `ruleId`, `source`). Shadow decisions go to a separate, non-authoritative collection or log. No new storage or AWS resources.
-- **Hosting (superseded 3 November 2026):** the 1 November direction was to run inside the isHPPOpen Vercel deployment. It is replaced by an **independently operated** runtime that must not reuse the Vercel Production RDP caller role. Recommendation, pending approval: a dedicated Node.js Lambda stack in eu-west-1 with its own execution role as a second, exact RDP caller and a dedicated least-privilege Mongo user. Storage stays as agreed (Mongo, no new storage); the function, schedule and roles would be the only new AWS resources, which revisits the 1 November "no new AWS resources" note and therefore needs explicit approval. See [services/hpp-status/README.md](../../../services/hpp-status/README.md).
+- **Hosting (confirmed 3 November 2026):** the HPP service runs inside the isHPPOpen Vercel app, so isHPPOpen is the single "app" (rules, state, history, public status and alerts). It reuses the web's server-side RDP client and per-environment caller role and its Mongo connection. HPP rules stay outside RDP. No RDP, IAM or new AWS resources are needed. Single writer under overlapping cron invocations is a lease claimed by compare-and-set; see [docs/HPP-STATUS-SERVICE.md](../../../docs/HPP-STATUS-SERVICE.md) for the scheduling, Preview-isolation and mode-switch conditions.
 
 ### Shadow integration slice (3 November 2026)
 
 - `libs/hpp/hppWindows.js`: the #63 window calculation, moved unchanged out of the Mongo-bound web service so both readers compute identical 7/28/182/365-day figures.
 - `libs/hpp/hppHistory.js`: transition identity `${ruleId}#${sequence}`, seeding from the latest valid legacy record (its timestamp kept verbatim as a historical fact), service history projection and field-by-field legacy comparison.
 - `libs/hpp/hppShadowRun.js`: one evaluation against injected ports. Single writer by a lease claimed with compare-and-set on the state revision; a transition left by an interrupted run is adopted before re-deciding, so retries never append duplicates. Unusable evidence holds the last-known state and records hold intervals as continuity gaps.
-- `services/hpp-status/`: RDP Colwick reader (injected SigV4 `signedGet`; no Vercel OIDC) and a Mongo store that reads `openIndicator` and writes only `hppShadowState` and `hppShadowTransitions`. No runtime entry point, schedule or infrastructure is included.
+- `libs/hpp/hppEvidence.js`, `hppShadowStore.js`, `hppShadowService.js`: Colwick evidence through the web RDP client, a Mongo store that reads `openIndicator` and writes only `hppShadowState` and `hppShadowTransitions`, and their composition. No route, cron or mode switch is included.
 - **Source:** the legacy rule input is the station 4009 level, equivalent to RDP `ea-colwick-level` (`4009-level-stage-i-15_min-mASD`, mASD/ASD). The RDP read API is available.
 - **Accepted risks:** EA publication lag against the 30-minute freshness baseline is not a concern; a small number of duplicate HPP emails at cutover or rollback is acceptable while usage is low.
 - **Decision core:** `libs/hpp/hppDecision.js` holds the pure rule, evidence assessment and transition decision (no I/O, clock or storage), with deterministic tests for tasks 3 and 4.

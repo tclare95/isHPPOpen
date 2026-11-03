@@ -1,12 +1,12 @@
-// MongoDB store for the independent HPP status service in shadow mode (#89).
+// MongoDB store for the in-app HPP status service in shadow mode (#89).
 //
 // Reads legacy `openIndicator` (find/findOne only) and writes only the two
 // non-authoritative shadow collections below. There is deliberately no code
 // path that writes openIndicator: authoritative writing is a separately
 // approved cutover, not a configuration switch.
 
-import { HPP_STATE_ID } from "../../libs/hpp/hppHistory.js";
-import { getHistoryWindowStart } from "../../libs/hpp/hppWindows.js";
+import { HPP_STATE_ID } from "./hppHistory.js";
+import { getHistoryWindowStart } from "./hppWindows.js";
 
 export const LEGACY_COLLECTION = "openIndicator";
 export const SHADOW_COLLECTIONS = Object.freeze({

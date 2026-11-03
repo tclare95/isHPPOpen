@@ -53,6 +53,13 @@ verify the home page, river levels and forecast APIs, authentication, and the
 configured alert cron. Keep `CRON_SECRET` in Production and confirm the Vercel
 plan supports the schedule in `vercel.json`.
 
+`HPP_STATUS_SOURCE` controls the HPP shadow cron (`/api/internal/hpp/run`, #89).
+Unset or `legacy` is a no-op. `shadow` evaluates RDP Colwick evidence and writes
+only `hppShadowState`/`hppShadowTransitions`, and only when `VERCEL_ENV=production`.
+Set it for Production only; it takes effect on the next deployment. To stop
+shadow runs, remove it (or set `legacy`) and redeploy. Evidence is at the
+authenticated `/api/admin/hpp-shadow`. See [HPP-STATUS-SERVICE.md](HPP-STATUS-SERVICE.md).
+
 For an urgent rollback, promote a known-good deployment in Vercel. Follow with
 a revert PR so main reflects production. Changes to shared S3/MongoDB contracts
 require a coordinated producer-first rollout across the suite.

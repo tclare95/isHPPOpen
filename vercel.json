@@ -3,6 +3,10 @@
     {
       "path": "/api/internal/alerts/run",
       "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/internal/hpp/run",
+      "schedule": "7,22,37,52 * * * *"
     }
   ]
 }

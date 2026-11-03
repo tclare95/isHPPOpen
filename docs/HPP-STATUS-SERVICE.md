@@ -6,9 +6,13 @@ so isHPPOpen remains the single "app": rules, state, history, public status
 and alerts are all in one place. RDP stays the canonical observation source
 and holds no HPP logic.
 
-**Status:** code only. No route, cron, environment variable or mode switch
-calls this code yet. The legacy scraper is still the only `openIndicator`
-writer, and `/api/hppstatus` and HPP alerts still read `openIndicator`.
+**Status:** shadow scheduling is implemented. The cron
+`/api/internal/hpp/run` (at 7, 22, 37 and 52 minutes past each hour,
+`CRON_SECRET`) runs one evaluation when `HPP_STATUS_SOURCE=shadow` and
+`VERCEL_ENV=production`. It is a no-op otherwise, and `legacy` is the default.
+Evidence is at the authenticated `/api/admin/hpp-shadow`. The legacy scraper
+is still the only `openIndicator` writer, and `/api/hppstatus` and HPP alerts
+still read `openIndicator`. There is no authoritative mode.
 
 ## Pieces (`libs/hpp/`)
 
@@ -65,25 +69,22 @@ writer, and `/api/hppstatus` and HPP alerts still read `openIndicator`.
   storage. The two shadow collections need only the default `_id` index.
 - **No new AWS resources.**
 
-Things this choice means for the next slice:
+How the scheduling slice handles these constraints:
 
 1. **The no-write guarantee is enforced by code, not by credential.** The
-   app's Mongo user can write `openIndicator` today (it currently has
+   app's Mongo user can write `openIndicator` (it currently has
    `readWriteAnyDatabase`). Shadow evidence that nothing was written therefore
    comes from the code path (the store has no `openIndicator` write) and from
    `openIndicator` count and audit checks, not from Atlas permissions.
-2. **Merging is not activation.** Merging `main` deploys Vercel, so the
-   scheduling slice must be off by default. Add a mode variable such as
-   `HPP_STATUS_SOURCE=legacy|shadow`, defaulting to `legacy` (a no-op),
-   matching the existing `RDP_*_SOURCE` modes.
-3. **Preview shares the production database.** WORKSPACE safety follow-up 4
-   records this. Shadow writes must run only when
+2. **Merging is not activation.** `HPP_STATUS_SOURCE` defaults to `legacy`
+   (a no-op) and accepts only `legacy` or `shadow`; any other value fails the
+   run with a 500 and writes nothing.
+3. **Preview shares the production database.** Shadow runs write only when
    `VERCEL_ENV=production`, until Preview data is isolated.
-4. **Use a separate cron route.** For example, `/api/internal/hpp/run`,
-   authenticated with `CRON_SECRET` like `/api/internal/alerts/run`. This keeps
-   HPP failures and its kill switch separate from alert evaluation. Expose
-   `report()` through the authenticated `/api/admin/operational-health`, not
-   publicly.
+4. **It has its own cron route.** `/api/internal/hpp/run` keeps HPP failures
+   and its kill switch separate from alert evaluation. Its `maxDuration` of
+   60 seconds stays below the 5-minute lease. The report has its own admin
+   route, so the operational-health contract is unchanged.
 
 ## Proposed single-writer cutover acceptance criteria
 

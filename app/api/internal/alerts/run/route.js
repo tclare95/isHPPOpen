@@ -1,36 +1,10 @@
-import { HttpError, mapApiError } from "../../../../../libs/api/http";
+import { mapApiError } from "../../../../../libs/api/http";
+import { assertCronAuthorized } from "../../../../../libs/api/cronAuth";
 import { sendRouteError, sendRouteSuccess } from "../../../../../libs/api/httpApp";
 import { createRequestLogger } from "../../../../../libs/api/logger";
 import { runColwickAlerts } from "../../../../../libs/services/colwickAlertsService";
 
 export const dynamic = "force-dynamic";
-
-function getHeaderValue(headers, name) {
-  if (!headers) {
-    return null;
-  }
-
-  if (typeof headers.get === "function") {
-    return headers.get(name);
-  }
-
-  const matchingKey = Object.keys(headers).find((key) => key.toLowerCase() === name.toLowerCase());
-  return matchingKey ? headers[matchingKey] : null;
-}
-
-function assertCronAuthorized(request) {
-  const configuredSecret = process.env.CRON_SECRET;
-
-  if (!configuredSecret) {
-    throw new HttpError(500, "Cron secret not configured");
-  }
-
-  const authorization = getHeaderValue(request?.headers, "authorization");
-
-  if (authorization !== `Bearer ${configuredSecret}`) {
-    throw new HttpError(401, "Unauthorized");
-  }
-}
 
 export async function GET(request) {
   const logger = createRequestLogger({ method: "GET" }, "api/internal/alerts/run");

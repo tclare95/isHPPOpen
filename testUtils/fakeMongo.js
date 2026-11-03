@@ -6,14 +6,20 @@
 const clone = (value) => (value === undefined ? undefined : JSON.parse(JSON.stringify(value)));
 const isOperatorObject = (value) => value && typeof value === "object" && !Array.isArray(value) && Object.keys(value).some((key) => key.startsWith("$"));
 
+// Stored timestamps are ISO strings, so Date operands compare as ISO strings.
+const comparable = (value) => (value instanceof Date ? value.toISOString() : value);
+
 function matchesValue(actual, expected) {
   if (isOperatorObject(expected)) {
-    return Object.entries(expected).every(([operator, operand]) => {
+    return Object.entries(expected).every(([operator, rawOperand]) => {
+      const operand = comparable(rawOperand);
       switch (operator) {
         case "$ne": return !matchesValue(actual, operand);
         case "$exists": return operand ? actual !== undefined : actual === undefined;
         case "$in": return operand.some((candidate) => matchesValue(actual, candidate));
         case "$lt": return actual !== undefined && actual !== null && actual < operand;
+        case "$gt": return actual !== undefined && actual !== null && actual > operand;
+        case "$gte": return actual !== undefined && actual !== null && actual >= operand;
         default: throw new Error(`fakeMongo: unsupported operator ${operator}`);
       }
     });
@@ -63,7 +69,13 @@ export function createFakeDb({ uniqueIndexes = {} } = {}) {
     data[name] = data[name] || [];
     const docs = () => data[name];
     collections[name] = {
-      findOne: (filter) => intercept(name, "findOne", [filter], () => clone(docs().find((doc) => matches(doc, filter)) || null)),
+      // Honours a single-field `sort` option; other options are ignored.
+      findOne: (filter, options = {}) => intercept(name, "findOne", [filter], () => {
+        const found = docs().filter((doc) => matches(doc, filter));
+        const [[field, direction] = []] = Object.entries(options.sort || {});
+        if (field) found.sort((a, b) => (a[field] < b[field] ? -direction : a[field] > b[field] ? direction : 0));
+        return clone(found[0] || null);
+      }),
       find: (filter) => ({ toArray: () => intercept(name, "find", [filter], () => docs().filter((doc) => matches(doc, filter)).map(clone)) }),
       countDocuments: (filter) => intercept(name, "countDocuments", [filter], () => docs().filter((doc) => matches(doc, filter)).length),
       insertOne: (doc) => intercept(name, "insertOne", [doc], () => {

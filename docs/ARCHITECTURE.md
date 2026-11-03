@@ -125,6 +125,7 @@ Editorial writes use the shared `libs/cache/revalidate.js` helper with `revalida
      - effective last open date
      - closure-day counts for 7/28/182/365 day windows
    - The service reads only the 365-day window plus the single latest valid transition before it, so every window starts from the status carried into it ([#63](https://github.com/tclare95/isHPPOpen/issues/63)). Records without a valid timestamp and boolean `value` are ignored.
+   - The window calculation itself is pure (`libs/hpp/hppWindows.js`) and shared with the in-app HPP status service ([#89](https://github.com/tclare95/isHPPOpen/issues/89), `libs/hpp/hppShadowService.js`). That service is shadow-only: it writes `hppShadowState`/`hppShadowTransitions`, never `openIndicator`, and no route or cron calls it yet. The legacy scraper remains the sole `openIndicator` writer. See [HPP-STATUS-SERVICE.md](HPP-STATUS-SERVICE.md).
 
 2. **Event management**
    - Public users can fetch upcoming events.

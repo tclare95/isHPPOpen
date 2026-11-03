@@ -188,29 +188,30 @@ held/uncertain deliveries as #47 documents.
 ## Shadow and cutover checklist (for subsequent approval; nothing here is authorised by this PR)
 
 **0. Prerequisites**
-- [ ] This PR reviewed and merged. Production runs in legacy mode for several days with
+- [x] Production read API, Vercel Production OIDC → STS → SigV4 federation and `RDP_*` access
+      variables: proven on 2026-11-03 (#51 P7, CloudTrail and read-Lambda 200). Levels shadow is live.
+- [x] All six canonical measurements, including the three formerly reserved #52 IDs, enabled in
+      RDP: confirmed by the user on 2026-11-03.
+- [ ] This PR reviewed and merged. Production runs in legacy mode for a few days with
       `alertRuns` reviewed: no unexplained `gaugeHoldReasons`, `deliveryIndex: "present"`, no
       `held_for_review` or stale `claimed` deliveries (#47 handoff).
-- [ ] #69 production read API, #52 publication of each **alerted** measurement (Colwick
-      `ea-colwick-level` is not one of the reserved three), approved production RDP read access
-      and verified Vercel OIDC/IAM for Production. Rules for an unpublished measurement would skip.
 
-**1. Preview negative tests** (stage, no production data)
-- [ ] Preview with `RDP_GAUGE_ALERTS_SOURCE=shadow` reaches the stage API only. Production role/URL is refused.
-- [ ] Invalid value → `gaugeSource: "invalid"`, live rules skipped, other alerts unaffected.
+The stage/production separation and invalid-setting behaviour are covered by the #51-A client
+tests and this PR's fixture tests, so no separate Preview run is required.
 
-**2. Production shadow** (approved setting change + redeploy; legacy stays authoritative)
-- [ ] Record the deployment ID and the time the setting took effect. No emails come from the RDP side.
-- [ ] Review about 48 h of `RDP gauge alert shadow comparison` log lines (around 190 runs):
-      `decisions.disagreed` and `pendingDisagreed` = 0 or each explained, `valueMismatches` = 0,
-      `rdpHoldReasons` empty in steady state, RDP `ageSeconds` within freshness, and
-      `newestLagSeconds` distribution recorded.
-- [ ] Sampled seven-day comparison: run the #51-B 7-day parity procedure for every alerted
-      measurement ([RDP-TRENT-51B.md](RDP-TRENT-51B.md)) and confirm exact equality at matched timestamps.
+**1. Production shadow** (approved setting change + redeploy; legacy stays authoritative)
+- [ ] Set only `RDP_GAUGE_ALERTS_SOURCE=shadow` for Production and redeploy. Record the deployment
+      ID and the time it took effect. No emails come from the RDP side.
+- [ ] After about 48 h, review the `RDP gauge alert shadow comparison` lines the cron already logs
+      every 15 minutes (no extra sampler):
+      - `decisions.disagreed` and `pendingDisagreed` are 0, or each disagreement is explained;
+      - `valueMismatches` is 0 and `rdpHoldReasons` is empty in steady state;
+      - RDP `ageSeconds` stays within freshness and `newestLagSeconds` looks reasonable.
+      The 24 h window each run compares covers the history check; no separate seven-day sample is needed.
 - [ ] Deterministic crossing evidence: this suite's catch-up, hysteresis, source-switch and
       rollback tests pass on the deployed commit. Do not wait for natural crossings.
 
-**3. Activation** (separate approval)
+**2. Activation** (separate approval)
 - [ ] Reconciliation plan reviewed: expected `enrolled` count, and held cases from the last shadow
       report (`rdpHoldReasons`) reviewed or accepted.
 - [ ] Set only `RDP_GAUGE_ALERTS_SOURCE=rdp` for Production and redeploy. Trent and levels settings are untouched.
@@ -218,7 +219,7 @@ held/uncertain deliveries as #47 documents.
       Transient `continuity_unproven` while RDP catches up to the last legacy observation should
       clear within one or two runs.
 
-**4. Rollback** (rehearsed in Preview before activation)
+**3. Rollback** (the same source-only redeploy; behaviour is fixture-tested)
 - [ ] Remove or set `legacy` only for alerts and redeploy. Expect transient `continuity_unproven` if
       legacy lags, `continuity_conflict` if values disagree, and no rearm, resend or replayed crossing.
 - [ ] Unrelated alerts keep running. Delivery and subscription records persist. Held rules are

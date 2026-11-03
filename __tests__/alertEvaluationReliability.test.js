@@ -2,8 +2,11 @@
 // Deterministic reliability tests for scheduled alert evaluation (#47): overlapping runs,
 // retries, partial commits, provider timeouts, uncertain sends, recovery and run records.
 // All database, source and email interactions are in-memory doubles; nothing is sent.
+// Live gauge readings come from the alert-safe legacy reader over a fake EA feed (#51 Slice D).
 import { createFakeDb } from "../testUtils/fakeMongo";
+import { createGaugeFeeds, eaTime } from "../testUtils/fakeGaugeFeeds";
 
+jest.mock("server-only", () => ({}));
 jest.mock("../libs/database");
 jest.mock("../libs/services/alertMailerService", () => ({
   ...jest.requireActual("../libs/services/alertMailerService"),
@@ -11,7 +14,6 @@ jest.mock("../libs/services/alertMailerService", () => ({
   sendManageAlertsAccessEmail: jest.fn(),
   sendThresholdAlertEmail: jest.fn(),
 }));
-jest.mock("../libs/services/trentWeirsService", () => ({ getLegacyTrentWeirsSnapshot: jest.fn() }));
 jest.mock("../libs/services/forecastService", () => ({ getLatestForecastSnapshot: jest.fn() }));
 jest.mock("../libs/services/hppStatusService", () => ({ getHppStatusSnapshot: jest.fn() }));
 jest.mock("../libs/services/waterQualityService", () => ({ getLatestWaterQualitySnapshot: jest.fn(), getWaterQualityDensitySeries: jest.fn() }));
@@ -19,7 +21,6 @@ jest.mock("../libs/waterQualityIndicator", () => ({ getCsoActivityAssessment: je
 
 const { connectToDatabase } = require("../libs/database");
 const { sendThresholdAlertEmail, AlertEmailError } = require("../libs/services/alertMailerService");
-const { getLegacyTrentWeirsSnapshot } = require("../libs/services/trentWeirsService");
 const { getLatestForecastSnapshot } = require("../libs/services/forecastService");
 const { getHppStatusSnapshot } = require("../libs/services/hppStatusService");
 const { getLatestWaterQualitySnapshot, getWaterQualityDensitySeries } = require("../libs/services/waterQualityService");
@@ -32,7 +33,6 @@ const hours = (count) => minutes(count * 60);
 const GAUGE_KEY = "user@example.com|gauge|4009-level|live|above|1.5";
 const DELIVERY_INDEX = { alertDeliveries: [{ alertKey: 1, transitionId: 1 }] };
 
-const trentAt = (value, at) => ({ fallback: false, partial: false, stations: [{ stationId: 4009, measures: { level: { latestValue: value, readings: [{ dateTime: at.toISOString(), value }] } } }] });
 const gaugeRule = (overrides = {}) => ({ alertKey: GAUGE_KEY, email: "user@example.com", alertType: "gauge", gaugeKey: "4009-level", gaugeName: "Colwick", stationId: 4009, measureType: "level", source: "live", direction: "above", threshold: 1.5, status: "active", lastConditionState: "armed", unsubscribeToken: "unsubscribe-token", confirmedAt: "2026-10-01T00:00:00.000Z", createdAt: "2026-10-01T00:00:00.000Z", ...overrides });
 const uncertain = (reason = "timeout") => new AlertEmailError(502, "Alert email provider did not respond", "uncertain", reason);
 const rejected = (status = 422) => new AlertEmailError(502, "Invalid recipient", "rejected", `http_${status}`);
@@ -43,6 +43,8 @@ async function waitFor(predicate) {
 }
 
 let fake;
+let feeds;
+const reading = (value, at) => feeds.add("legacy", "4009-level", value, at);
 const run = (now) => runColwickAlerts({ now });
 const subscription = (key = GAUGE_KEY) => fake.docs("alertSubscriptions").find((doc) => doc.alertKey === key);
 const deliveries = () => fake.docs("alertDeliveries");
@@ -54,7 +56,10 @@ beforeEach(() => {
   jest.clearAllMocks();
   fake = createFakeDb({ uniqueIndexes: DELIVERY_INDEX });
   connectToDatabase.mockResolvedValue({ db: fake.db });
-  getLegacyTrentWeirsSnapshot.mockResolvedValue(trentAt(1.72, T0));
+  feeds = createGaugeFeeds();
+  jest.spyOn(global, "fetch").mockImplementation(feeds.fetch);
+  delete process.env.RDP_GAUGE_ALERTS_SOURCE;
+  reading(1.72, T0);
   getLatestForecastSnapshot.mockResolvedValue({ forecast_data: [], metadata: null });
   getHppStatusSnapshot.mockResolvedValue({ data: { currentStatus: false, health: { generatedAt: T0.toISOString() } } });
   getLatestWaterQualitySnapshot.mockResolvedValue({ ScrapeTimestamp: T0.toISOString() });
@@ -97,33 +102,33 @@ describe("overlapping and concurrent invocations", () => {
 
   test("a stale run cannot overwrite a newer transition written by another run", async () => {
     seed(gaugeRule({ lastConditionState: "triggered", stateRevision: 3 }));
-    const snapshot = deferred();
-    getLegacyTrentWeirsSnapshot.mockImplementationOnce(() => snapshot.promise);
+    feeds.set("legacy", "4009-level", [[1.2, T0]]); // the stale run sees an old "cleared" reading
+    const block = feeds.block("legacy");
 
     const stale = run(minutes(1));
-    await waitFor(() => getLegacyTrentWeirsSnapshot.mock.calls.length === 1);
+    await waitFor(() => feeds.requests.legacy.length === 1);
     // Meanwhile other invocations re-armed and re-triggered the rule for a new crossing.
     Object.assign(subscription(), { lastConditionState: "triggered", stateRevision: 5, lastTransitionId: "newer" });
-    snapshot.resolve(trentAt(1.2, T0)); // the stale run saw an old "cleared" reading
+    block.release();
     const result = await stale;
 
     expect(result).toMatchObject({ rearmed: 0, suppressed: 1 });
     expect(subscription()).toMatchObject({ lastConditionState: "triggered", stateRevision: 5 });
 
-    getLegacyTrentWeirsSnapshot.mockResolvedValue(trentAt(1.75, minutes(15)));
+    reading(1.75, minutes(15));
     await run(minutes(16));
     expect(sendThresholdAlertEmail).not.toHaveBeenCalled();
   });
 
   test("a rule unsubscribed during evaluation is not notified", async () => {
     seed(gaugeRule());
-    const snapshot = deferred();
-    getLegacyTrentWeirsSnapshot.mockImplementationOnce(() => snapshot.promise);
+    feeds.set("legacy", "4009-level", [[1.8, T0]]);
+    const block = feeds.block("legacy");
 
     const pending = run(minutes(1));
-    await waitFor(() => getLegacyTrentWeirsSnapshot.mock.calls.length === 1);
+    await waitFor(() => feeds.requests.legacy.length === 1);
     Object.assign(subscription(), { status: "unsubscribed" });
-    snapshot.resolve(trentAt(1.8, T0));
+    block.release();
     const result = await pending;
 
     expect(result).toMatchObject({ sent: 0, suppressed: 1 });
@@ -159,7 +164,7 @@ describe("provider outcomes", () => {
     expect(subscription().pendingTransitionId).toBeUndefined();
     expect(runs()[0].status).toBe("degraded");
 
-    getLegacyTrentWeirsSnapshot.mockResolvedValue(trentAt(1.74, minutes(15)));
+    reading(1.74, minutes(15));
     const second = await run(minutes(16));
     expect(second.sent).toBe(1);
     expect(deliveries().map((doc) => doc.state)).toEqual(["failed", "sent"]);
@@ -175,7 +180,7 @@ describe("provider outcomes", () => {
     expect(subscription()).toMatchObject({ lastConditionState: "triggered", pendingTransitionId: deliveries()[0].transitionId });
 
     // A newer reading must not create a second, uncorrelated delivery.
-    getLegacyTrentWeirsSnapshot.mockResolvedValue(trentAt(1.8, minutes(15)));
+    reading(1.8, minutes(15));
     const second = await run(minutes(16));
 
     expect(second.sent).toBe(1);
@@ -232,7 +237,7 @@ describe("provider outcomes", () => {
     expect(released.released).toBe(1);
     expect(subscription()).toMatchObject({ lastConditionState: "armed" });
 
-    getLegacyTrentWeirsSnapshot.mockResolvedValue(trentAt(1.7, hours(25)));
+    reading(1.7, hours(25));
     const next = await run(hours(25.25));
     expect(next.sent).toBe(1);
     expect(deliveries()).toHaveLength(2);
@@ -243,7 +248,11 @@ describe("provider outcomes", () => {
     seed(gaugeRule());
     sendThresholdAlertEmail.mockRejectedValue(uncertain("http_503"));
 
-    for (let attempt = 0; attempt < 6; attempt += 1) await run(minutes(1 + attempt * 15));
+    // A fresh reading that still meets the rule arrives before every run, so each retry is allowed.
+    for (let attempt = 0; attempt < 6; attempt += 1) {
+      if (attempt > 0) reading(1.72, minutes(attempt * 15));
+      await run(minutes(1 + attempt * 15));
+    }
 
     expect(sendThresholdAlertEmail).toHaveBeenCalledTimes(5);
     expect(new Set(sentKeys()).size).toBe(1);
@@ -290,7 +299,7 @@ describe("partial database failure and recovery", () => {
     expect(overlapping.inFlight).toBe(1);
     expect(sendThresholdAlertEmail).toHaveBeenCalledTimes(1);
 
-    getLegacyTrentWeirsSnapshot.mockResolvedValue(trentAt(1.9, minutes(15)));
+    reading(1.9, minutes(15));
     const recovered = await run(minutes(16));
     expect(recovered.sent).toBe(1);
     expect(sendThresholdAlertEmail).toHaveBeenCalledTimes(2);
@@ -311,6 +320,7 @@ describe("partial database failure and recovery", () => {
     expect((await run(minutes(16))).released).toBe(1);
     expect(subscription()).toMatchObject({ lastConditionState: "armed" });
 
+    reading(1.72, minutes(30)); // the T0 reading is now older than 30 minutes
     expect((await run(minutes(31))).sent).toBe(1);
     expect(sendThresholdAlertEmail).toHaveBeenCalledTimes(1);
   });
@@ -421,7 +431,7 @@ describe("existing subscription and delivery data", () => {
   test("legacy triggered subscriptions without a revision re-arm and keep their other fields", async () => {
     const legacy = gaugeRule({ lastConditionState: "triggered", lastTriggeredAt: "2026-10-30T10:00:00.000Z" });
     seed(legacy);
-    getLegacyTrentWeirsSnapshot.mockResolvedValue(trentAt(1.4, T0));
+    feeds.set("legacy", "4009-level", [[1.4, T0]]);
 
     expect((await run(minutes(1))).rearmed).toBe(1);
 
@@ -430,7 +440,7 @@ describe("existing subscription and delivery data", () => {
 
   test("a legacy sent delivery for the same transition is not resent", async () => {
     seed(gaugeRule());
-    const transitionId = `${GAUGE_KEY}:${T0.toISOString()}:1.72`;
+    const transitionId = `${GAUGE_KEY}:${eaTime(T0)}:1.72`; // legacy identity used the EA dateTime verbatim
     fake.docs("alertDeliveries").push({ alertKey: GAUGE_KEY, transitionId, idempotencyKey: "legacy-key", state: "sent", sentAt: T0.toISOString(), createdAt: T0.toISOString() });
 
     const result = await run(minutes(1));
@@ -443,7 +453,7 @@ describe("existing subscription and delivery data", () => {
 
   test("a recent legacy claimed delivery is retried with its original idempotency key", async () => {
     seed(gaugeRule());
-    const transitionId = `${GAUGE_KEY}:${T0.toISOString()}:1.72`;
+    const transitionId = `${GAUGE_KEY}:${eaTime(T0)}:1.72`; // legacy identity used the EA dateTime verbatim
     fake.docs("alertDeliveries").push({ alertKey: GAUGE_KEY, transitionId, idempotencyKey: "legacy-key", state: "claimed", createdAt: T0.toISOString(), updatedAt: T0.toISOString() });
 
     expect((await run(minutes(30))).sent).toBe(1);
@@ -453,10 +463,11 @@ describe("existing subscription and delivery data", () => {
 
   test("an old legacy claimed delivery is held for review rather than resent", async () => {
     seed(gaugeRule());
-    const transitionId = `${GAUGE_KEY}:${T0.toISOString()}:1.72`;
-    fake.docs("alertDeliveries").push({ alertKey: GAUGE_KEY, transitionId, idempotencyKey: "legacy-key", state: "claimed", createdAt: T0.toISOString(), updatedAt: T0.toISOString() });
+    const transitionId = `${GAUGE_KEY}:${eaTime(T0)}:1.72`; // legacy identity used the EA dateTime verbatim
+    // The claim is 48 hours old; the reading is fresh (a stale reading can no longer trigger at all).
+    fake.docs("alertDeliveries").push({ alertKey: GAUGE_KEY, transitionId, idempotencyKey: "legacy-key", state: "claimed", createdAt: hours(-48).toISOString(), updatedAt: hours(-48).toISOString() });
 
-    expect((await run(hours(48))).heldForReview).toBe(1);
+    expect((await run(minutes(1))).heldForReview).toBe(1);
     expect(sendThresholdAlertEmail).not.toHaveBeenCalled();
     expect(deliveries()[0]).toMatchObject({ state: "held_for_review", heldReason: "idempotency_window_expired" });
   });
@@ -532,7 +543,7 @@ describe("existing alert types", () => {
 
   test("hysteresis is unchanged: a reading inside the margin neither re-arms nor resends", async () => {
     seed(gaugeRule({ lastConditionState: "triggered" }));
-    getLegacyTrentWeirsSnapshot.mockResolvedValue(trentAt(1.48, T0));
+    feeds.set("legacy", "4009-level", [[1.48, T0]]);
 
     const result = await run(minutes(1));
 

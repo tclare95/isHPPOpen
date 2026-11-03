@@ -1,13 +1,12 @@
 import { createFakeDb } from "../testUtils/fakeMongo";
+import { createGaugeFeeds } from "../testUtils/fakeGaugeFeeds";
 
+jest.mock("server-only", () => ({}));
 jest.mock("../libs/database");
 jest.mock("../libs/services/alertMailerService", () => ({
   sendAlertConfirmationEmail: jest.fn(),
   sendManageAlertsAccessEmail: jest.fn(),
   sendThresholdAlertEmail: jest.fn(),
-}));
-jest.mock("../libs/services/trentWeirsService", () => ({
-  getLegacyTrentWeirsSnapshot: jest.fn(),
 }));
 jest.mock("../libs/services/forecastService", () => ({
   getLatestForecastSnapshot: jest.fn(),
@@ -19,7 +18,6 @@ const {
   sendManageAlertsAccessEmail,
   sendThresholdAlertEmail,
 } = require("../libs/services/alertMailerService");
-const { getLegacyTrentWeirsSnapshot } = require("../libs/services/trentWeirsService");
 const { getLatestForecastSnapshot } = require("../libs/services/forecastService");
 const {
   createColwickAlertSubscription,
@@ -31,7 +29,12 @@ const {
 } = require("../libs/services/colwickAlertsService");
 
 describe("colwickAlertsService", () => {
-  beforeEach(() => jest.clearAllMocks());
+  let feeds;
+  beforeEach(() => {
+    jest.clearAllMocks();
+    feeds = createGaugeFeeds();
+    global.fetch = jest.fn(feeds.fetch); // jsdom has no fetch of its own
+  });
 
   test("createColwickAlertSubscription stores a pending Colwick alert and sends confirmation", async () => {
     const updateOne = jest.fn().mockResolvedValue({ acknowledged: true });
@@ -94,21 +97,7 @@ describe("colwickAlertsService", () => {
       unsubscribeToken: "unsubscribe-token",
     });
     connectToDatabase.mockResolvedValue({ db: fake.db });
-    getLegacyTrentWeirsSnapshot.mockResolvedValue({
-      fallback: false,
-      partial: false,
-      stations: [
-        {
-          stationId: 4009,
-          measures: {
-            level: {
-              latestValue: 1.72,
-              readings: [{ dateTime: "2026-03-08T12:15:00.000Z", value: 1.72 }],
-            },
-          },
-        },
-      ],
-    });
+    feeds.add("legacy", "4009-level", 1.72, "2026-03-08T12:15:00.000Z");
     getLatestForecastSnapshot.mockResolvedValue({ forecast_data: [], metadata: null });
 
     const result = await runColwickAlerts({ now: new Date("2026-03-08T12:30:00.000Z") });
@@ -134,21 +123,7 @@ describe("colwickAlertsService", () => {
       unsubscribeToken: "unsubscribe-token",
     });
     connectToDatabase.mockResolvedValue({ db: fake.db });
-    getLegacyTrentWeirsSnapshot.mockResolvedValue({
-      fallback: false,
-      partial: false,
-      stations: [
-        {
-          stationId: 4009,
-          measures: {
-            level: {
-              latestValue: 1.4,
-              readings: [{ dateTime: "2026-03-08T12:15:00.000Z", value: 1.4 }],
-            },
-          },
-        },
-      ],
-    });
+    feeds.add("legacy", "4009-level", 1.4, "2026-03-08T12:15:00.000Z");
     getLatestForecastSnapshot.mockResolvedValue({ forecast_data: [], metadata: null });
 
     const result = await runColwickAlerts({ now: new Date("2026-03-08T12:30:00.000Z") });
@@ -172,7 +147,6 @@ describe("colwickAlertsService", () => {
       unsubscribeToken: "unsubscribe-token",
     });
     connectToDatabase.mockResolvedValue({ db: fake.db });
-    getLegacyTrentWeirsSnapshot.mockResolvedValue({ fallback: true, partial: false, stations: [] });
     getLatestForecastSnapshot.mockResolvedValue({
       metadata: { forecast_time: "2026-03-08T12:00:00.000Z" },
       forecast_data: [

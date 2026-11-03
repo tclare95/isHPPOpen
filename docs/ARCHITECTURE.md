@@ -81,7 +81,9 @@ Editorial writes use the shared `libs/cache/revalidate.js` helper with `revalida
   when `RDP_TRENT_SOURCE` is `shadow` or `rdp` (default and all deployed targets:
   `legacy`). [Slice #51-C](RDP-LEVELS-51C.md) does the same for observed
   Colwick `level_data` in `/api/levels` via `RDP_LEVELS_SOURCE`; `forecast_data`
-  stays on the scraper snapshot. Gauge alerts remain legacy.
+  stays on the scraper snapshot. [Slice #51-D](RDP-GAUGE-ALERTS-51D.md) gives
+  live gauge alerts their own alert-safe EA/RDP reader via `RDP_GAUGE_ALERTS_SOURCE`
+  (default and all deployed targets: `legacy`).
 - MongoDB connectivity is centralized in `libs/database.js`.
 - It uses a global cached promise/connection pattern to avoid reconnecting on every request.
 - Failed connection attempts are cleared from the cache so later requests can retry after transient Mongo outages.
@@ -159,7 +161,7 @@ Editorial writes use the shared `libs/cache/revalidate.js` helper with `revalida
 7. **Trent gauge dashboard cache**
    - `app/api/trentweirs/route.js` is the app-owned cache boundary for Trent gauge pages.
    - `libs/services/trentWeirsService.js` fetches Environment Agency readings server-side per required measure type so mixed stations do not lose `level` history to `flow` rows.
-   - `RDP_TRENT_SOURCE` (`legacy|shadow|rdp`, default `legacy`) selects the display source; `libs/rdp/trentSource.js` is loaded only outside legacy. Gauge alerts call `getLegacyTrentWeirsSnapshot()` so the display switch never changes alert inputs. See [RDP-TRENT-51B.md](RDP-TRENT-51B.md).
+   - `RDP_TRENT_SOURCE` (`legacy|shadow|rdp`, default `legacy`) selects the display source; `libs/rdp/trentSource.js` is loaded only outside legacy. Gauge alerts never read the display snapshot, its fallback or its cache, so the display switch never changes alert inputs. See [RDP-TRENT-51B.md](RDP-TRENT-51B.md).
    - `app/trentweirs/page.js` is now the overview-first Trent dashboard, combining summary cards and a comparison workspace on one page.
    - `components/functional/trentDashboard.js` centralizes the shared Trent dashboard controls so gauge selection, time window, and comparison mode are coordinated instead of repeated per card.
    - `app/trentcharts/page.js` now redirects to `app/trentweirs/page.js`, preserving the old route while keeping one primary Trent dashboard experience.
@@ -171,6 +173,7 @@ Editorial writes use the shared `libs/cache/revalidate.js` helper with `revalida
    - Alert persistence and threshold-evaluation logic live in `libs/services/colwickAlertsService.js`; its legacy export name remains for compatibility with the original Colwick implementation.
    - The S3 forecast fetch/parse logic is shared via `libs/services/forecastService.js`, so both the public forecast API and internal alert evaluation use the same source of truth.
    - Scheduled evaluation runs via `app/api/internal/alerts/run/route.js` every 15 minutes. Subscription transitions use compare-and-set on `stateRevision`; a newly met condition is gated on the subscription (`pendingTransitionId`), recorded as an immutable delivery intent, then sent with a stable Resend idempotency key. Uncertain sends (timeout/5xx/409) are retried with the same key and payload only inside the provider idempotency window, then held for operator review. Each run writes an `alertRuns` record (`running` → `success|degraded|failed`, with interrupted runs later marked `incomplete`). The unique delivery index is verified, not created, at runtime (`npm run db:indexes:alerts`). See [ALERT_EVALUATION_RELIABILITY.md](ALERT_EVALUATION_RELIABILITY.md).
+   - Live gauge rules (#51-D) read one bounded, uncached series per alerted measurement from the run's pinned `RDP_GAUGE_ALERTS_SOURCE` (`legacy` EA or `rdp`; `shadow` = legacy plus a pure, logged RDP comparison). Observed-time progress is stored on the subscription inside the same `stateRevision` compare-and-set; catch-up is chronological and bounded, notifications require the newest fresh (≤30 min) observation to still meet the rule, and ambiguous continuity holds the rule. Pure logic lives in `libs/alerts/`. See [RDP-GAUGE-ALERTS-51D.md](RDP-GAUGE-ALERTS-51D.md).
    - Alert emails are transactional and use a Resend-compatible HTTP integration. Required env vars are `SITE_URL`, `RESEND_API_KEY`, `ALERTS_FROM_EMAIL`, and `CRON_SECRET`.
    - Management links are email-scoped, 30-minute tokens stored separately from alert subscriptions so users can view and remove their alerts without a full account system. Confirmation links expire after 24 hours.
    - Operational APIs return additive `health` metadata (`source`, `generatedAt`, `fetchedAt`, `ageSeconds`, and `state`). Most feeds are stale after 30 minutes; predictor forecasts use a one-hour window. HPP status is fresh when its MongoDB query succeeds because its source only writes on 2.2m boundary transitions. The authenticated `/api/admin/operational-health` endpoint is the safe operator diagnostic view.

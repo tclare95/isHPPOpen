@@ -12,6 +12,7 @@
 // period edges are attributed exactly as they would be inside a longer read.
 import { COLWICK_HISTORY, supportTier } from "./config.js";
 import { classifyQuality, QUALITY_CLASS } from "./quality.js";
+import { buildStateTimeline } from "./timeline.js";
 import { londonDays } from "./ukCalendar.js";
 
 // Compact reading flags sent to the browser.
@@ -73,6 +74,7 @@ export function buildPeriodDigest(rows, { from, to, asOf, coverage, threshold = 
   const end = Math.max(from, Math.min(to, asOf));
   const counts = emptyCounts();
   const eligible = [];
+  const excludedTimes = [];
 
   for (const row of rows) {
     const t = Date.parse(row.observedAt);
@@ -83,9 +85,11 @@ export function buildPeriodDigest(rows, { from, to, asOf, coverage, threshold = 
       counts[cls]++;
       if (edited) counts.edited++;
       if (Number(row.revision) > 1) counts.revised++;
+      if (cls === QUALITY_CLASS.EXCLUDED) excludedTimes.push(t);
     }
     if (cls !== QUALITY_CLASS.EXCLUDED && t < end + maxGapMs) {
-      eligible.push({ t, v: row.value, provisional: cls === QUALITY_CLASS.PROVISIONAL, edited, inPeriod });
+      eligible.push({ t, v: row.value, above: atOrAbove(row.value, threshold), provisional: cls === QUALITY_CLASS.PROVISIONAL,
+        edited, revised: Number(row.revision) > 1, inPeriod });
     }
   }
 
@@ -123,12 +127,12 @@ export function buildPeriodDigest(rows, { from, to, asOf, coverage, threshold = 
 
   for (let i = 0; i < eligible.length; i++) {
     const point = eligible[i];
-    const above = atOrAbove(point.v, threshold);
+    const { above } = point;
     const next = eligible[i + 1];
     if (next && next.t - point.t <= maxGapMs) {
       const mid = point.t + (next.t - point.t) / 2;
       allocate(point.t, mid, above);
-      allocate(mid, next.t, atOrAbove(next.v, threshold));
+      allocate(mid, next.t, next.above);
     }
     if (!point.inPeriod) continue;
 
@@ -182,6 +186,8 @@ export function buildPeriodDigest(rows, { from, to, asOf, coverage, threshold = 
       min: day.min, max: day.max, mean: day.n ? round3(day.sum / day.n) : null,
     })),
     histograms,
+    // Threshold-state segments for high-water event identification (#105).
+    timeline: buildStateTimeline(eligible, { from, end, maxGapMs, excludedTimes }),
     readings,
   };
 }

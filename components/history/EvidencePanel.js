@@ -6,7 +6,7 @@ import { COLWICK_HISTORY } from "../../libs/history/config";
 import { COVERAGE_TEXT, formatDateTime, formatDuration } from "../../libs/history/present";
 
 // Provenance, quality and interpretation notes for the selected period.
-export default function EvidencePanel({ summary, coverage, readAt }) {
+export default function EvidencePanel({ summary, coverage, readAt, readingsLabel = "Readings in period" }) {
   const r = summary?.readings ?? {};
   const threshold = `${COLWICK_HISTORY.thresholdMetres.toFixed(1)} m`;
   return (
@@ -14,7 +14,7 @@ export default function EvidencePanel({ summary, coverage, readAt }) {
       <h2 id="history-evidence" className="h5">About this data</h2>
       <dl className="history-facts">
         <div><dt>Measurement</dt><dd>EA Colwick (station {COLWICK_HISTORY.providerStationId}) river level, {COLWICK_HISTORY.unit} (metres above stage datum), 15-minute readings, via the River Data Platform</dd></div>
-        <div><dt>Readings in period</dt><dd>{(r.returned ?? 0).toLocaleString("en-GB")} returned · {(r.qualified ?? 0).toLocaleString("en-GB")} qualified{r.edited ? ` (${r.edited.toLocaleString("en-GB")} provider-edited)` : ""} · {(r.provisional ?? 0).toLocaleString("en-GB")} provisional · {(r.excluded ?? 0).toLocaleString("en-GB")} excluded{r.revised ? ` · ${r.revised.toLocaleString("en-GB")} revised since first stored` : ""}</dd></div>
+        <div><dt>{readingsLabel}</dt><dd>{(r.returned ?? 0).toLocaleString("en-GB")} returned · {(r.qualified ?? 0).toLocaleString("en-GB")} qualified{r.edited ? ` (${r.edited.toLocaleString("en-GB")} provider-edited)` : ""} · {(r.provisional ?? 0).toLocaleString("en-GB")} provisional · {(r.excluded ?? 0).toLocaleString("en-GB")} excluded{r.revised ? ` · ${r.revised.toLocaleString("en-GB")} revised since first stored` : ""}</dd></div>
         <div><dt>Longest gap</dt><dd>{summary ? formatDuration(summary.largestGapMs) : "—"}</dd></div>
         <div><dt>Coverage review</dt><dd>{COVERAGE_TEXT[coverage] ?? COVERAGE_TEXT.unknown}</dd></div>
         {readAt ? <div><dt>Read from source</dt><dd>{formatDateTime(readAt)}</dd></div> : null}
@@ -51,4 +51,5 @@ EvidencePanel.propTypes = {
   summary: PropTypes.object,
   coverage: PropTypes.string,
   readAt: PropTypes.string,
+  readingsLabel: PropTypes.string,
 };

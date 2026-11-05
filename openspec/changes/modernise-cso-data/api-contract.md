@@ -1,3 +1,5 @@
+> **Historical copy — moved to RDP.** This file's maintained version is [RDP `modernise-cso-data`](https://github.com/tclare95/river-data-platform/blob/main/openspec/changes/modernise-cso-data/api-contract.md). The old content is retained for the linked isHPPOpen issues, PRs and acceptance history; **do not use it as a second editable specification**. Migration: [RDP #50](https://github.com/tclare95/river-data-platform/issues/50). No deployment or activation is implied.
+
 # CSO first-party read API v1 — proposed contract fixtures (#72)
 
 This describes **six CSO GET routes added to the existing RDP HTTP API Gateway / read Lambda**, alongside the implemented four observation routes. All routes use `AWS_IAM` and exact stage-scoped server-to-server Vercel OIDC + SigV4. No browser invocation, public API change, storage write permission or arbitrary S3 key input. The implementation should keep its existing `{data,meta}` / `{error:{code,message},requestId}` conventions.

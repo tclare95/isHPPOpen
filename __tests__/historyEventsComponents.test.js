@@ -60,7 +60,6 @@ describe("events explorer", () => {
     mockFetch({ data: INDEX });
     render(<EventsExplorer />);
     expect(screen.getByRole("heading", { name: "High-water events", level: 1 })).toBeInTheDocument();
-    expect(screen.getByText(/River levels, not HPP closures/)).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "2 events in all years" })).toBeInTheDocument();
 
     const list = screen.getAllByRole("list").find((element) => element.classList.contains("events-list"));
@@ -75,7 +74,6 @@ describe("events explorer", () => {
 
     const spotlight = screen.getByRole("heading", { name: "Highest observed peaks" }).closest("section");
     expect(within(spotlight).getAllByRole("link")[0]).toHaveTextContent("5.34 m");
-    expect(within(spotlight).getByText(/not a flood record/)).toBeInTheDocument();
   });
 
   test("a selected month includes events that began earlier, without cutting them at the boundary", () => {
@@ -108,7 +106,7 @@ describe("events explorer", () => {
   test("unreadable months are disclosed", () => {
     mockFetch({ data: { ...INDEX, monthsFailed: [{ year: 2024, month: 2, error: "THROTTLED" }] } });
     render(<EventsExplorer />);
-    expect(screen.getByText(/1 month could not be read yet \(Feb 2024\)/)).toBeInTheDocument();
+    expect(screen.getByText(/1 month could not be read \(Feb 2024\)/)).toBeInTheDocument();
   });
 });
 
@@ -125,39 +123,35 @@ describe("event detail", () => {
     expect(screen.getByRole("heading", { name: "19 Dec 2023 – 10 Jan 2024", level: 1 })).toBeInTheDocument();
     expect(screen.getByText("Fully observed")).toBeInTheDocument();
     expect(screen.getByText(/Highest of 2 events identified/)).toBeInTheDocument();
-    expect(screen.getByText("Rise observed")).toBeInTheDocument();
-    expect(screen.getByText(/Below 2.2 m at 19 Dec 2023, 17:30; at or above by 19 Dec 2023, 17:45/)).toBeInTheDocument();
-    expect(screen.getByText("Return below observed")).toBeInTheDocument();
-    expect(screen.getByText(/River levels, not HPP closures/)).toBeInTheDocument();
-    expect(screen.getByText("Readings in event")).toBeInTheDocument();
+    expect(screen.getByText("Rose above 2.2 m")).toBeInTheDocument();
+    expect(screen.getByText("Between 19 Dec 2023, 17:30 and 19 Dec 2023, 17:45.")).toBeInTheDocument();
+    expect(screen.getByText("Fell below 2.2 m")).toBeInTheDocument();
+    expect(screen.getByText(/2,043 readings · 413 provider-edited/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Next event/ })).toHaveAttribute("href", `/history/events/${PARTIAL.id}`);
-    expect(screen.getByRole("link", { name: "Open this month in the history explorer" })).toHaveAttribute("href", "/history?year=2023&month=12");
+    expect(screen.getByRole("link", { name: "View month" })).toHaveAttribute("href", "/history?year=2023&month=12");
   });
 
   test("an incomplete event never claims an exact start, duration or peak", () => {
     mockFetch({ data: detail(PARTIAL) });
     render(<EventDetail id={PARTIAL.id} />);
     expect(screen.getAllByText("Start not observed").length).toBeGreaterThan(0);
-    expect(screen.getByText(/may have begun earlier/)).toBeInTheDocument();
-    expect(screen.getByText(/the archive could not be read/)).toBeInTheDocument();
+    expect(screen.getByText(/Already at or above at 1 Mar 2024, 06:00; previous reading 19 Feb 2024/)).toBeInTheDocument();
     expect(screen.getByText("Highest observed")).toBeInTheDocument();
-    expect(screen.getByText(/true peak may have been higher/)).toBeInTheDocument();
-    expect(screen.getByText(/for at least 2 h of observed time/)).toBeInTheDocument();
-    expect(screen.getByText(/true duration may be longer/)).toBeInTheDocument();
-    expect(screen.getByText(/1 h from .*no readings were returned\. Not counted as at or above/)).toBeInTheDocument();
+    expect(screen.getByText(/May not be the true peak/)).toBeInTheDocument();
+    expect(screen.getByText(/at or above 2.2 m for at least 2 h/)).toBeInTheDocument();
+    expect(screen.getByText(/1 h from .*\(no readings were returned\)/)).toBeInTheDocument();
   });
 
   test("a link moved by provider revisions says so", () => {
     mockFetch({ data: detail(JANUARY, { match: "moved" }) });
     render(<EventDetail id="20240104T2015Z" />);
-    expect(screen.getByText(/This link pointed to 4 Jan 2024, 20:15\. After corrections to the archive/)).toBeInTheDocument();
+    expect(screen.getByText(/This event now starts at 19 Dec 2023, 17:45 \(link: 4 Jan 2024, 20:15\)/)).toBeInTheDocument();
   });
 
   test("an event that no longer exists is explained, not an error page", () => {
     mockFetch({ error: { payload: { error: { message: "No high-water event…", details: { reason: "not_found" } } } } });
     render(<EventDetail id="20240301T0000Z" />);
     expect(screen.getByRole("heading", { name: "Event not found" })).toBeInTheDocument();
-    expect(screen.getByText(/provider correction can move or remove one/)).toBeInTheDocument();
   });
 });
 
@@ -171,11 +165,11 @@ describe("events in the history explorer", () => {
     expect(screen.getByRole("link", { name: /See all events this month/ })).toHaveAttribute("href", "/history/events?year=2024&month=1");
   });
 
-  test("says when no reading reached the threshold, and renders nothing while unavailable", () => {
+  test("says when there are none, and renders nothing while unavailable", () => {
     mockFetch({ data: INDEX });
     const { from, to } = monthBounds(2024, 7);
     const { unmount } = render(<PeriodEvents from={from} to={to} label="July 2024" year={2024} month={7} />);
-    expect(screen.getByText(/No reading at or above 2.2 m in the observations available for July 2024/)).toBeInTheDocument();
+    expect(screen.getByText("None in July 2024.")).toBeInTheDocument();
     unmount();
     mockFetch({ error: new Error("x") });
     const { container } = render(<PeriodEvents from={from} to={to} label="July 2024" year={2024} month={7} />);

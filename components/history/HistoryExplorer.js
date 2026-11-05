@@ -197,7 +197,7 @@ export default function HistoryExplorer() {
                     <li><span className="history-legend__line history-legend__line--threshold" aria-hidden="true" />{threshold} HPP level rule</li>
                     <li><span className="history-legend__swatch history-legend__swatch--gap" aria-hidden="true" />No supported readings</li>
                   </ul>
-                  <p className="history-muted small">{month ? "Drag across the chart to zoom (desktop) or pick a day below." : "Pick a month below to see its individual readings."} Gaps are never joined or filled in.</p>
+                  <p className="history-muted small">{month ? "Drag across the chart to zoom (desktop) or pick a day below." : "Pick a month below to see its individual readings."}</p>
 
                   <PeriodEvents from={bounds.from} to={bounds.to} label={label} year={year} month={month} />
 

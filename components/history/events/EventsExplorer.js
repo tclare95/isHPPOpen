@@ -10,12 +10,11 @@ import useFetch from "../../../libs/useFetch";
 import { COLWICK_HISTORY } from "../../../libs/history/config";
 import { eventDateRange, eventDurationText } from "../../../libs/history/eventPresent";
 import { eventsInPeriod } from "../../../libs/history/events";
-import { COVERAGE_TEXT, formatDate, formatDuration, formatLevel, monthName, shortMonthName } from "../../../libs/history/present";
+import { formatDate, formatDuration, formatLevel, monthName, shortMonthName } from "../../../libs/history/present";
 import { currentLondonMonth, monthBounds, yearBounds } from "../../../libs/history/ukCalendar";
 import { ErrorNotice, HISTORY_SWR, LoadingBlock, useSlow } from "../StatusBlocks";
 import EventList from "./EventList";
 import EventTimeline from "./EventTimeline";
-import NotClosuresNote from "./NotClosuresNote";
 
 const threshold = `${COLWICK_HISTORY.thresholdMetres.toFixed(1)} m`;
 const SORTS = {
@@ -53,8 +52,7 @@ function Spotlight({ events }) {
   if (!top.length) return null;
   return (
     <section className="history-panel" aria-labelledby="events-spotlight">
-      <h2 id="events-spotlight" className="h5 mb-1">Highest observed peaks</h2>
-      <p className="history-muted small">Among events identified in the history available today. Corrections to the archive can change this order; it is not a flood record.</p>
+      <h2 id="events-spotlight" className="h5 mb-3">Highest observed peaks</h2>
       <div className="events-spotlight">
         {top.map((event, index) => (
           <Link key={event.id} href={`/history/events/${event.id}`} className="events-spotlight__card">
@@ -111,10 +109,8 @@ export default function EventsExplorer() {
         <header className="mb-4">
           <Link href="/history" className="history-back">← River level history</Link>
           <h1 className="display-6 fw-bold mt-3 mb-2">High-water events</h1>
-          <p className="lead history-intro mb-0">Past periods when the observed river level at Colwick was at or above {threshold}, HPP&apos;s level rule: when the river rose, how high it got and how long it stayed up.</p>
+          <p className="lead history-intro mb-0">Periods when the Colwick river level was at or above {threshold}.</p>
         </header>
-
-        <NotClosuresNote />
 
         {index.error ? <ErrorNotice error={index.error} what="high-water events" /> : null}
         {!index.error && !data ? <LoadingBlock label="Finding high-water events in Colwick history…" slow={slow} /> : null}
@@ -122,13 +118,12 @@ export default function EventsExplorer() {
         {data ? (
           <>
             <section className="history-panel" aria-labelledby="events-timeline">
-              <h2 id="events-timeline" className="h5 mb-1">Every event since {COLWICK_HISTORY.firstYear}</h2>
-              <p className="history-muted small mb-2">Each stem rises from {threshold} to the event&apos;s highest observed reading; the bar along the base spans its first to last reading at or above {threshold}. Hollow, dashed stems are events whose start, end or middle was not fully observed.</p>
+              <h2 id="events-timeline" className="h5 mb-3">Every event since {COLWICK_HISTORY.firstYear}</h2>
               <EventTimeline events={all} from={timelineFrom} to={timelineTo}
                 selected={scope ? [scope.from, scope.to] : null}
                 onSelect={(id) => router.push(`/history/events/${id}`)} />
               {data.monthsFailed.length ? (
-                <p className="history-notice history-notice--warning mt-2 mb-0">{data.monthsFailed.length} month{data.monthsFailed.length === 1 ? "" : "s"} could not be read yet ({data.monthsFailed.slice(0, 6).map((item) => `${shortMonthName(item.month)} ${item.year}`).join(", ")}{data.monthsFailed.length > 6 ? ", …" : ""}). Events next to them are marked as not fully observed rather than joined across; try again shortly.</p>
+                <p className="history-notice history-notice--warning mt-2 mb-0">{data.monthsFailed.length} month{data.monthsFailed.length === 1 ? "" : "s"} could not be read ({data.monthsFailed.slice(0, 6).map((item) => `${shortMonthName(item.month)} ${item.year}`).join(", ")}{data.monthsFailed.length > 6 ? ", …" : ""}).</p>
               ) : null}
             </section>
 
@@ -168,32 +163,16 @@ export default function EventsExplorer() {
                   <Tile value={String(scoped.length)} label="Events" detail={`${scoped.filter((event) => event.complete).length} fully observed`} />
                   <Tile value={formatLevel(highest.peak.value)} label="Highest observed peak" detail={formatDate(highest.peak.at)} />
                   <Tile value={formatDuration(longest.aboveMs)} label="Longest at or above" detail={eventDateRange(longest)} />
-                  <Tile value={formatDuration(scoped.reduce((sum, event) => sum + event.aboveMs, 0))} label={`Total time at or above ${threshold}`}
-                    detail={scope ? "Includes time outside this period for events crossing its edges" : "Supported observed time"} />
+                  <Tile value={formatDuration(scoped.reduce((sum, event) => sum + event.aboveMs, 0))} label={`Total time at or above ${threshold}`} />
                 </div>
               ) : (
-                <div className="history-empty">
-                  <p className="mb-0">No high-water events were identified in the observations available for {label}. If no readings have been imported for this period, the <Link href={filters.year ? `/history?year=${filters.year}${filters.month ? `&month=${filters.month}` : ""}` : "/history"} className="history-back">history explorer</Link> says so; that is not evidence the river was low.</p>
-                </div>
+                <div className="history-empty">No high-water events in {label}.</div>
               )}
               {listed.length < scoped.length ? <p className="history-muted small">{scoped.length - listed.length} brief event{scoped.length - listed.length === 1 ? "" : "s"} hidden.</p> : null}
               <EventList events={listed} maxPeak={maxPeak} maxAboveMs={maxAboveMs} periodLabel={label} />
               {filters.year ? (
-                <p className="mt-3 mb-0"><Link href={`/history?year=${filters.year}${filters.month ? `&month=${filters.month}` : ""}`} className="history-back">See all readings for {label} in the history explorer →</Link></p>
+                <p className="mt-3 mb-0"><Link href={`/history?year=${filters.year}${filters.month ? `&month=${filters.month}` : ""}`} className="history-back">View readings for {label} →</Link></p>
               ) : null}
-            </section>
-
-            <section className="history-panel" aria-labelledby="events-method">
-              <h2 id="events-method" className="h5">How events are identified</h2>
-              <ul className="events-method mb-2">
-                <li>An event is a period of Colwick readings at or above {threshold}. Readings at or above {threshold} less than {formatDuration(data.rule.mergeWindowMs)} apart belong to the same event; shorter dips below {threshold} and any missing readings in between are listed on the event page.</li>
-                <li>A rise or fall counts as <strong>observed</strong> only when readings on either side of {threshold} are at most 30 minutes apart. Otherwise the event page says the start or end was not observed and shows the evidence that is available. No times or levels are interpolated.</li>
-                <li>Time at or above {threshold} uses the same rule as the history explorer: supported observed time only, never time without readings.</li>
-                <li>Events are recalculated from the River Data Platform&apos;s current history every time, so provider corrections can change their boundaries, peaks and order.</li>
-              </ul>
-              <p className="history-muted small mb-0">
-                Readings available {data.firstReadingAt ? formatDate(data.firstReadingAt) : "—"} to {data.lastReadingAt ? formatDate(data.lastReadingAt) : "—"}; months with no imported readings are gaps, not low water. {COVERAGE_TEXT[data.coverage] ?? COVERAGE_TEXT.unknown}
-              </p>
             </section>
           </>
         ) : null}

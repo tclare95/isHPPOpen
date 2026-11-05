@@ -8,7 +8,7 @@ deep-linked hydrograph of the underlying 15-minute readings.
 
 **Events are river-level evidence, not HPP closures.** Nothing here reads or writes `openIndicator`, replays HPP
 transitions (#89), sends or schedules notifications, changes alerts, or touches RDP ingestion, AWS, operational
-source modes or production data. Every page says so prominently.
+source modes or production data. The UI labels events by level ("at or above 2.2 m") and keeps explanatory copy minimal; the rules live in this document.
 
 ## Where it lives
 

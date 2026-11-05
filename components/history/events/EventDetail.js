@@ -9,13 +9,11 @@ import { COLWICK_HISTORY } from "../../../libs/history/config";
 import {
   describeEnd, describePeak, describeStart, eventDateRange, eventDurationText, gapReasonText, LIMITATION_TEXT,
 } from "../../../libs/history/eventPresent";
-import { LIMITATION, parseEventId } from "../../../libs/history/events";
+import { parseEventId } from "../../../libs/history/events";
 import { formatDate, formatDateTime, formatDuration, formatLevel } from "../../../libs/history/present";
 import { londonParts } from "../../../libs/history/ukCalendar";
-import EvidencePanel from "../EvidencePanel";
 import LevelChart from "../LevelChart";
 import { ErrorNotice, HISTORY_SWR, LoadingBlock, useSlow } from "../StatusBlocks";
-import NotClosuresNote from "./NotClosuresNote";
 
 const threshold = `${COLWICK_HISTORY.thresholdMetres.toFixed(1)} m`;
 const ordinal = (n) => `${n}${["th", "st", "nd", "rd"][(n % 100 > 10 && n % 100 < 14) ? 0 : n % 10] ?? "th"}`;
@@ -73,7 +71,7 @@ export default function EventDetail({ id }) {
           {notFound ? (
             <div className="history-empty">
               <h2 className="h5">Event not found</h2>
-              <p className="mb-0">No high-water event matches this link in today&apos;s Colwick history. Events are recalculated from the archive, so a provider correction can move or remove one. <Link href="/history/events" className="history-back">Browse all events</Link>.</p>
+              <p className="mb-0"><Link href="/history/events" className="history-back">Browse all events</Link></p>
             </div>
           ) : error ? <ErrorNotice error={error} what="high-water event" /> : <LoadingBlock label="Loading event readings…" slow={slow} />}
         </Container>
@@ -90,10 +88,6 @@ export default function EventDetail({ id }) {
   const end = describeEnd(event.end);
   const startParts = londonParts(firstAbove);
   const r = event.readings;
-  const evidenceSummary = {
-    readings: { returned: r.total, qualified: r.total - r.provisional, provisional: r.provisional, excluded: r.excluded, edited: r.edited, revised: r.revised },
-    largestGapMs: Math.max(0, ...event.gaps.map((gap) => gap.ms)),
-  };
 
   return (
     <main className="history-page text-white">
@@ -103,7 +97,7 @@ export default function EventDetail({ id }) {
           <p className="history-eyebrow mt-3 mb-1">Observed high-water event · Colwick</p>
           <h1 className="display-6 fw-bold mb-2">{eventDateRange(event)}</h1>
           <p className="lead history-intro mb-0">
-            The river level at Colwick reached {formatLevel(event.peak.value)} on {formatDate(event.peak.at)} and was at or above {threshold} for {eventDurationText(event)} of observed time.
+            Peaked at {formatLevel(event.peak.value)} on {formatDate(event.peak.at)}; at or above {threshold} for {eventDurationText(event)}.
           </p>
           {event.limitations.length ? (
             <p className="events-row__badges mt-2 mb-0">{event.limitations.map((item) => <span key={item} className="events-badge events-badge--warning">{LIMITATION_TEXT[item]}</span>)}</p>
@@ -111,9 +105,8 @@ export default function EventDetail({ id }) {
         </header>
 
         {data.match === "moved" ? (
-          <p className="history-notice history-notice--warning">This link pointed to {formatDateTime(parseEventId(id))}. After corrections to the archive, that time is now part of an event whose first reading at or above {threshold} is {formatDateTime(event.firstAboveAt)}.</p>
+          <p className="history-notice history-notice--warning">This event now starts at {formatDateTime(event.firstAboveAt)} (link: {formatDateTime(parseEventId(id))}).</p>
         ) : null}
-        <NotClosuresNote />
 
         <section className="history-panel" aria-labelledby="event-chart">
           <h2 id="event-chart" className="visually-hidden">Readings around this event</h2>
@@ -121,9 +114,9 @@ export default function EventDetail({ id }) {
             <Tile value={formatLevel(event.peak.value)} label={event.peak.complete ? "Peak" : "Highest observed"}
               detail={<>{formatDateTime(event.peak.at)}<br />{rank.byPeak === 1 ? "Highest" : `${ordinal(rank.byPeak)} highest`} of {rank.of} events identified</>} />
             <Tile value={formatDuration(event.aboveMs)} label={`At or above ${threshold}`}
-              detail={event.limitations.some((item) => item !== LIMITATION.PROVISIONAL) ? "Observed time only; the true duration may be longer" : `${rank.byDuration === 1 ? "Longest" : `${ordinal(rank.byDuration)} longest`} of ${rank.of}`} />
-            <Tile value={formatDuration(event.riseMs)} label="Rise to peak" detail={`From first reading at or above ${threshold}`} />
-            <Tile value={event.end.ongoing ? "—" : formatDuration(event.fallMs)} label="Peak to recovery" detail={event.end.ongoing ? "No end observed yet" : `To last reading at or above ${threshold}`} />
+              detail={`${rank.byDuration === 1 ? "Longest" : `${ordinal(rank.byDuration)} longest`} of ${rank.of}`} />
+            <Tile value={formatDuration(event.riseMs)} label="Rise to peak" />
+            <Tile value={event.end.ongoing ? "—" : formatDuration(event.fallMs)} label="Peak to recovery" detail={event.end.ongoing ? "No end yet" : undefined} />
           </div>
           <LevelChart mode="month" from={from} to={to} end={to} readings={data.readings} zoom={zoom} onZoomChange={setZoom}
             highlights={[{ from: firstAbove, to: lastAbove, className: "events-chart__span" }]}
@@ -136,49 +129,49 @@ export default function EventDetail({ id }) {
             <li><span className="history-legend__line history-legend__line--threshold" aria-hidden="true" />{threshold} HPP level rule</li>
             <li><span className="history-legend__swatch history-legend__swatch--gap" aria-hidden="true" />No supported readings</li>
           </ul>
-          <p className="history-muted small mb-0">Showing {formatDate(from)} to {formatDate(to)}. Drag across the chart to zoom (desktop). Gaps are never joined or filled in.{view.trimmed ? " This event is very long, so only the first part of it is charted." : ""}</p>
-          {view.monthsFailed.length ? <p className="history-notice history-notice--warning mt-2 mb-0">Some months around this event could not be read, so their readings are missing from the chart (shown as gaps).</p> : null}
+          {view.trimmed ? <p className="history-muted small mb-0">Only the first part of this event is charted.</p> : null}
+          {view.monthsFailed.length ? <p className="history-notice history-notice--warning mt-2 mb-0">Some months around this event could not be read.</p> : null}
         </section>
 
         <div className="events-columns">
           <section className="history-panel" aria-labelledby="event-story">
-            <h2 id="event-story" className="h5">What the readings show</h2>
+            <h2 id="event-story" className="h5">Timeline</h2>
             <ol className="events-story">
-              <Step tone={start.tone} title={start.title} when={formatDateTime(event.firstAboveAt)}>{start.text}</Step>
+              <Step tone={start.tone} title={start.title}>{start.text}</Step>
               <Step tone={event.peak.complete ? "observed" : "gap"} title={event.peak.complete ? "Peak" : "Highest observed reading"} when={formatDateTime(event.peak.at)}>
-                {formatLevel(event.peak.value)} ({COLWICK_HISTORY.unit}){event.peak.provisional ? ", a provisional reading" : ""}. {describePeak(event)}
+                {formatLevel(event.peak.value)}{event.peak.provisional ? " (provisional)" : ""}{describePeak(event) ? `. ${describePeak(event)}` : ""}
               </Step>
-              <Step tone={end.tone} title={end.title} when={formatDateTime(event.lastAboveAt)}>{end.text}</Step>
+              <Step tone={end.tone} title={end.title}>{end.text}</Step>
             </ol>
           </section>
 
           <section className="history-panel" aria-labelledby="event-within">
             <h2 id="event-within" className="h5">During the event</h2>
             {!event.dips.length && !event.gaps.length ? (
-              <p className="mb-0">Every reading from the first to the last at or above {threshold} was at or above it, with no missing readings.</p>
+              <p className="mb-0">Stayed at or above {threshold} throughout.</p>
             ) : (
               <ul className="events-within">
                 {event.dips.map((dip) => (
-                  <li key={dip.from}><span className="events-badge">Below {threshold}</span> {formatDuration(dip.ms)} from about {formatDateTime(dip.from)}, then back at or above within {formatDuration(data.rule.mergeWindowMs)}, so treated as the same event.</li>
+                  <li key={dip.from}><span className="events-badge">Below {threshold}</span> {formatDuration(dip.ms)} from {formatDateTime(dip.from)}</li>
                 ))}
                 {event.gaps.map((gap) => (
-                  <li key={gap.from}><span className="events-badge events-badge--warning">Unknown</span> {formatDuration(gap.ms)} from {formatDateTime(gap.from)}: {gapReasonText(gap.reason)}. Not counted as at or above.</li>
+                  <li key={gap.from}><span className="events-badge events-badge--warning">No readings</span> {formatDuration(gap.ms)} from {formatDateTime(gap.from)} ({gapReasonText(gap.reason)})</li>
                 ))}
               </ul>
             )}
-            <p className="history-muted small mt-3 mb-0">
-              {r.total.toLocaleString("en-GB")} readings from first to last at or above {threshold}, {r.atOrAbove.toLocaleString("en-GB")} of them at or above. Total span {formatDuration(event.spanMs)}.
-            </p>
           </section>
         </div>
 
         <nav className="events-nav" aria-label="Other events">
           <Neighbour item={data.previous} direction="previous" />
-          <Link href={`/history?year=${startParts.year}&month=${startParts.month}`} className="events-nav__center history-back">Open this month in the history explorer</Link>
+          <Link href={`/history?year=${startParts.year}&month=${startParts.month}`} className="events-nav__center history-back">View month</Link>
           <Neighbour item={data.next} direction="next" />
         </nav>
 
-        <EvidencePanel summary={evidenceSummary} coverage={data.coverage} readAt={data.oldestReadAt} readingsLabel="Readings in event" />
+        <p className="history-muted small mb-0">
+          EA Colwick (station {COLWICK_HISTORY.providerStationId}), {COLWICK_HISTORY.unit} · {r.total.toLocaleString("en-GB")} readings
+          {r.edited ? ` · ${r.edited.toLocaleString("en-GB")} provider-edited` : ""}{r.provisional ? ` · ${r.provisional.toLocaleString("en-GB")} provisional` : ""}{r.excluded ? ` · ${r.excluded.toLocaleString("en-GB")} excluded` : ""}
+        </p>
       </Container>
     </main>
   );

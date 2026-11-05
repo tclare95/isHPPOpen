@@ -1,3 +1,5 @@
+> **Historical copy — canonical specification relocated.** The maintained requirements, design and acceptance tasks now live in [RDP's api-managed-measurements OpenSpec](https://github.com/tclare95/river-data-platform/tree/main/openspec/changes/api-managed-measurements) (tracked by [RDP issue #48](https://github.com/tclare95/river-data-platform/issues/48)). This original is retained for traceability to old suite issues/PRs. **Do not edit or implement from this copy.** See [RDP ownership](https://github.com/tclare95/river-data-platform/blob/main/docs/ECOSYSTEM.md). Migration is documentation-only; no release or feature activation is implied.
+
 # Implementation tasks: API-managed measurements (#101)
 
 **Planning status:** specification/docs only. These tasks are **not implemented** and this change does not authorise AWS or runtime modifications. Keep each slice independently testable; the coding agent may combine/split PRs where simpler. Behaviour is defined by [spec](specs/api-managed-measurements/spec.md); [design](design.md) is non-normative guidance.

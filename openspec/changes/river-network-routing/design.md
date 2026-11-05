@@ -1,3 +1,5 @@
+> **Historical copy — canonical specification relocated.** The maintained requirements, design and acceptance tasks now live in [RDP's river-network-routing OpenSpec](https://github.com/tclare95/river-data-platform/tree/main/openspec/changes/river-network-routing) (tracked by [RDP issue #47](https://github.com/tclare95/river-data-platform/issues/47)). This original is retained for traceability to old suite issues/PRs. **Do not edit or implement from this copy.** See [RDP ownership](https://github.com/tclare95/river-data-platform/blob/main/docs/ECOSYSTEM.md). Migration is documentation-only; no release or feature activation is implied.
+
 # Design and evidence notes: River Tracer (#109)
 
 > **Non-normative engineering guidance**, not a mandate for algorithms, route names, data stores, API Gateway paths or additional services. [Product requirements](specs/river-network-routing/spec.md) define observable behaviour. Coding agents should prefer the smallest safe approach that satisfies real HPP/Trent evidence.

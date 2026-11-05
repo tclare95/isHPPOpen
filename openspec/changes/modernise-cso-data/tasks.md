@@ -1,3 +1,5 @@
+> **Historical copy — moved to RDP.** This file's maintained version is [RDP `modernise-cso-data`](https://github.com/tclare95/river-data-platform/blob/main/openspec/changes/modernise-cso-data/tasks.md). The old content is retained for the linked isHPPOpen issues, PRs and acceptance history; **do not use it as a second editable specification**. Migration: [RDP #50](https://github.com/tclare95/river-data-platform/issues/50). No deployment or activation is implied.
+
 # Tasks and acceptance: CSO evidence, events, archive and API (#72)
 
 **All tasks unchecked** until separate RDP implementation PRs and recorded evidence. This is a documentation-only plan, not permission to query the provider, deploy AWS, enable a source schedule or touch the legacy scraper.

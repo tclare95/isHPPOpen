@@ -1,3 +1,5 @@
+> **Historical copy — moved to RDP.** This file's maintained version is [RDP `ea-rainfall-observations`](https://github.com/tclare95/river-data-platform/blob/main/openspec/changes/ea-rainfall-observations/design.md). The old content is retained for the linked isHPPOpen issues, PRs and acceptance history; **do not use it as a second editable specification**. Migration: [RDP #50](https://github.com/tclare95/river-data-platform/issues/50). No deployment or activation is implied.
+
 # Evidence and candidate design: EA rainfall (#54)
 
 This is **evidence and implementation guidance, not a product mandate**. The [capability spec](specs/observed-rainfall/spec.md) owns required behaviour. No external EA requests were successfully executed during this review, so station-level metadata, coverage and measured lag remain **unverified**.

@@ -1,6 +1,8 @@
 # River data platform — agreed direction (8 October 2026)
 
-> **Historical architecture and migration decision record.** This describes the early October 2026 foundation and subsequently dated rollout decisions; it is **not** the standalone RDP product roadmap or a statement that all past release gates remain pending. For current product direction and repository ownership see [RDP Product Vision](https://github.com/tclare95/river-data-platform/blob/main/docs/PRODUCT_VISION.md), [RDP Ecosystem](https://github.com/tclare95/river-data-platform/blob/main/docs/ECOSYSTEM.md), and [isHPPOpen's RDP integration guide](RDP-INTEGRATION.md). Current platform release state is recorded in RDP's own runbooks.
+> **Historical architecture and migration decision record.** All platform-owned OpenSpecs, including gauges, CSO, rainfall, forecasts and deployment, are now canonically maintained in the [RDP OpenSpec catalogue](https://github.com/tclare95/river-data-platform/blob/main/openspec/README.md); links below into this repository's old platform changes refer to retained historical copies. The [storage ADR](https://github.com/tclare95/river-data-platform/blob/main/docs/decisions/0001-observation-storage.md) is also owned by RDP. This notice does not change the originally accepted consumer/retirement decisions.
+
+> **Original context:** This describes the early October 2026 foundation and subsequently dated rollout decisions; it is **not** the standalone RDP product roadmap or a statement that all past release gates remain pending. For current product direction and repository ownership see [RDP Product Vision](https://github.com/tclare95/river-data-platform/blob/main/docs/PRODUCT_VISION.md), [RDP Ecosystem](https://github.com/tclare95/river-data-platform/blob/main/docs/ECOSYSTEM.md), and [isHPPOpen's RDP integration guide](RDP-INTEGRATION.md). Current platform release state is recorded in RDP's own runbooks.
 
 ## Intent
 

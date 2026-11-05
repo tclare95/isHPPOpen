@@ -11,9 +11,10 @@ context: |
   The independently owned tclare95/river-data-platform (.NET 10 AWS Lambda)
   has its own approved stage/production release gates and product direction.
   isHPPOpen is a consumer of RDP, not its standalone product owner.
-  New RDP product changes belong in RDP openspec. River Tracer and API-managed
-  measurements have migrated to RDP and are historical copies here; other
-  accepted RDP changes in this repository remain authoritative until migrated.
+  All RDP-owned platform changes, old and new, are canonically maintained in
+  tclare95/river-data-platform/openspec. Copies in this repository are
+  historical only. This repository owns isHPPOpen website, HPP, consumer
+  adapters/source switches, curated alerts, historic views and compatibility.
   See docs/RDP-INTEGRATION.md and RDP docs/ECOSYSTEM.md for the ownership map.
   Keep existing bootstrap-dotnet-observation-service OpenSpec ID for continuity.
   Do not force all domains into scalar observation data schemas or retention.

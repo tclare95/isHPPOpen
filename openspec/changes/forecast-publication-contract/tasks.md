@@ -1,3 +1,5 @@
+> **Historical copy — moved to RDP.** This file's maintained version is [RDP `forecast-publication-contract`](https://github.com/tclare95/river-data-platform/blob/main/openspec/changes/forecast-publication-contract/tasks.md). The old content is retained for the linked isHPPOpen issues, PRs and acceptance history; **do not use it as a second editable specification**. Migration: [RDP #50](https://github.com/tclare95/river-data-platform/issues/50). No deployment or activation is implied.
+
 # Forecast publication contract — acceptance work
 
 All work is **unstarted** and does not authorise a publisher implementation or a runtime switch.

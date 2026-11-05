@@ -1,3 +1,5 @@
+> **Historical copy — moved to RDP.** This file's maintained version is [RDP `observation-read-api`](https://github.com/tclare95/river-data-platform/blob/main/openspec/changes/observation-read-api/api-contract.md). The old content is retained for the linked isHPPOpen issues, PRs and acceptance history; **do not use it as a second editable specification**. Migration: [RDP #50](https://github.com/tclare95/river-data-platform/issues/50). No deployment or activation is implied.
+
 # Observation read API v1 — illustrative, testable wire contract
 
 This is the **internal** HTTP contract between Vercel server-side code and the .NET Read Lambda. Version prefix: `/v1`. Client auth is SigV4 over an assumed Vercel workload role; no browser calls.

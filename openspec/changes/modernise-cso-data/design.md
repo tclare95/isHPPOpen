@@ -1,3 +1,5 @@
+> **Historical copy — moved to RDP.** This file's maintained version is [RDP `modernise-cso-data`](https://github.com/tclare95/river-data-platform/blob/main/openspec/changes/modernise-cso-data/design.md). The old content is retained for the linked isHPPOpen issues, PRs and acceptance history; **do not use it as a second editable specification**. Migration: [RDP #50](https://github.com/tclare95/river-data-platform/issues/50). No deployment or activation is implied.
+
 # Design: CSO collection, revisions and authenticated history (#72)
 
 > **Non-normative engineering guidance.** Product outcomes live in [state/events](specs/cso-state-and-events/spec.md) and [history/reads](specs/cso-history-and-read-api/spec.md); [tasks](tasks.md) defines acceptance evidence. The coding agent may choose simpler implementation details provided the observable invariants and release boundaries hold. Reviewed against current RDP `main` and legacy scraper on 1 November 2026.

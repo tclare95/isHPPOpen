@@ -8,10 +8,12 @@ context: |
   MongoDB, scraper S3 JSON and predictor S3 CSV contracts have independent consumers.
   Existing production spans tclare95/isHPPOpen (web), ishppopenScraper (Node / AWS SAM)
   and trent-predictor (Python / AWS Lambda); see docs/SYSTEM.md.
-  Unified backend tclare95/river-data-platform (.NET 10 AWS Lambda) exists;
-  its inert foundation PR #1 was merged, but no AWS integration/prod stack was
-  deployed by that implementation. isHPPOpen is the first consumer; future
-  modules include observations, CSO events, forecast publication and assessments.
+  The independently owned tclare95/river-data-platform (.NET 10 AWS Lambda)
+  has its own approved stage/production release gates and product direction.
+  isHPPOpen is a consumer of RDP, not its standalone product owner.
+  New RDP product changes belong in RDP openspec; existing accepted RDP changes
+  in this repository remain authoritative until individually reviewed/migrated.
+  See docs/RDP-INTEGRATION.md and RDP docs/ECOSYSTEM.md for the ownership map.
   Keep existing bootstrap-dotnet-observation-service OpenSpec ID for continuity.
   Do not force all domains into scalar observation data schemas or retention.
   Do not modify or repurpose legacy riverscraper Terraform/state/account or CI.
@@ -32,7 +34,8 @@ context: |
 
 rules:
   proposal:
-    - Name the affected repositories and explicitly bound non-goals.
+    - Name the owning product/repository and affected consumers; use one canonical OpenSpec per capability, preserving older suite specs until expressly relocated.
+    - Explicitly bound non-goals.
     - Describe compatibility, release and rollback consequences.
   specs:
     - Use SHALL or MUST requirements with testable WHEN/THEN scenarios.

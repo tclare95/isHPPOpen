@@ -1,5 +1,15 @@
 # Proposal: Reconstruct and protect historical gauge observations (#50)
 
+## Delivery and open gates (5 November 2026)
+
+- **Slice A implemented** in RDP: six-measure official history discovery, source-equivalence evidence, deterministic normalisation and read-only dry-run ([RDP #30](https://github.com/tclare95/river-data-platform/pull/30), [#35](https://github.com/tclare95/river-data-platform/pull/35)). Private legacy Mongo/S3 inventory remains optional/unperformed.
+- **Slice B implemented** as a conditional, scoped, audit/restart-safe importer ([RDP #36](https://github.com/tclare95/river-data-platform/pull/36)). Approved production **Colwick 2016-01-01 → 2026-01-01** import reported **350,688** new readings, **0 conflicts/holds**, and write-free audit reruns. The operator record is in **open documentation PR [RDP #39](https://github.com/tclare95/river-data-platform/pull/39)**, not yet merged into main.
+- **Next:** Colwick Jan–May 2026 and Shardlow-level/Kegworth history are prepared for *separate approved import plans*, not yet imported by their scope proposal [RDP #42](https://github.com/tclare95/river-data-platform/pull/42) (open). Shardlow flow/Church Wilne historical equivalence remains unproven; Clifton Bridge requires reviewed qualifying windows.
+- **Coverage:** RDP read-side `coverage.json` is still `[]`. Reports supply candidate evidence, but publishing formal coverage is a **separate reviewed #69 change**. Import does not assert it automatically.
+- **Product consumers:** [historical conditions #104](https://github.com/tclare95/isHPPOpen/issues/104) and [historical events #105](https://github.com/tclare95/isHPPOpen/issues/105) have independent product-first specifications; their UI does not change importer, alerts, authoritative HPP transitions or scraper.
+
+This is a **status record**, not authorisation for an additional cloud run or read/producer source switch.
+
 ## Why
 
 Legacy Colwick history is scattered across overlapping Mongo `riverschemas.level_readings[]` documents and timestamped `levels/year=.../month=.../` S3 snapshots. Neither is a per-observation canonical archive. RDP now has production-oriented archive-first storage, an authenticated historical reader (#69) and an operator outage-recovery path (#81-B2), but it does not reconstruct that legacy history. Historical coverage must be represented honestly before consumers rely on it.
@@ -24,7 +34,7 @@ Capability: `historical-observation-backfill` — inspect accessible history, no
 - **Slice A:** bounded source inventory, measurement reconciliation, normalisation and deterministic **dry-run only**; no RDP canonical writes.
 - **Slice B:** reviewed, on-demand, archive-verified insert-if-absent import with restart/reconciliation, optional hot insertion for eligible readings and an auditable outcome report.
 
-The OpenSpec is owned in `tclare95/isHPPOpen`; future implementation belongs in `tclare95/river-data-platform`. Reuse RDP's existing conditional archive primitives where safe, but **keep historical importing separate from #81-B2 outage recovery** and its collector cursor/acknowledgement workflow. See `design.md` for technical boundaries and `tasks.md` for implementation tasks and exact acceptance tests.
+The OpenSpec is owned in `tclare95/isHPPOpen`; implementation and the audited production import are in `tclare95/river-data-platform`. Reuse RDP's existing conditional archive primitives where safe, but **keep historical importing separate from #81-B2 outage recovery** and its collector cursor/acknowledgement workflow. See `design.md` for technical boundaries and `tasks.md` for implementation tasks and exact acceptance tests.
 
 Coordinate canonical identities with #52, archive/read contracts with #65/#69, production approval with #75/#81, and consumer verification with #51. Full multi-year import is not a prerequisite for #51 once the required recent display window is independently verified.
 
@@ -32,5 +42,5 @@ Coordinate canonical identities with #52, archive/read contracts with #65/#69, p
 
 No new storage tier, general source framework, scrape/deploy changes to the legacy Node system, correction of existing RDP canonical readings, CSO/forecast/HPP migration, automatic coverage publication, staging history replica, reader cutover or legacy deletion.
 
-**This change is documentation only.** Code merges and future deployments must never trigger migration. Source inventory requiring private production reads needs its own approved read-only access; executing an import needs separately approved target, measurement, time range, evidence/plan, role and write scope. No production data access, import, deployment, AWS configuration change or notification is authorised by this proposal.
+**This specification and this documentation change do not authorise further operations.** Code merges and future deployments must never trigger migration. Source inventory requiring private production reads needs its own approved read-only access; executing an import needs separately approved target, measurement, time range, evidence/plan, role and write scope. No production data access, import, deployment, AWS configuration change or notification is authorised by this proposal.
 

@@ -71,12 +71,12 @@ The first enables a Sewage Map-style visualisation in RDP's own standalone map; 
 
 | Change | Canonical location | Consumer action |
 | --- | --- | --- |
-| Generic RDP data, CSO, spatial, forecast or platform API behaviour | [RDP product/OpenSpec home](https://github.com/tclare95/river-data-platform/tree/main/openspec) **for new changes and migrated River Tracer / API-managed measurements**; other accepted suite specs remain here until expressly moved. | Link the platform issue/spec, validate adapter/compatibility, adjust isHPPOpen only when needed. |
+| Generic RDP data, CSO, spatial, forecast or platform API behaviour | [RDP product/OpenSpec home](https://github.com/tclare95/river-data-platform/tree/main/openspec) **for all canonical platform changes**, including observation history, CSO, rainfall, forecast publication and River Tracer; old suite copies are historical only. | Link the platform issue/spec, validate adapter/compatibility, adjust isHPPOpen only when needed. |
 | HPP-specific risk, open/closed decisions, alerts, curated UI or read-mode migration | [isHPPOpen OpenSpec](../openspec/README.md), website docs and issue/PR. | Coordinate with the RDP contract without transferring site ownership. |
 | Interface changes consumed by both | The owning **producer's tested contract** plus consumer-specific tests and rollout notes. | Prefer additive compatible change → shadow/parity → independently approved switch → later retirement. |
 | Deployment / release | Each repository's runbooks and independent release gates. | No implicit AWS, Vercel, collection selection, source flip, scheduled job or credential change from a docs/spec merge. |
 
-Historic suite-wide specifications are retained for traceability. Do not create two competing normative copies: when a RDP OpenSpec is deliberately migrated, link the new canonical location from the old one and update associated issue/PR references. For planning and repository guidance see [RDP documentation index](https://github.com/tclare95/river-data-platform/blob/main/docs/DOCUMENTATION.md), [this repository's OpenSpec README](../openspec/README.md) and [integration contract index](CONTRACTS.md).
+Historic suite-wide specifications are retained as noncanonical references to original acceptance history. **All RDP platform capabilities use RDP's maintained OpenSpec copies**; this repository continues to own site-specific consumer integrations, risk/alert presentation and source switches. For planning and repository guidance see [RDP documentation index](https://github.com/tclare95/river-data-platform/blob/main/docs/DOCUMENTATION.md), [this repository's OpenSpec README](../openspec/README.md) and [integration contract index](CONTRACTS.md).
 
 ## Where to look next
 

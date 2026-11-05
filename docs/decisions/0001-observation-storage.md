@@ -1,3 +1,5 @@
+> **Historical architecture decision copy.** The canonical observation-storage ADR-001 is now maintained in [RDP](https://github.com/tclare95/river-data-platform/blob/main/docs/decisions/0001-observation-storage.md). This original retains the October 2026 suite audit, original acceptance context and [isHPPOpen issue #48](https://github.com/tclare95/isHPPOpen/issues/48). Do not edit this historical copy as a second canonical platform decision. No data or deployment change is authorised by relocation.
+
 # ADR-001: Observation storage and retention
 
 - **Date:** 8 October 2026

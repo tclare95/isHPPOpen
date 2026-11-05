@@ -1,3 +1,5 @@
+> **Historical copy — moved to RDP.** This file's maintained version is [RDP `expand-multi-gauge-support`](https://github.com/tclare95/river-data-platform/blob/main/openspec/changes/expand-multi-gauge-support/specs/multi-gauge-catalogue/spec.md). The old content is retained for the linked isHPPOpen issues, PRs and acceptance history; **do not use it as a second editable specification**. Migration: [RDP #50](https://github.com/tclare95/river-data-platform/issues/50). No deployment or activation is implied.
+
 # Spec Delta: Multi-gauge measurement catalogue
 
 ## ADDED Requirements

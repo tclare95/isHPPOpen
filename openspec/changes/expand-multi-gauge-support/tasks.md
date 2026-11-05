@@ -1,3 +1,5 @@
+> **Historical copy — moved to RDP.** This file's maintained version is [RDP `expand-multi-gauge-support`](https://github.com/tclare95/river-data-platform/blob/main/openspec/changes/expand-multi-gauge-support/tasks.md). The old content is retained for the linked isHPPOpen issues, PRs and acceptance history; **do not use it as a second editable specification**. Migration: [RDP #50](https://github.com/tclare95/river-data-platform/issues/50). No deployment or activation is implied.
+
 # Tasks: Six-series gauge parity and reusable catalogue (#52)
 
 **Code implemented:** six-series catalogue, validation and onboarding [RDP PR #18](https://github.com/tclare95/river-data-platform/pull/18); curated web aliases/client [isHPPOpen PR #80](https://github.com/tclare95/isHPPOpen/pull/80). Checked tasks refer to reviewed code/fixtures, **not live six-measure production collection**. Production currently selects three; P5 requires the [#81](https://github.com/tclare95/isHPPOpen/issues/81) seven-day review and separate approval. Live web shadow/cutover is [#51](https://github.com/tclare95/isHPPOpen/issues/51).

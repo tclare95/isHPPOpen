@@ -1,3 +1,5 @@
+> **Historical copy — moved to RDP.** This file's maintained version is [RDP `lightweight-integration-deployment`](https://github.com/tclare95/river-data-platform/blob/main/openspec/changes/lightweight-integration-deployment/tasks.md). The old content is retained for the linked isHPPOpen issues, PRs and acceptance history; **do not use it as a second editable specification**. Migration: [RDP #50](https://github.com/tclare95/river-data-platform/issues/50). No deployment or activation is implied.
+
 # Tasks: Lightweight integration deployment (#75)
 
 The tasks are future actions. **No AWS prepare/apply, account choice, identity provisioning, cloud deletion or production mutation is approved by this documentation PR.**

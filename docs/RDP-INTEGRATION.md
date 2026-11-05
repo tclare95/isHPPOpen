@@ -12,7 +12,7 @@ For the complementary platform view see [RDP ecosystem and documentation ownersh
 | --- | --- | --- |
 | River observations, provider identities, collection health and verified history | [RDP](https://github.com/tclare95/river-data-platform) | Read supported published series, adapt to existing site-specific API contracts, handle freshness/fallback under reviewed policies. |
 | CSO provider catalogue, status evidence, spill events | RDP (#71/#72) | Select relevant evidence for HPP and present a **calibrated site-specific indication**, not a provider-wide canonical risk classification. |
-| River network, point matching, upstream/downstream routing and GeoJSON impact layers | Planned RDP River Tracer (#109) | Later compare and replace the legacy Sewage Map-derived HPP relationships, with explicit review. |
+| River network, point matching, upstream/downstream routing and GeoJSON impact layers | Planned [RDP River Tracer #47](https://github.com/tclare95/river-data-platform/issues/47) | Later compare and replace the legacy Sewage Map-derived HPP relationships, with explicit review. |
 | Generic forecast publication | Planned RDP (#90) | Consume approved forecasts for site charts/alerts; preserve existing government/ML contracts until changed. |
 | HPP opening status and transitions | Separately operated HPP service (planned, #89) | Display site status and preserve event/alert compatibility. No HPP transitions should be created from stale/unverified level observations. |
 | Site-specific alerts, web UX, banners, historical views, water-quality calibration | isHPPOpen | Own user-visible rules and lifecycle until independently migrated. |
@@ -59,7 +59,7 @@ The existing [#51 consumer OpenSpec](../openspec/changes/unify-gauge-consumers/p
 
 Today the legacy scraper requests Sewage Map's **information-point GeoJSON** for downstream impact, picks a nearby HPP point, and extracts `properties.CSOs` as the HPP CSO IDs. That is an external relationship lookup, separate from Severn Trent's authoritative status source.
 
-The [RDP River Tracer OpenSpec](../openspec/changes/river-network-routing/proposal.md) (currently held in the original shared OpenSpec location; planned RDP ownership migration) includes both:
+The [canonical RDP River Tracer OpenSpec](https://github.com/tclare95/river-data-platform/blob/main/openspec/changes/river-network-routing/proposal.md) (original [isHPPOpen proposal](../openspec/changes/river-network-routing/proposal.md) retained as a historical copy) includes both:
 1. **Geometric output:** RDP-derived per-outfall downstream river LineString/MultiLineString and combined **map-ready GeoJSON FeatureCollections** of river sections potentially downstream of fresh reported active and explicit recent-completed CSO events.
 2. **Relationship/info output:** upstream CSO IDs for a mapped river location, with attributed matching/coverage evidence and defensible counts.
 
@@ -71,7 +71,7 @@ The first enables a Sewage Map-style visualisation in RDP's own standalone map; 
 
 | Change | Canonical location | Consumer action |
 | --- | --- | --- |
-| Generic RDP data, CSO, spatial, forecast or platform API behaviour | [RDP product/OpenSpec home](https://github.com/tclare95/river-data-platform/tree/main/openspec) **for new changes**; older accepted RDP specs remain in isHPPOpen OpenSpec until expressly moved. | Link the platform issue/spec, validate adapter/compatibility, adjust isHPPOpen only when needed. |
+| Generic RDP data, CSO, spatial, forecast or platform API behaviour | [RDP product/OpenSpec home](https://github.com/tclare95/river-data-platform/tree/main/openspec) **for new changes and migrated River Tracer / API-managed measurements**; other accepted suite specs remain here until expressly moved. | Link the platform issue/spec, validate adapter/compatibility, adjust isHPPOpen only when needed. |
 | HPP-specific risk, open/closed decisions, alerts, curated UI or read-mode migration | [isHPPOpen OpenSpec](../openspec/README.md), website docs and issue/PR. | Coordinate with the RDP contract without transferring site ownership. |
 | Interface changes consumed by both | The owning **producer's tested contract** plus consumer-specific tests and rollout notes. | Prefer additive compatible change → shadow/parity → independently approved switch → later retirement. |
 | Deployment / release | Each repository's runbooks and independent release gates. | No implicit AWS, Vercel, collection selection, source flip, scheduled job or credential change from a docs/spec merge. |

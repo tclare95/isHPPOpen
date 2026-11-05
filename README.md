@@ -2,7 +2,7 @@
 
 A Next.js App Router application powering ishppopen.co.uk.
 
-The site provides a quick way to check if the Holme Pierrepont whitewater course is open. Water level data, events and status updates are stored in MongoDB and served through App Router Route Handlers under `app/api`. React Bootstrap components power the UI and SWR hooks fetch data in near real time. An admin section lets authorised users manage events and messages.
+The site provides a quick way to check if the Holme Pierrepont whitewater course is open. Legacy data, events and status updates use MongoDB and public S3 contracts, while selected observation/history capabilities are progressively sourced from the independently operated [River Data Platform](https://github.com/tclare95/river-data-platform). App Router Route Handlers under `app/api` preserve the curated site-facing contracts. React Bootstrap and SWR power the UI; authorised users can manage events and messages. See [how isHPPOpen consumes RDP](docs/RDP-INTEGRATION.md).
 
 ## Local development
 
@@ -54,7 +54,9 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) (API/application layer + API ro
 - Architecture overview and key functionality: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 - Engineering retrospective notes: [docs/LESSONS_LEARNED.md](docs/LESSONS_LEARNED.md)
 - CI, release and rollback setup: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
-- Three-repository system and rollout checklist: [docs/SYSTEM.md](docs/SYSTEM.md)
+- Repository/deployment relationships (including RDP) and historic rollout evidence: [docs/SYSTEM.md](docs/SYSTEM.md)
+- RDP consumer integration, source modes and responsibilities: [docs/RDP-INTEGRATION.md](docs/RDP-INTEGRATION.md)
+- RDP product vision and documentation index: [product vision](https://github.com/tclare95/river-data-platform/blob/main/docs/PRODUCT_VISION.md) · [docs index](https://github.com/tclare95/river-data-platform/blob/main/docs/DOCUMENTATION.md)
 - Shared integration contracts: [docs/CONTRACTS.md](docs/CONTRACTS.md)
 - OpenSpec change proposals and configuration: [openspec/config.yaml](openspec/config.yaml) and [openspec/changes/](openspec/changes/)
 - Suite roadmap and GitHub Issues ideas backlog: [#57](https://github.com/tclare95/isHPPOpen/issues/57)

@@ -1,23 +1,23 @@
-# isHPPOpen suite
+# isHPPOpen suite and RDP integration
 
-Three repositories have independent runtime and release lifecycles:
+This is the original isHPPOpen deployment and producer/consumer coordination guide. **RDP is now an independently owned data platform**, not merely another scraper behind the website. See [RDP integration](RDP-INTEGRATION.md) and the [RDP ecosystem guide](https://github.com/tclare95/river-data-platform/blob/main/docs/ECOSYSTEM.md). The following four repositories have independent runtime and release lifecycles:
 
 | Component | Repository | Deployment | Checks |
 | --- | --- | --- | --- |
+| RDP platform | [tclare95/river-data-platform](https://github.com/tclare95/river-data-platform) | Manual, guarded staging/production AWS release processes; inspect [current production runbook](https://github.com/tclare95/river-data-platform/blob/main/docs/PRODUCTION.md) | .NET tests, SAM/lint, stage/IAM release guards |
 | Web | [tclare95/isHPPOpen](https://github.com/tclare95/isHPPOpen) | Vercel Git integration, protected main | Lint, Jest, Next.js build |
 | Scraper | [tclare95/ishppopenScraper](https://github.com/tclare95/ishppopenScraper) | Manual SAM prepare, separate manual apply of verified change set | Node syntax, SAM lint/container build, plan provenance |
 | Predictor | [tclare95/trent-predictor](https://github.com/tclare95/trent-predictor) (private) | Manual Docker/ECR prepare, separate manual apply of verified Terraform plan | Python/shell syntax, Terraform validation, Lambda image import, plan provenance |
 
-The suite documentation lives in the web repository, avoiding a fourth source
-repository just for the local coordination folder. Each backend owns its own
-`DEPLOYMENT.md`, infrastructure and workflow files. AWS workflows use explicitly reviewed prepare/apply steps; consult each backend's dated deployment status before assuming a deployment is enabled.
+The isHPPOpen repository owns its **site-specific integration and historical suite coordination** documentation. RDP owns its own [product vision](https://github.com/tclare95/river-data-platform/blob/main/docs/PRODUCT_VISION.md), [platform architecture and operations](https://github.com/tclare95/river-data-platform/blob/main/docs/DOCUMENTATION.md), and the home for **new platform-specific OpenSpecs**. Existing suite OpenSpecs in this repo remain authoritative until individually relocated; see [OpenSpec transition guidance](../openspec/README.md). Each backend owns its deployment/runbook evidence. AWS workflows use separately approved prepare/apply steps; consult the dated release record rather than assuming a deployment is enabled.
 
-New product changes are planned in the canonical [OpenSpec change directory](../openspec/changes/) using the [spec-driven configuration](../openspec/config.yaml). Current capabilities are synced to `openspec/specs/` on archival. See [shared contracts](CONTRACTS.md) for producer/consumer rules.
+Use [shared contracts](CONTRACTS.md) for producer/consumer compatibility and [RDP-INTEGRATION](RDP-INTEGRATION.md) for the current/future data boundary.
 
 ## Runtime contracts
 
 | Producer | Storage contract | Consumer |
 | --- | --- | --- |
+| RDP independently collected observations (release selection is stage-specific) | Authenticated AWS_IAM/SigV4 published measurement catalogue, latest/history/health | Trusted isHPPOpen server adapters; display, history, later alerts only under per-consumer source modes |
 | Scraper, eu-west-1, every 15 minutes | MongoDB status/river/CSO collections; public `levels/latest.json` and dated S3 history | Web services; `S3_LEVELS_URL` |
 | Predictor, eu-west-2, hourly | `ishppopen-data/forecasts/colwick_forecast.csv`; accuracy, stability, history and model-health CSVs | Web forecast APIs and Colwick alert evaluator; `S3_FORECAST_URL` |
 | Reviewed model training | `models/xgb_colwick_horizon.pkl` in S3 | Predictor Lambda |
@@ -42,9 +42,9 @@ Deployment workflows do not rotate credentials, create IAM/OIDC bootstrap roles,
 migrate state or configure GitHub/Vercel automatically. These are operational
 changes distinct from local code preparation.
 
-## Verified activation (8 October 2026)
+## Verified activation of the original three repositories (8 October 2026)
 
-All three repositories have protected main branches and passing CI. The backend
+The following is **historical 8 October evidence**, not a statement of RDP's later production cutovers. The original three repositories had protected main branches and passing CI. The backend
 OIDC roles and main-only environments are configured; both manual prepare/apply
 pipelines are enabled. Predictor state is migrated to its private encrypted,
 versioned S3 backend with locking. Training stays local and model publishing

@@ -1,6 +1,6 @@
 # OpenSpec planning for the isHPPOpen suite
 
-This repository is the canonical OpenSpec planning home for isHPPOpen, its existing scraper/predictor and the implemented **unified .NET river data platform**. Runtime source, tests, CI and release procedures still belong to their respective repositories.
+This repository remains the **canonical historical/accepted OpenSpec home** for the original isHPPOpen suite and RDP capabilities already specified here. RDP is now an independent product with [its own product vision](https://github.com/tclare95/river-data-platform/blob/main/docs/PRODUCT_VISION.md) and [OpenSpec entrypoint for new platform changes](https://github.com/tclare95/river-data-platform/tree/main/openspec). **Do not duplicate accepted requirements:** each existing RDP change remains authoritative at its current path until a reviewed relocation leaves a pointer and updates issue links. isHPPOpen-specific behaviour, source migrations, site alerts and compatibility changes continue to be planned here. See [the consumer/ownership guide](../docs/RDP-INTEGRATION.md).
 
 - `config.yaml` — default `spec-driven` workflow and suite constraints.
 - `changes/<change-name>/` — proposed changes, each with a proposal, capability deltas, design and tracked tasks.
@@ -19,7 +19,7 @@ This repository is the canonical OpenSpec planning home for isHPPOpen, its exist
 
 **Review question:** Could a different, simpler implementation still satisfy the product requirement and pass the acceptance tests? If yes, the spec should normally allow it.
 
-## Active proposals
+## Existing and historical proposals
 
 **Implemented baseline:** [audit-web-engineering-standards](changes/archive/2026-10-08-audit-web-engineering-standards/proposal.md) is archived after implementation and Astra review. Its checked tasks record verification; [operational-health](specs/operational-health/spec.md) is now a current capability. Deferred findings remain in [the engineering backlog](../docs/ENGINEERING_BACKLOG.md).
 - [improve-alert-scheduling](changes/improve-alert-scheduling/proposal.md) — evaluate a faster Vercel alert cadence **after** reliable idempotency, freshness and monitoring checks.
@@ -29,6 +29,7 @@ This repository is the canonical OpenSpec planning home for isHPPOpen, its exist
 - [archive-observation-history](changes/archive-observation-history/proposal.md) — **implemented** permanent private S3 archive, verified hot-store eligibility and direct historical reads ([#65](https://github.com/tclare95/isHPPOpen/issues/65)).
 - [observation-read-api](changes/observation-read-api/proposal.md) — **implemented in [RDP PR #10](https://github.com/tclare95/river-data-platform/pull/10), deployed to staging and signed-smoke verified in [PR #16](https://github.com/tclare95/river-data-platform/pull/16)**, an independent .NET read Lambda, AWS_IAM, unified Dynamo/S3 history, gap/integrity semantics ([#69](https://github.com/tclare95/isHPPOpen/issues/69)).
 - [cso-asset-catalogue-and-selection](changes/cso-asset-catalogue-and-selection/proposal.md) — separately bounded provider catalogue, reviewed explicit named ID sets, independent polling selection and no Sewage Map runtime dependency ([#71](https://github.com/tclare95/isHPPOpen/issues/71)).
+- [river-network-routing](changes/river-network-routing/proposal.md) — **planned, documentation-only** River Tracer: versioned upstream/downstream topology, per-outfall and live/recent **Sewage Map-style downstream-impact GeoJSON**, location-to-upstream CSO information, and HPP legacy-selection parity ([#109](https://github.com/tclare95/isHPPOpen/issues/109)). Does not activate outfalls or alter HPP water quality.
 - [modernise-cso-data](changes/modernise-cso-data/proposal.md) — CSO source evidence, current state, stable/revisioned spill events, two-year hot/S3 tiered history and authenticated CSO read API ([#72](https://github.com/tclare95/isHPPOpen/issues/72)).
 - [production-observation-deployment](changes/production-observation-deployment/proposal.md) — **production rollout and remaining release gates** ([#81](https://github.com/tclare95/isHPPOpen/issues/81)): same-account stage-isolated IAM/storage and **live three-measure 15-minute EA collection**, monitoring and protected outage recovery. Production read API *code* merged, P6 production API activation was recorded complete on 1 November and Vercel signed federation was recorded verified on 3 November in #81 comments; six-measure selection is in RDP main but P5 operational activation remains separately gated, as does D7 TTL; no broad web cutover is implied.
 - [lightweight-integration-deployment](changes/lightweight-integration-deployment/proposal.md) — **low-cost stage / AWS deployment**, no continuously populated replica. Local/CI fixtures first; [#75](https://github.com/tclare95/isHPPOpen/issues/75) Stage A and bounded Stage B smoke completed with recorded evidence; stage is normally disabled.
@@ -42,7 +43,7 @@ This repository is the canonical OpenSpec planning home for isHPPOpen, its exist
 - [api-managed-measurements](changes/api-managed-measurements/proposal.md) — **planned, documentation-only** operator-controlled per-environment collection selection for registered measures first, then independent private publication and verified provider lookup/registration ([#101](https://github.com/tclare95/isHPPOpen/issues/101)). No production selection migration or AWS action authorised.
 - [investigate-predictor-rdp-observations](changes/investigate-predictor-rdp-observations/proposal.md) — bounded investigation of #53: canonical RDP observation coverage, incident freshness versus direct EA, safe fallback and leakage-free evaluation; Python, model and live sources unchanged.
 - [unify-gauge-consumers](changes/unify-gauge-consumers/proposal.md) — server-only Vercel OIDC/SigV4 web client, independent source modes and safe migration **Trent → observed levels → gauge alerts** ([#51](https://github.com/tclare95/isHPPOpen/issues/51)).
-- Future independent backlog: [RDP playground #77](https://github.com/tclare95/isHPPOpen/issues/77) and [public API/developer access #78](https://github.com/tclare95/isHPPOpen/issues/78). Neither is designed or exposed by these changes.
+- Earlier platform ideas: [RDP playground #77](https://github.com/tclare95/isHPPOpen/issues/77) and [public API/developer access #78](https://github.com/tclare95/isHPPOpen/issues/78), originally opened in this suite. Future standalone RDP implementation planning belongs in RDP; these are not implemented or exposed by this documentation.
 - Implementation dependency: #52 completes **six-series parity** before full #51 Trent cutover; #50 can run in parallel with #52 and supplies historical evidence without requiring complete multi-year recovery before web cutover. #51 switches **Trent → observed levels → gauge alerts** once #69 and verified recent history are available. CSO #71/#72 remain a separate lane. Old Node scraper and predictor remain untouched. A successor must not retire the Node schedule until HPP transitions, site water-quality/CSO work, and the public river snapshot have separately verified writers and consumer cutovers; see [retirement map](../docs/LEGACY_SCRAPER_RETIREMENT.md).
 
 **Agent handoff:** [Current agent roadmap](../docs/OBSERVATION_BACKEND_HANDOFF.md) lists verified deployed state, P5/P6 release gates, the gauge consumer milestone, parallel CSO/HPP implementation, and Node-writer retirement dependencies.
@@ -51,7 +52,7 @@ Implementation task checkboxes are updated only against merged code and recorded
 
 ## GitHub issue backlog
 
-The suite's ideas backlog and work index is **[Issue #57](https://github.com/tclare95/isHPPOpen/issues/57)**. New ideas belong in **individual GitHub issues**, not a separate markdown backlog. Keep #57 updated with issue links, and link selected work to OpenSpec changes. Ideas for historical migration, web consumer migration, gauge expansion, predictor inputs, other providers, cache invalidation and React lint follow-up are captured there.
+The historical suite's ideas/work index is **[isHPPOpen #57](https://github.com/tclare95/isHPPOpen/issues/57)**. Keep it as a cross-reference for previously tracked migration work and isHPPOpen-specific ideas; **new standalone RDP capabilities should be tracked by RDP issues and RDP OpenSpecs**. Do not maintain two active issue backlogs for the same product capability or duplicate old requirements merely to change the repo that owns new work.
 
 
 ## Using the OpenSpec CLI
@@ -60,4 +61,4 @@ Install the current OpenSpec CLI locally following [OpenSpec's installation inst
 
 When implementing, work on the application change in a separate branch and PR. Do not mark tasks done in the documentation-only onboarding PR. Update tracked tasks as work is verified, and archive only after implementation and review.
 
-Cross-repository changes are defined here with a shared descriptive change name. Link each affected repository's issues and implementation PRs to the canonical change. The scraper and predictor retain their own production deployment approvals; the web repository may deploy on main merge.
+Cross-repository changes should have **one canonical product-change location**, owned by the provider of the capability. Already-accepted changes in this tree remain in force until intentionally relocated; new general RDP features belong in RDP, while this repository holds HPP-specific consumer behaviour and migration specs. Link all affected issues/implementation PRs to the chosen single change. Scraper/predictor AWS releases remain separately approved; a web main merge may deploy to Vercel.

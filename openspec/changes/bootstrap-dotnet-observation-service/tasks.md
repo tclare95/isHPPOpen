@@ -1,3 +1,5 @@
+> **Historical copy — moved to RDP.** This file's maintained version is [RDP `bootstrap-dotnet-observation-service`](https://github.com/tclare95/river-data-platform/blob/main/openspec/changes/bootstrap-dotnet-observation-service/tasks.md). The old content is retained for the linked isHPPOpen issues, PRs and acceptance history; **do not use it as a second editable specification**. Migration: [RDP #50](https://github.com/tclare95/river-data-platform/issues/50). No deployment or activation is implied.
+
 # Tasks: Unified .NET river data platform foundation (#64)
 
 **Implementation verified:** RDP foundation [PR #1](https://github.com/tclare95/river-data-platform/pull/1) and [implementation evidence](https://github.com/tclare95/river-data-platform/blob/main/docs/IMPLEMENTATION.md). Checked boxes denote the foundation code/CI and documentation; later AWS actions were separately tracked under #75/#81.

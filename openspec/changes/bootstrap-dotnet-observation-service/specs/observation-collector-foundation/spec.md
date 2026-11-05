@@ -1,3 +1,5 @@
+> **Historical copy — moved to RDP.** This file's maintained version is [RDP `bootstrap-dotnet-observation-service`](https://github.com/tclare95/river-data-platform/blob/main/openspec/changes/bootstrap-dotnet-observation-service/specs/observation-collector-foundation/spec.md). The old content is retained for the linked isHPPOpen issues, PRs and acceptance history; **do not use it as a second editable specification**. Migration: [RDP #50](https://github.com/tclare95/river-data-platform/issues/50). No deployment or activation is implied.
+
 # Spec Delta: Unified .NET river data platform foundation
 
 > This retains the earlier `observation-collector-foundation` capability ID and `bootstrap-dotnet-observation-service` change slug for stable OpenSpec links. It now defines the shared platform foundation, **not** an observation-only architecture.

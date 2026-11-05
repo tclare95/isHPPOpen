@@ -1,3 +1,5 @@
+> **Historical copy — moved to RDP.** This file's maintained version is [RDP `ea-rainfall-observations`](https://github.com/tclare95/river-data-platform/blob/main/openspec/changes/ea-rainfall-observations/tasks.md). The old content is retained for the linked isHPPOpen issues, PRs and acceptance history; **do not use it as a second editable specification**. Migration: [RDP #50](https://github.com/tclare95/river-data-platform/issues/50). No deployment or activation is implied.
+
 # Acceptance slices: EA observed rainfall (#54)
 
 ## Slice 1: bounded foundation (no collection activation)

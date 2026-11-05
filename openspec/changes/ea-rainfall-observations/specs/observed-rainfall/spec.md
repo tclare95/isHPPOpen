@@ -1,3 +1,5 @@
+> **Historical copy — moved to RDP.** This file's maintained version is [RDP `ea-rainfall-observations`](https://github.com/tclare95/river-data-platform/blob/main/openspec/changes/ea-rainfall-observations/specs/observed-rainfall/spec.md). The old content is retained for the linked isHPPOpen issues, PRs and acceptance history; **do not use it as a second editable specification**. Migration: [RDP #50](https://github.com/tclare95/river-data-platform/issues/50). No deployment or activation is implied.
+
 # Observed rainfall measurement — product requirements
 
 ## ADDED Requirements

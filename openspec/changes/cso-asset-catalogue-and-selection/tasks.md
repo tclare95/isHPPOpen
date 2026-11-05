@@ -1,3 +1,5 @@
+> **Historical copy — moved to RDP.** This file's maintained version is [RDP `cso-asset-catalogue-and-selection`](https://github.com/tclare95/river-data-platform/blob/main/openspec/changes/cso-asset-catalogue-and-selection/tasks.md). The old content is retained for the linked isHPPOpen issues, PRs and acceptance history; **do not use it as a second editable specification**. Migration: [RDP #50](https://github.com/tclare95/river-data-platform/issues/50). No deployment or activation is implied.
+
 # Implementation and acceptance tasks: CSO asset catalogue / selection (#71)
 
 This is a **future implementation checklist**, not work completed by this documentation refinement. All implementation boxes intentionally remain unchecked. The normative product behaviours are in [spec](specs/cso-collection-selection/spec.md); [design](design.md) contains current RDP-specific engineering guidance. Work belongs in `tclare95/river-data-platform` after a reviewed PR, not in the legacy Node scraper.

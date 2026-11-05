@@ -22,6 +22,10 @@ Create `.env.local` with values for:
 
 Without MongoDB env vars, imports from `libs/database.js` throw immediately.
 
+Optional, development only: `HISTORY_DEV_FIXTURE_DIR` serves local EA Hydrology fixtures to `/history`
+(`npm run history:fixtures`), because the RDP client needs Vercel OIDC and cannot run locally. It is ignored
+outside `NODE_ENV=development`; see [docs/HISTORICAL_RIVER_CONDITIONS.md](docs/HISTORICAL_RIVER_CONDITIONS.md).
+
 ## Architecture map
 - **App Router app**: UI routes in `app/`, shared UI in `components/`.
 - **API layer**: App Router route handlers in `app/api/*`.

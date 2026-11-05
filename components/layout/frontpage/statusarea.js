@@ -1,58 +1,9 @@
-import { Row, ProgressBar, Accordion, Alert, Spinner } from "react-bootstrap";
+import { Row, ProgressBar, Alert, Spinner } from "react-bootstrap";
 import Link from "next/link";
 import SourceHealthBadge from "../../functional/sourceHealthBadge";
 import useFetch from "../../../libs/useFetch";
 import { SWR_15_MINUTES } from "../../../libs/dataFreshness";
-
-const historicData = {
-  yearlyClosureTrend: [
-    { year: 2012, closed: 26 },
-    { year: 2013, closed: 43 },
-    { year: 2014, closed: 68 },
-    { year: 2015, closed: 23 },
-    { year: 2016, closed: 49 },
-    { year: 2017, closed: 28 },
-    { year: 2018, closed: 46 },
-    { year: 2019, closed: 101 },
-    { year: 2020, closed: 71 },
-    { year: 2021, closed: 50 },
-    { year: 2022, closed: 44 },
-    { year: 2023, closed: 95 },
-    { year: 2024, closed: 103 },
-    { year: 2025, closed: 58 },
-    { year: 2026, closed: 41 },
-  ],
-
-  monthlyClosureTrend: [
-    { month: "January", closed: 185 },
-    { month: "February", closed: 135 },
-    { month: "March", closed: 104 },
-    { month: "April", closed: 35 },
-    { month: "May", closed: 5 },
-    { month: "June", closed: 14 },
-    { month: "July", closed: 3 },
-    { month: "August", closed: 7 },
-    { month: "September", closed: 9 },
-    { month: "October", closed: 57 },
-    { month: "November", closed: 107 },
-    { month: "December", closed: 185 },
-  ],
-
-  overallMonthlyClosurePercentages: [
-    { month: "January", overall_closure_percentage: 43.325527 },
-    { month: "February", overall_closure_percentage: 35.064935 },
-    { month: "March", overall_closure_percentage: 25.806452 },
-    { month: "April", overall_closure_percentage: 8.974359 },
-    { month: "May", overall_closure_percentage: 1.240695 },
-    { month: "June", overall_closure_percentage: 3.617571 },
-    { month: "July", overall_closure_percentage: 0.744417 },
-    { month: "August", overall_closure_percentage: 1.736973 },
-    { month: "September", overall_closure_percentage: 2.319588 },
-    { month: "October", overall_closure_percentage: 14.143921 },
-    { month: "November", overall_closure_percentage: 27.15736 },
-    { month: "December", overall_closure_percentage: 42.923434 },
-  ],
-};
+import HistoricalConditions from "./historicalConditions";
 
 const toPercent = (value, total) => {
   if (!Number.isFinite(value) || !Number.isFinite(total) || total <= 0) {
@@ -178,7 +129,8 @@ export default function StatusArea() {
       </Row>
       <Row className="justify-content-center mt-4">
         <div className="text-center w-100">
-          <p className="font-weight-bold mb-4">HPP has been closed for:</p>
+          <p className="font-weight-bold mb-1">HPP has been closed for:</p>
+          <p className="small mb-4">From HPP&apos;s recorded status changes.</p>
           {closureWindows.map(({ days, closures }) => {
             const roundedClosures = Math.max(0, Math.min(days, Math.round(closures)));
             const percentage = toPercent(roundedClosures, days);
@@ -205,100 +157,7 @@ export default function StatusArea() {
           })}
         </div>
       </Row>
-      <Row className="justify-content-center mt-4">
-        <div className="text-center w-100">Historical Closure Data</div>
-
-        <div
-          className="mt-4 text-white text-center justify-content-center"
-          id="historical-accordion"
-        >
-          <Accordion>
-            <Accordion.Item eventKey="0">
-              <Accordion.Header>Yearly Closure Trend</Accordion.Header>
-              <Accordion.Body>
-                <Row>
-                  <div className="text-center w-100">
-                    <p className="font-weight-bold text-white mb-4">Yearly Closure Trend</p>
-                    <table className="table table-dark table-striped table-bordered">
-                      <caption className="visually-hidden">Yearly Closure Trend</caption>
-                      <thead>
-                        <tr>
-                          <th scope="col">Year</th>
-                          <th scope="col">Closure Days</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {historicData.yearlyClosureTrend.map((data) => (
-                          <tr key={data.year}>
-                            <td>{data.year}</td>
-                            <td>{data.closed}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </Row>
-              </Accordion.Body>
-            </Accordion.Item>
-            <Accordion.Item eventKey="1">
-              <Accordion.Header>Monthly Closure Trend</Accordion.Header>
-              <Accordion.Body>
-                <Row>
-                  <div className="text-center w-100">
-                    <p className="font-weight-bold text-white mb-4">Monthly Closure Trend</p>
-                    <table className="table table-dark table-striped table-bordered">
-                      <caption className="visually-hidden">Monthly Closure Trend</caption>
-                      <thead>
-                        <tr>
-                          <th scope="col">Month</th>
-                          <th scope="col">Closure Days</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {historicData.monthlyClosureTrend.map((data) => (
-                          <tr key={data.month}>
-                            <td>{data.month}</td>
-                            <td>{data.closed}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </Row>
-              </Accordion.Body>
-            </Accordion.Item>
-            <Accordion.Item eventKey="2">
-              <Accordion.Header>
-                Overall Monthly Closure Percentages
-              </Accordion.Header>
-              <Accordion.Body>
-                <Row>
-                  <div className="text-center w-100">
-                    <p className="font-weight-bold text-white mb-4">Overall Monthly Closure Percentages</p>
-                    <table className="table table-dark table-striped table-bordered">
-                      <caption className="visually-hidden">Overall Monthly Closure Percentages</caption>
-                      <thead>
-                        <tr>
-                          <th scope="col">Month</th>
-                          <th scope="col">Overall Closure Percentage</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {historicData.overallMonthlyClosurePercentages.map((data) => (
-                          <tr key={data.month}>
-                            <td>{data.month}</td>
-                            <td>{data.overall_closure_percentage.toFixed(2)}%</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </Row>
-              </Accordion.Body>
-            </Accordion.Item>
-          </Accordion>
-        </div>
-      </Row>
+      <HistoricalConditions />
     </div>
   );
 }

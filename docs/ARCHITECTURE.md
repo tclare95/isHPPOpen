@@ -37,6 +37,7 @@ Related docs:
 | River levels | `riverschemas` | Route Handler `revalidate` (15m) + SWR client fetch (`/api/levels`) | **15m** (`900000ms`) | Upstream level data typically updates on a 15-minute cadence; server-side revalidation smooths request bursts. |
 | Forecast data | S3 forecast + derived APIs | Route Handler `revalidate` (15m) + SWR client fetch (`/api/s3forecast`, `/api/forecastaccuracy`) | **15m** (`900000ms`) | Forecast and related quality indicators are operational and align to the same source update interval. |
 | Trent gauge dashboard | Environment Agency flood-monitoring API | Route Handler `revalidate` (15m) + SWR client fetch (`/api/trentweirs`) | **15m** (`900000ms`) | Trent gauge pages use an app-owned cache boundary so browser traffic no longer fans out directly to Environment Agency station endpoints. |
+| River level history (#104) | RDP `GET /v1/measurements/ea-colwick-level/observations` (server-only signed client) | `unstable_cache` per UK calendar month + CDN `Cache-Control` on `/api/history/colwick/*`; SWR without polling | Completed months **24h**, current month **15m**; CDN 1h/15m, 60s when partial | Archived history changes only through provider revisions or imports; one bounded RDP read per month is reused by month, year and overview views. See [HISTORICAL_RIVER_CONDITIONS.md](HISTORICAL_RIVER_CONDITIONS.md). |
 
 For forecast handlers that call S3, `fetch()` is configured with explicit `next.revalidate = 900` to align upstream request caching with route-level revalidation.
 The shared helper `libs/api/fetchWithRevalidate.js` keeps this upstream fetch policy consistent across forecast endpoints.
@@ -192,6 +193,12 @@ Editorial writes use the shared `libs/cache/revalidate.js` helper with `revalida
    - Home snapshot assembly tolerates partial Mongo-backed failures so banner and events can fall back independently.
    - Admin writes in `app/api/events/route.js` and `app/api/sitebanner/route.js` trigger `revalidateTag` for immediate snapshot refresh.
    - Operational data (levels/status/forecast/water quality) uses Route Handler `revalidate` at **15 minutes** and remains client-side via SWR at the same cadence.
+
+10. **River level history (#104)**
+   - `/history` explores Colwick observed levels by UK calendar year/month with zoom to 15-minute readings, time at/above the HPP 2.2 m level rule, seasonal context and year-on-year comparison.
+   - `libs/history/*` holds pure calendar, quality, threshold-time and aggregation logic plus a server-only cached reader over the existing RDP client; routes are `/api/history/colwick/{month,year,overview}`.
+   - The home page's former hard-coded 2012–2026 closure tables are replaced by `components/layout/frontpage/historicalConditions.js`, which loads independently of the operational `/api/hppstatus` rolling windows.
+   - Figures are level-derived conditions, never HPP closure records. Details, eligibility rules and reconciliation are in [HISTORICAL_RIVER_CONDITIONS.md](HISTORICAL_RIVER_CONDITIONS.md).
 
 ## 6) App Router status
 - Completed:

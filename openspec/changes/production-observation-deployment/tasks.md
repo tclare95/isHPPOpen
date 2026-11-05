@@ -1,3 +1,5 @@
+> **Historical copy — moved to RDP.** This file's maintained version is [RDP `production-observation-deployment`](https://github.com/tclare95/river-data-platform/blob/main/openspec/changes/production-observation-deployment/tasks.md). The old content is retained for the linked isHPPOpen issues, PRs and acceptance history; **do not use it as a second editable specification**. Migration: [RDP #50](https://github.com/tclare95/river-data-platform/issues/50). No deployment or activation is implied.
+
 # Tasks: RDP production observation deployment (#81)
 
 **Reconciled 1 November 2026.** Implementation PRs [#17](https://github.com/tclare95/river-data-platform/pull/17), [#19](https://github.com/tclare95/river-data-platform/pull/19), [#25](https://github.com/tclare95/river-data-platform/pull/25) and [#26](https://github.com/tclare95/river-data-platform/pull/26) are merged. D1–D4 have separately approved/recorded deployment evidence in [isHPPOpen #81](https://github.com/tclare95/isHPPOpen/issues/81). **D5 P5**, **D6 P6** and **D7 TTL** remain unchecked and unapproved; D8 website/other source migration remains separate. Checked *code* tasks do not authorise AWS writes.

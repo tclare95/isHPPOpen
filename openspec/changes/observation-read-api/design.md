@@ -1,3 +1,5 @@
+> **Historical copy — moved to RDP.** This file's maintained version is [RDP `observation-read-api`](https://github.com/tclare95/river-data-platform/blob/main/openspec/changes/observation-read-api/design.md). The old content is retained for the linked isHPPOpen issues, PRs and acceptance history; **do not use it as a second editable specification**. Migration: [RDP #50](https://github.com/tclare95/river-data-platform/issues/50). No deployment or activation is implied.
+
 # Design: Read-only .NET observation API
 
 ## Service boundary

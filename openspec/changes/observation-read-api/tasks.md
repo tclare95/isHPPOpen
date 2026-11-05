@@ -1,3 +1,5 @@
+> **Historical copy — moved to RDP.** This file's maintained version is [RDP `observation-read-api`](https://github.com/tclare95/river-data-platform/blob/main/openspec/changes/observation-read-api/tasks.md). The old content is retained for the linked isHPPOpen issues, PRs and acceptance history; **do not use it as a second editable specification**. Migration: [RDP #50](https://github.com/tclare95/river-data-platform/issues/50). No deployment or activation is implied.
+
 # Tasks: Authenticated observation read API (#69)
 
 **Implementation and staging evidence:** backend [RDP PR #10](https://github.com/tclare95/river-data-platform/pull/10), signed staging smoke [PR #16](https://github.com/tclare95/river-data-platform/pull/16), and production *deployment code only* [PR #26](https://github.com/tclare95/river-data-platform/pull/26). Checked tasks mean implemented and fixture/stage verified; production P6 allocation/activation is separately pending under [#81](https://github.com/tclare95/isHPPOpen/issues/81). This is not Next.js consumer migration.

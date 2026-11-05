@@ -171,4 +171,6 @@ instant are omitted and later rows become provisional live telemetry.
 - **Coverage** stays "unknown" until a reviewed RDP coverage inventory (#69) is published.
 - **Throttling.** A cold overview issues ~130 month reads at concurrency 4 against a 5 rps / burst 10 gateway
   throttle; throttled months retry once and otherwise appear as "not yet loaded" for 60 s.
-- Only Colwick is in scope; multi-gauge comparison and high-water events (#105) are separate.
+- Only Colwick is in scope; multi-gauge comparison is separate. High-water events (#105) build on these month
+  reads: see [HISTORICAL_RIVER_EVENTS.md](HISTORICAL_RIVER_EVENTS.md). Since #105 the month digests also carry a
+  threshold-state timeline and the month caches are keyed `-v2`.

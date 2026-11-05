@@ -58,8 +58,9 @@ export function timeTicks(from, to, width) {
     for (let i = 0; i <= days + 1; i++) {
       const t = londonMidnightUtc(start.year, start.month, start.day + i);
       if (t > to) break;
-      const day = londonParts(t).day;
-      if (t >= from && (every === 1 || (day - 1) % every === 0)) ticks.push({ t, label: DAY_MONTH.format(t) });
+      // Counted from the window start (day 1 for a month view) so ticks never collide where
+      // a multi-month event window crosses a month boundary.
+      if (t >= from && (every === 1 || i % every === 0)) ticks.push({ t, label: DAY_MONTH.format(t) });
     }
     return ticks;
   }
@@ -97,7 +98,10 @@ function runs(points, maxGap, accept = () => true) {
   return result;
 }
 
-export default function LevelChart({ mode, from, to, end, days = [], readings = [], band = [], zoom = null, onZoomChange, title }) {
+// `highlights` shade time ranges behind the series ([{ from, to, className }]); `markers`
+// label individual observed readings ([{ t, v, label }]). Both are optional (#105).
+export default function LevelChart({ mode, from, to, end, days = [], readings = [], band = [], zoom = null, onZoomChange, title,
+  highlights = [], markers = [] }) {
   const [containerRef, width] = useElementWidth();
   const [hover, setHover] = useState(null);
   const [brush, setBrush] = useState(null);
@@ -217,6 +221,10 @@ export default function LevelChart({ mode, from, to, end, days = [], readings = 
                 <rect key={a} x={x(a)} width={Math.max(1, x(b) - x(a))} y={MARGIN.top} height={innerH} fill="url(#history-hatch)" />
               ))}
               {end < to ? <rect x={x(end)} width={Math.max(0, x(to) - x(end))} y={MARGIN.top} height={innerH} className="history-chart__future" /> : null}
+              {highlights.map((item) => (
+                <rect key={`h${item.from}`} x={x(item.from)} width={Math.max(2, x(item.to) - x(item.from))} y={MARGIN.top} height={innerH}
+                  className={item.className ?? "history-chart__highlight"} />
+              ))}
               {runs(visibleBand, DAY_MS * 1.5).map((run) => (
                 <g key={run[0].t}>
                   <path d={area(run, "p10", "p90")} className="history-chart__band" />
@@ -227,6 +235,13 @@ export default function LevelChart({ mode, from, to, end, days = [], readings = 
               {qualifiedRuns.map((run) => <path key={run[0].t} d={line(run)} className="history-chart__line" />)}
               {provisionalRuns.map((run) => <path key={`p${run[0].t}`} d={line(run)} className="history-chart__line history-chart__line--provisional" />)}
               <line x1={MARGIN.left} x2={MARGIN.left + innerW} y1={y(threshold)} y2={y(threshold)} className="history-chart__threshold" />
+              {markers.filter((marker) => marker.t >= viewFrom && marker.t <= viewTo).map((marker) => (
+                <g key={`m${marker.t}`} className="history-chart__marker">
+                  <circle cx={x(marker.t)} cy={y(marker.v)} r="5" />
+                  <text x={Math.min(x(marker.t), MARGIN.left + innerW - 4)} y={Math.max(y(marker.v) - 10, MARGIN.top + 10)}
+                    textAnchor={x(marker.t) > MARGIN.left + innerW - 90 ? "end" : "middle"}>{marker.label}</text>
+                </g>
+              ))}
               {brush ? <rect x={Math.min(brush.x1, brush.x2)} width={Math.abs(brush.x2 - brush.x1)} y={MARGIN.top} height={innerH} className="history-chart__brush" /> : null}
               {hover ? (
                 <g>
@@ -272,4 +287,6 @@ LevelChart.propTypes = {
   zoom: PropTypes.arrayOf(PropTypes.number),
   onZoomChange: PropTypes.func,
   title: PropTypes.string.isRequired,
+  highlights: PropTypes.arrayOf(PropTypes.shape({ from: PropTypes.number, to: PropTypes.number, className: PropTypes.string })),
+  markers: PropTypes.arrayOf(PropTypes.shape({ t: PropTypes.number, v: PropTypes.number, label: PropTypes.string })),
 };

@@ -6,8 +6,10 @@ import { buildOverview, combineCoverage, combineSummaries } from "./aggregate.js
 import { COLWICK_HISTORY, MONTH_NAMES } from "./config.js";
 import { createDevFixtureReader, isDevFixtureEnabled } from "./devFixtureReader.js";
 import { buildPeriodDigest } from "./digest.js";
+import { EVENT_RULES, findEvent, identifyEvents } from "./events.js";
 import { readObservationWindow } from "./source.js";
-import { currentLondonMonth, monthBounds, yearBounds } from "./ukCalendar.js";
+import { SEGMENT, stitchTimelines } from "./timeline.js";
+import { currentLondonMonth, londonParts, monthBounds, yearBounds } from "./ukCalendar.js";
 
 // Completed months change only through provider revisions or new imports: refresh daily.
 // The current month follows the operational 15-minute cadence.
@@ -50,9 +52,9 @@ async function computeMonth(year, month) {
   };
 }
 
-const cachedPastMonth = unstable_cache(computeMonth, ["history-colwick-month-v1"],
+const cachedPastMonth = unstable_cache(computeMonth, ["history-colwick-month-v2"],
   { revalidate: PAST_MONTH_REVALIDATE_SECONDS, tags: [CACHE_TAG] });
-const cachedCurrentMonth = unstable_cache(computeMonth, ["history-colwick-current-month-v1"],
+const cachedCurrentMonth = unstable_cache(computeMonth, ["history-colwick-current-month-v2"],
   { revalidate: CURRENT_MONTH_REVALIDATE_SECONDS, tags: [CACHE_TAG] });
 
 function isCurrentMonth(year, month, now = Date.now()) {
@@ -68,7 +70,7 @@ const withoutReadings = ({ readings, ...digest }) => digest;
 
 // Digest-only cache keeps year/overview composition small (no raw readings).
 const cachedPastDigest = unstable_cache(async (year, month) => withoutReadings(await cachedPastMonth(year, month)),
-  ["history-colwick-month-digest-v1"], { revalidate: PAST_MONTH_REVALIDATE_SECONDS, tags: [CACHE_TAG] });
+  ["history-colwick-month-digest-v2"], { revalidate: PAST_MONTH_REVALIDATE_SECONDS, tags: [CACHE_TAG] });
 
 function getMonthDigest(year, month) {
   return isCurrentMonth(year, month) ? cachedCurrentMonth(year, month).then(withoutReadings) : cachedPastDigest(year, month);
@@ -129,28 +131,169 @@ export async function getMonthHistory(year, month) {
   return { measurement: MEASUREMENT, ...(await getMonthEvidence(year, month)) };
 }
 
-export async function getHistoryOverview() {
-  const now = Date.now();
+// Every month since the first imported year, read newest first so a deadline-limited cold
+// build still serves recent history. Failed months keep their error code.
+async function loadAllMonthDigests(now) {
   const current = currentLondonMonth(now);
   const months = [];
   for (let year = COLWICK_HISTORY.firstYear; year <= current.year; year++) months.push(...monthsOfYear(year, now));
-
-  // Newest first, so a deadline-limited cold build still serves recent context.
   const order = months.map((_, index) => index).reverse();
   const settled = await settleAll(order, (index) => getMonthDigest(months[index].year, months[index].month),
     { deadline: now + OVERVIEW_DEADLINE_MS });
   const results = new Array(months.length);
   order.forEach((index, position) => { results[index] = settled[position]; });
   if (!results.some((result) => result.value)) throw results.at(-1).error;
+  return {
+    current,
+    months: months.map((item, index) => ({
+      ...item, digest: results[index].value, error: results[index].error ? errorCode(results[index].error) : undefined,
+    })),
+    oldestReadAt: results.filter((result) => result.value).map((result) => result.value.source.readAt).sort()[0] ?? null,
+  };
+}
 
-  const overview = buildOverview(months.map((item, index) => ({
-    ...item, digest: results[index].value, error: results[index].error ? errorCode(results[index].error) : undefined,
-  })), { currentYear: current.year });
-  const readTimes = results.filter((result) => result.value).map((result) => result.value.source.readAt).sort();
+export async function getHistoryOverview() {
+  const now = Date.now();
+  const { current, months, oldestReadAt } = await loadAllMonthDigests(now);
   return {
     measurement: MEASUREMENT,
-    ...overview,
-    source: { generatedAt: new Date(now).toISOString(), oldestReadAt: readTimes[0] ?? null },
+    ...buildOverview(months, { currentYear: current.year }),
+    source: { generatedAt: new Date(now).toISOString(), oldestReadAt },
+  };
+}
+
+// --- High-water events (#105) -------------------------------------------------------
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+// Readings shown either side of an event on its detail chart.
+export const EVENT_CONTEXT_MS = 3 * DAY_MS;
+// Detail charts carry raw 15-minute readings; a longer window is trimmed and says so.
+export const EVENT_MAX_WINDOW_MS = 200 * DAY_MS;
+
+export const EVENTS_RULE = Object.freeze({
+  thresholdMetres: EVENT_RULES.thresholdMetres,
+  maxSupportedGapMs: EVENT_RULES.maxSupportedGapMs,
+  mergeWindowMs: EVENT_RULES.mergeWindowMs,
+  briefMs: EVENT_RULES.briefMs,
+});
+
+const isoOrNull = (ms) => (Number.isFinite(ms) ? new Date(ms).toISOString() : null);
+
+// Public event shape: UTC ISO instants, no internal segment bookkeeping.
+export function presentEvent(event) {
+  const boundary = (b) => ({
+    status: b.status,
+    edgeAt: isoOrNull(b.edgeAt),
+    belowAt: isoOrNull(b.belowAt),
+    gap: b.gap ? { from: isoOrNull(b.gap.from), to: isoOrNull(b.gap.to), reason: b.gap.reason } : null,
+    beyond: b.beyond ? { state: b.beyond.state, at: isoOrNull(b.beyond.at) } : null,
+    ongoing: Boolean(b.ongoing),
+  });
+  const interval = (item) => ({ from: isoOrNull(item.from), to: isoOrNull(item.to), ms: item.ms, ...(item.reason ? { reason: item.reason } : {}) });
+  return {
+    ...event,
+    firstAboveAt: isoOrNull(event.firstAboveAt),
+    lastAboveAt: isoOrNull(event.lastAboveAt),
+    peak: { ...event.peak, at: isoOrNull(event.peak.at) },
+    start: boundary(event.start),
+    end: boundary(event.end),
+    dips: event.dips.map(interval),
+    gaps: event.gaps.map(interval),
+  };
+}
+
+// Identifies events across all available history from the cached month digests the
+// overview already uses: no archive reads of its own beyond those.
+async function computeEvents(now) {
+  const { current, months, oldestReadAt } = await loadAllMonthDigests(now);
+  const timelines = months.map(({ year, month, digest }) => {
+    const { from, to } = monthBounds(year, month);
+    return digest
+      ? { from, end: Date.parse(digest.period.end), segments: digest.timeline }
+      : { from, end: Math.min(to, now), failed: true };
+  });
+  const segments = stitchTimelines(timelines);
+  const dataEnd = timelines.at(-1).end;
+  const observed = segments.filter((segment) => segment.state !== SEGMENT.UNKNOWN && segment.n > 0);
+  return {
+    events: identifyEvents(segments, { dataEnd }),
+    currentMonthFrom: monthBounds(current.year, current.month).from,
+    meta: {
+      generatedAt: new Date(now).toISOString(),
+      oldestReadAt,
+      firstReadingAt: isoOrNull(observed[0]?.firstAt),
+      lastReadingAt: isoOrNull(observed.at(-1)?.lastAt),
+      dataEnd: isoOrNull(dataEnd),
+      monthsFailed: months.filter((item) => !item.digest).map(({ year, month, error }) => ({ year, month, error })),
+      coverage: combineCoverage(months.filter((item) => item.digest).map((item) => item.digest.coverage)).status,
+    },
+  };
+}
+
+export async function getEventsIndex() {
+  const { events, meta } = await computeEvents(Date.now());
+  return { measurement: MEASUREMENT, rule: EVENTS_RULE, ...meta, events: events.map(presentEvent) };
+}
+
+// Raw readings in [from, to) from the cached month evidence (the same reads /history uses).
+async function readingsBetween(from, to) {
+  const start = londonParts(from);
+  const months = [];
+  for (let index = 0; ; index++) {
+    const year = start.year + Math.floor((start.month - 1 + index) / 12);
+    const month = ((start.month - 1 + index) % 12) + 1;
+    if (monthBounds(year, month).from >= to) break;
+    months.push({ year, month });
+  }
+  const results = await settleAll(months, ({ year, month }) => getMonthEvidence(year, month));
+  const fromSeconds = from / 1000;
+  const toSeconds = to / 1000;
+  return {
+    readings: results.flatMap((result) => result.value?.readings ?? []).filter(([seconds]) => seconds >= fromSeconds && seconds < toSeconds),
+    failed: months.flatMap(({ year, month }, index) => (results[index].error ? [{ year, month, error: errorCode(results[index].error) }] : [])),
+  };
+}
+
+const neighbour = (event) => (event ? { id: event.id, firstAboveAt: isoOrNull(event.firstAboveAt), peak: event.peak.value } : null);
+
+/**
+ * One event with its surrounding readings. `found: false` for an unknown id; `match: "moved"`
+ * when the link's instant now falls inside an event that starts elsewhere (provider revision).
+ */
+export async function getEventDetail(id) {
+  const now = Date.now();
+  const { events, meta, currentMonthFrom } = await computeEvents(now);
+  const { event, index, match } = findEvent(events, id);
+  if (!event) return { found: false, match, measurement: MEASUREMENT, rule: EVENTS_RULE, ...meta };
+
+  const lead = event.start.belowAt ?? event.start.gap?.from ?? event.firstAboveAt;
+  const tail = event.end.belowAt ?? event.end.gap?.to ?? event.lastAboveAt;
+  let from = Math.max(monthBounds(COLWICK_HISTORY.firstYear, 1).from, Math.min(lead, event.firstAboveAt - EVENT_CONTEXT_MS));
+  let to = Math.min(Date.parse(meta.dataEnd), Math.max(tail, event.lastAboveAt + EVENT_CONTEXT_MS));
+  const trimmed = to - from > EVENT_MAX_WINDOW_MS;
+  if (trimmed) {
+    from = Math.max(from, event.firstAboveAt - EVENT_CONTEXT_MS);
+    to = Math.min(to, from + EVENT_MAX_WINDOW_MS);
+  }
+  const { readings, failed } = await readingsBetween(from, to);
+  return {
+    found: true,
+    match,
+    measurement: MEASUREMENT,
+    rule: EVENTS_RULE,
+    ...meta,
+    event: presentEvent(event),
+    // Positions among events identified in today's history: not a permanent record.
+    rank: {
+      byPeak: events.filter((other) => other.peak.value > event.peak.value).length + 1,
+      byDuration: events.filter((other) => other.aboveMs > event.aboveMs).length + 1,
+      of: events.length,
+    },
+    previous: neighbour(events[index - 1]),
+    next: neighbour(events[index + 1]),
+    window: { from: isoOrNull(from), to: isoOrNull(to), trimmed, monthsFailed: failed },
+    readings,
+    inProgress: event.lastAboveAt >= currentMonthFrom || Boolean(event.end.ongoing),
   };
 }
 

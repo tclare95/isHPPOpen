@@ -39,3 +39,6 @@ yarn-error.log*
 
 # vercel
 .vercel
+
+# Local history explorer fixtures (scripts/fetch-history-fixtures.mjs)
+/.history-fixtures/

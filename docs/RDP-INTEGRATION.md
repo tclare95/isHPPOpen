@@ -4,6 +4,8 @@
 
 For the complementary platform view see [RDP ecosystem and documentation ownership](https://github.com/tclare95/river-data-platform/blob/main/docs/ECOSYSTEM.md) and [RDP product vision](https://github.com/tclare95/river-data-platform/blob/main/docs/PRODUCT_VISION.md).
 
+**Repository visibility:** RDP is currently private; readers without repository access may not be able to open the linked platform documents. This guide states the consumer-facing boundaries independently.
+
 ## Ownership: site product versus data platform
 
 | Concern | Owner | isHPPOpen's role |

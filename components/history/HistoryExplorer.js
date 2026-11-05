@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import PropTypes from "prop-types";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -16,13 +16,13 @@ import { currentLondonMonth, londonMidnightUtc, monthBounds, yearBounds } from "
 import DayCalendar from "./DayCalendar";
 import EvidencePanel from "./EvidencePanel";
 import LevelChart from "./LevelChart";
+import PeriodEvents from "./events/PeriodEvents";
 import PeriodPicker from "./PeriodPicker";
+import { ErrorNotice, HISTORY_SWR, LoadingBlock, useSlow } from "./StatusBlocks";
 import ShareBars from "./ShareBars";
 import SummaryTiles from "./SummaryTiles";
 import TodayContext from "./TodayContext";
 
-const HISTORY_SWR = { revalidateOnFocus: false, refreshInterval: 0, shouldRetryOnError: false };
-const SLOW_LOAD_MS = 4000;
 const threshold = `${COLWICK_HISTORY.thresholdMetres.toFixed(1)} m`;
 
 export function readPeriod(params, current) {
@@ -33,40 +33,6 @@ export function readPeriod(params, current) {
   const validMonth = Number.isInteger(month) && month >= 1 && month <= 12 &&
     !(validYear === current.year && month > current.month) ? month : null;
   return { year: validYear, month: validMonth };
-}
-
-function ErrorNotice({ error, what }) {
-  const reason = error?.payload?.error?.details?.reason;
-  const message = error?.payload?.error?.message ?? `The ${what} could not be loaded.`;
-  return (
-    <div className={`alert ${reason === "integrity" || reason === "unreliable" ? "alert-danger" : "alert-warning"} mb-0`} role="alert">
-      <strong>{reason === "unavailable" ? "History unavailable." : "Read failed."}</strong> {message} This is not the same as having no river data for this period.
-    </div>
-  );
-}
-
-ErrorNotice.propTypes = { error: PropTypes.object, what: PropTypes.string.isRequired };
-
-function LoadingBlock({ label, slow }) {
-  return (
-    <div className="history-skeleton" role="status" aria-live="polite">
-      <span className="spinner-border spinner-border-sm me-2" aria-hidden="true" />
-      {label}
-      {slow ? <p className="history-muted small mb-0 mt-2">The first load of a period reads every 15-minute reading from the archive and can take up to a minute. Later visits are cached.</p> : null}
-    </div>
-  );
-}
-
-LoadingBlock.propTypes = { label: PropTypes.string.isRequired, slow: PropTypes.bool };
-
-function useSlow(pending) {
-  const [slow, setSlow] = useState(false);
-  useEffect(() => {
-    if (!pending) return undefined;
-    const timer = setTimeout(() => setSlow(true), SLOW_LOAD_MS);
-    return () => { clearTimeout(timer); setSlow(false); };
-  }, [pending]);
-  return slow;
 }
 
 function DailyTable({ days }) {
@@ -198,6 +164,7 @@ export default function HistoryExplorer() {
           <Link href="/" className="history-back">← Back to home</Link>
           <h1 className="display-6 fw-bold mt-3 mb-2">River level history</h1>
           <p className="lead history-intro mb-0">Explore observed river levels at Colwick since {COLWICK_HISTORY.firstYear}, how often they reached HPP&apos;s {threshold} level rule, and how today compares with past seasons.</p>
+          <Link href="/history/events" className="history-cta mt-3">Browse past high-water events →</Link>
         </header>
 
         <TodayContext overview={overview.data} overviewError={overview.error} latest={latest} levelsError={levels.error}
@@ -230,7 +197,9 @@ export default function HistoryExplorer() {
                     <li><span className="history-legend__line history-legend__line--threshold" aria-hidden="true" />{threshold} HPP level rule</li>
                     <li><span className="history-legend__swatch history-legend__swatch--gap" aria-hidden="true" />No supported readings</li>
                   </ul>
-                  <p className="history-muted small">{month ? "Drag across the chart to zoom (desktop) or pick a day below." : "Pick a month below to see its individual readings."} Gaps are never joined or filled in.</p>
+                  <p className="history-muted small">{month ? "Drag across the chart to zoom (desktop) or pick a day below." : "Pick a month below to see its individual readings."}</p>
+
+                  <PeriodEvents from={bounds.from} to={bounds.to} label={label} year={year} month={month} />
 
                   {month ? (
                     <div className="mt-4">

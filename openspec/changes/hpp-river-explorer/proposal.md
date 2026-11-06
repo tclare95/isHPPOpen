@@ -37,15 +37,15 @@ The HPP consumer SHOULD migrate to a **reviewed RDP-derived site membership and 
 ## Boundaries
 
 - **RDP owns** river dataset, reach matching, route/catchment semantics, version and upstream GeoJSON contract. isHPPOpen owns the HPP anchor, interpretation, user interface and client-side/public presentation.
-- **Existing water-quality remains untouched.** The legacy Sewage Map information-point `properties.CSOs` relationship, Mongo CSO status, calibrated water-quality indicator, subscriber alerts, HPP status and scraper operation do not change in this slice.
+- **Separate release gates.** The River Explorer map does not alter the current CSO/water-quality pipeline. The separately approved Sewage Map source migration may change HPP membership and metrics only after reviewed evidence, calibration/compatibility checks and rollback planning; HPP status and unrelated alerts remain unaffected.
 - River connectivity does **not** predict pathogen concentration, travel time, dilution, pollution presence or paddling safety. An upstream river is not itself evidence of an upstream CSO discharge.
-- No new provider collection, automatic outfall polling or CSO membership changes. Future reviewed HPP outfall-relationship parity/cutover is a distinct change, contingent on an RDP **outfall relationship** read contract and #71/#72 evidence.
+- No automatic provider collection, outfall polling or site membership changes from a trace or catalogue refresh. A reviewed HPP membership artifact from existing RDP capabilities is permitted for the independently approved Sewage Map cutover; a reusable online outfall relationship API is an enhancement, not necessarily a prerequisite.
 - The consumer must not circumvent RDP IAM boundaries. A live first-party API is **not** equivalent to a browser-accessible anonymous endpoint.
 - Public distribution of RDP-derived geometry, text and attribution requires confirmed licence permission. Withhold public release of unlicensed material until approved.
 
 ## Dependencies and compatibility
 
-- [RDP implementation/response notes](https://github.com/tclare95/river-data-platform/blob/main/docs/RIVER-TRACER.md) and [River Tracer #47](https://github.com/tclare95/river-data-platform/issues/47).
+- [RDP implementation/response notes](https://github.com/tclare95/river-data-platform/blob/main/docs/RIVER-TRACER.md), [River Tracer #47](https://github.com/tclare95/river-data-platform/issues/47), and the [RDP CSO catalogue/selection spec](https://github.com/tclare95/river-data-platform/blob/main/openspec/changes/cso-asset-catalogue-and-selection/proposal.md).
 - Existing [isHPPOpen server-only RDP client](../../../docs/RDP-CLIENT-51A.md), [RDP integration boundaries](../../../docs/RDP-INTEGRATION.md) and [water-quality page](../../../app/waterquality/page.js).
 - Validate actual production callable routes, release identity, HPP anchor, geometry sizes, errors and licence before enabling a public view.
 

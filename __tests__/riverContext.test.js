@@ -4,22 +4,26 @@ import fixture from '../libs/rdp/fixtures/hpp-river.json';
 
 const context = (direction = 'upstream') => ({ direction, geometry: 'reaches', location: fixture.locate.data, trace: fixture[direction] });
 
-test('direction switching is accessible and network text preserves catchment/source qualifications', () => {
+test('direction switching stays accessible without the explanatory text block', () => {
   const change = jest.fn();
-  const { rerender } = render(<RiverContext direction="upstream" onDirectionChange={change} context={context()} />);
-  expect(screen.getByText(/7,481.745/)).toHaveTextContent('100.1 m downstream');
-  expect(screen.getByText(/71 m downstream/)).toHaveTextContent('does not measure contamination');
-  expect(screen.getByText(fixture.upstream.riverTracer.attribution)).toBeInTheDocument();
+  const { container, rerender } = render(<RiverContext direction="upstream" onDirectionChange={change} context={context()} />);
+  expect(screen.queryByText(/Source catchment:/)).not.toBeInTheDocument();
+  expect(screen.queryByText(/Named upstream rivers/)).not.toBeInTheDocument();
+  expect(screen.queryByText(fixture.upstream.riverTracer.attribution)).not.toBeInTheDocument();
   fireEvent.change(screen.getByLabelText('Explore the river at Holme Pierrepont'), { target: { value: 'downstream' } });
   expect(change).toHaveBeenCalledWith('downstream');
   const downstream = context('downstream');
-  downstream.geometry = 'none';
+  rerender(<RiverContext direction="downstream" onDirectionChange={change} context={downstream} />);
+  expect(screen.queryByText(/Downstream of HPP|mapped route|River Humber|mapped Trent sample|Network version|River data source and limitations/)).not.toBeInTheDocument();
+  expect(container.querySelector('details')).toBeNull();
+  expect(screen.queryByRole('status')).not.toBeInTheDocument();
   downstream.trace = JSON.parse(JSON.stringify(downstream.trace));
   downstream.trace.riverTracer.route.completeness = 'incomplete';
-  downstream.trace.riverTracer.route.reasons = ['dead-end'];
   rerender(<RiverContext direction="downstream" onDirectionChange={change} context={downstream} />);
-  expect(screen.getByText(/Partial route: dead-end/)).toBeInTheDocument();
-  expect(screen.getByText(/Summary only/)).toBeInTheDocument();
+  expect(screen.getByRole('status')).toHaveTextContent('Some river connections are missing.');
+  downstream.geometry = 'none';
+  rerender(<RiverContext direction="downstream" onDirectionChange={change} context={downstream} />);
+  expect(screen.getByRole('status')).toHaveTextContent('River geometry is unavailable for this view.');
 });
 
 test('loading, errors and uncertain matches leave a usable text alternative', () => {

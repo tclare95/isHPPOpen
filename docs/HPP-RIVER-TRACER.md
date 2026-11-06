@@ -36,9 +36,11 @@ no HPP-specific RDP endpoint, network algorithm, release or infrastructure chang
   wire: an oversized summary also fails safely, without raising the limit.
 
 The existing `/waterquality` map has an optional upstream/downstream selector,
-blue river lines and a purple source-catchment layer, with text summaries,
-tributaries, completeness and attribution alongside it. It starts off and fetches
-only on demand, without new polling or automatic request retries. A River Tracer
+blue river lines and a purple source-catchment layer. The selector shows only
+brief loading, failure or incomplete-map messages; detailed source metadata and
+summaries remain in the API response, with compact attribution on the map.
+It starts off and fetches only on demand, without new polling or automatic request
+retries. A River Tracer
 failure leaves the existing CSO markers, filters, charts, calculations and alerts
 independent. The legacy membership source is unchanged.
 

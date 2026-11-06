@@ -2,12 +2,24 @@
 
 ## ADDED Requirements
 
+### Requirement: River Tracer extends the existing water-quality experience, not a duplicate dashboard
+
+isHPPOpen SHALL expose HPP river routing through its existing discoverable `/waterquality` experience (or a directly integrated subview) and preserve its current CSO markers/status counts, recent-event filters, density history, calibrated indication and alert navigation. New map and text content SHALL explain network connectivity, not recreate or replace the existing activity/risk UI.
+
+#### Scenario: Visitor explores river context
+- **WHEN** a visitor opens `/waterquality` and chooses to explore the river network
+- **THEN** they can show/read upstream and downstream routing without navigating to an unrelated second water-quality dashboard or losing the existing current/recent CSO view.
+
+#### Scenario: Route service unavailable
+- **WHEN** a river-network lookup fails but existing CSO and indicator evidence remains available
+- **THEN** the existing dashboard continues to show its normal map markers, counts, history and risk indication; only the optional river layer/summary degrades.
+
 ### Requirement: A reviewed HPP river location anchors the experience
 
 isHPPOpen SHALL offer a clearly identified Holme Pierrepont / River Trent starting point whose RDP river-network match has been reviewed. It SHALL show the mapped river identity and meaningful source-to-route offset, and SHALL NOT silently choose an adjacent drain, canal or unrelated watercourse to make a route appear available.
 
 #### Scenario: HPP matches the expected Trent reach
-- **WHEN** a visitor opens the River Explorer and the configured HPP location matches an approved River Trent reach
+- **WHEN** a visitor explores the HPP river overlay and the configured HPP location matches an approved River Trent reach
 - **THEN** the experience identifies HPP as the starting location, uses that match for both directions and presents the route evidence without claiming the snapped point is identical to the real-world site.
 
 #### Scenario: HPP anchor changes or becomes uncertain
@@ -48,7 +60,7 @@ The Explorer SHALL respect RDP's matching status, release/version, source attrib
 
 ### Requirement: Maps have a usable text alternative and robust failure states
 
-The Explorer SHALL work across common mobile and desktop viewports, offer a legible distinction between direction/route and optional catchment, and let a visitor understand the key result without using the map. Geometry is an enhancement, not a prerequisite for a useful answer.
+The added river-network layer and summary SHALL work across common mobile and desktop viewports, integrate with rather than obscure the current CSO map, distinguish direction/route from optional catchment, and let a visitor understand the result without using the map. Geometry is an enhancement, not a prerequisite for a useful answer.
 
 #### Scenario: Large route response or map failure
 - **WHEN** RDP returns an oversized-geometry error, the map fails to load, or a device cannot render the geometry
@@ -118,6 +130,6 @@ The River Explorer **map** SHALL be informational and independently degradable; 
 - **WHEN** River Tracer fails
 - **THEN** existing status, forecast, water-quality page and alerts continue their established behaviour without using route failure as a new operational signal.
 
-#### Scenario: User follows a link to water-quality data
-- **WHEN** the visitor moves from the river route to existing CSO activity information
-- **THEN** the two views clearly distinguish static geographic connectivity from fresh provider event/status evidence and do not suggest that every plotted CSO is verified upstream by River Tracer.
+#### Scenario: User toggles river context alongside the current CSO map
+- **WHEN** the visitor switches river overlays on or off while browsing the existing CSO markers
+- **THEN** the experience clearly distinguishes static geographic connectivity from fresh provider event/status evidence, preserves map filters and statuses, and does not suggest that every plotted CSO is verified upstream by River Tracer.

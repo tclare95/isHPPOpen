@@ -11,6 +11,7 @@ import Row from 'react-bootstrap/Row';
 import PropTypes from 'prop-types';
 import SourceHealthBadge from '../../components/functional/sourceHealthBadge';
 import WaterQualityIndicator from '../../components/functional/vomitfactor';
+import RiverContext from '../../components/functional/riverContext';
 import useFetch from '../../libs/useFetch';
 import { SWR_15_MINUTES } from '../../libs/dataFreshness';
 
@@ -30,6 +31,11 @@ SummaryCard.propTypes = { value: PropTypes.oneOfType([PropTypes.string, PropType
 
 export default function WaterQualityPage() {
   const [chartHours, setChartHours] = useState(120);
+  const [riverDirection, setRiverDirection] = useState('off');
+  const { data: riverData, error: riverError, isPending: riverPending } = useFetch(
+    riverDirection === 'off' ? null : `/api/waterquality/river?direction=${riverDirection}`,
+    { revalidateOnFocus: false, revalidateOnReconnect: false, shouldRetryOnError: false });
+  const riverTrace = !riverError && riverData?.direction === riverDirection ? riverData.trace : null;
   const { data: summaryData, error: summaryError, isPending: summaryPending } = useFetch('/api/waterquality', SWR_15_MINUTES);
   const { data: densityData, error: densityError, isPending: densityPending } = useFetch('/api/waterquality/csodensity?hours=120', SWR_15_MINUTES);
   const { data: levelData, error: levelError, isPending: levelPending } = useFetch('/api/levels', SWR_15_MINUTES);
@@ -74,7 +80,7 @@ export default function WaterQualityPage() {
         )}
 
         <Row className="g-4 mb-4">
-          <Col lg={6}><section className="water-quality-panel h-100"><h2>Upstream activity map</h2><p className="water-quality-muted">Current spills and recently stopped events that can contribute downstream.</p><WaterQualityMap locations={current?.locations || []} health={current?.health} isPending={summaryPending} error={summaryError} /></section></Col>
+          <Col lg={6}><section className="water-quality-panel h-100"><h2>Upstream activity map</h2><p className="water-quality-muted">Current spills and recently stopped events that can contribute downstream.</p><RiverContext direction={riverDirection} onDirectionChange={setRiverDirection} context={riverData} error={riverError} isPending={riverPending} /><WaterQualityMap locations={current?.locations || []} health={current?.health} isPending={summaryPending} error={summaryError} riverTrace={riverTrace} /></section></Col>
           <Col lg={6}><section className="water-quality-panel h-100"><h2>Activity over time</h2><p className="water-quality-muted">Hourly upstream CSO activity density with the indicator reference levels.</p><CsoChart data={densityRows} error={densityError} isPending={densityPending} hours={chartHours} onHoursChange={setChartHours} /></section></Col>
         </Row>
 

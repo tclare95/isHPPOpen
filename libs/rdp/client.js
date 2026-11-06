@@ -7,14 +7,17 @@ import { setTimeout as delay } from "node:timers/promises";
 import { getRdpConfig } from "./config.js";
 import { getCanonicalMeasurement } from "./measurements.js";
 import { RdpError } from "./errors.js";
+import { parseRiverLocation, parseRiverTrace, riverCoordinates, riverSamplePath, readRiverJson } from "./river.js";
 
 const API_CODES = new Set([
   "VALIDATION_ERROR", "MEASUREMENT_NOT_FOUND", "INVALID_CURSOR", "CURSOR_EXPIRED",
   "CURSOR_STALE", "ARCHIVE_INTEGRITY", "STORAGE_UNAVAILABLE", "QUERY_TIMEOUT", "FORBIDDEN", "NOT_FOUND",
+  "RESULT_TOO_LARGE", "RELEASE_NOT_AVAILABLE", "DATA_INTEGRITY",
 ]);
 const RETRY_CODES = new Set(["THROTTLED", "UPSTREAM_ERROR", "STORAGE_UNAVAILABLE", "QUERY_TIMEOUT", "NETWORK_ERROR"]);
 
 function httpError(status, body) {
+  if (status === 413) return new RdpError("RESULT_TOO_LARGE", status);
   if (status === 403 || status === 401) return new RdpError("AUTHORIZATION_FAILED", status);
   if (status === 429) return new RdpError("THROTTLED", status);
   const code = API_CODES.has(body?.error?.code) ? body.error.code : "UPSTREAM_ERROR";
@@ -85,8 +88,8 @@ export function createRdpClient(env = process.env) {
     }
   }
 
-  async function read(path, query, kind, ids = []) {
-    const url = new URL(`${config.apiUrl}/v1/measurements${path}`);
+  async function request(path, query, parse, bounded = false) {
+    const url = new URL(`${config.apiUrl}${path}`);
     url.search = new URLSearchParams(query).toString();
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 30000);
@@ -102,10 +105,11 @@ export function createRdpClient(env = process.env) {
           const response = await fetch(url.toString(), { method: "GET", headers: signed.headers,
             cache: "no-store", redirect: "error", signal: controller.signal });
           let body;
-          try { body = await response.json(); } catch {
+          try { body = bounded && response.ok ? await readRiverJson(response) : await response.json(); } catch (error) {
+            if (error instanceof RdpError) throw error;
             if (response.ok) throw new RdpError("RESPONSE_CONTRACT_ERROR");
           }
-          if (response.ok) return validateEnvelope(body, kind, ids);
+          if (response.ok) return parse(body);
           failure = httpError(response.status, body);
           retryAfter = Math.min(2000, Math.max(0, Number(response.headers.get("retry-after")) * 1000 || 0));
         } catch (error) {
@@ -122,7 +126,18 @@ export function createRdpClient(env = process.env) {
     }
   }
 
+  function read(path, query, kind, ids = []) {
+    return request(`/v1/measurements${path}`, query, (body) => validateEnvelope(body, kind, ids));
+  }
+
   return Object.freeze({
+    locateRiver(point) {
+      return request("/v1/river/locate", riverCoordinates(point), parseRiverLocation, true);
+    },
+    getRiverTrace(location, direction, geometry = "reaches") {
+      const path = riverSamplePath(location, direction, geometry);
+      return request(path, { geometry }, (body) => parseRiverTrace(body, location, direction, geometry), true);
+    },
     listMeasurements: () => read("", {}, "registry"),
     getLatest(ids) {
       if (!Array.isArray(ids) || ids.length < 1 || ids.length > 20 || new Set(ids).size !== ids.length) throw new RdpError("INVALID_QUERY");

@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import WaterQualityPage from '../app/waterquality/page';
 import useFetch from '../libs/useFetch';
 
@@ -28,7 +28,10 @@ describe('WaterQualityPage', () => {
     expect(screen.queryByText(/HPP paddling guidance/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Fresh monitors/i)).not.toBeInTheDocument();
     expect(screen.getByText(/contents may still be travelling downstream/i)).toBeInTheDocument();
-    expect(useFetch).toHaveBeenCalledTimes(3);
-    expect(useFetch.mock.calls.map(([path]) => path)).toEqual(['/api/waterquality', '/api/waterquality/csodensity?hours=120', '/api/levels']);
+    expect(useFetch).toHaveBeenCalledTimes(4);
+    expect(useFetch.mock.calls.map(([path]) => path)).toEqual([null, '/api/waterquality', '/api/waterquality/csodensity?hours=120', '/api/levels']);
+    fireEvent.change(screen.getByLabelText('Explore the river at Holme Pierrepont'), { target: { value: 'downstream' } });
+    expect(useFetch).toHaveBeenCalledWith('/api/waterquality/river?direction=downstream', expect.objectContaining({ shouldRetryOnError: false }));
+    expect(screen.getByTestId('indicator')).toBeInTheDocument();
   });
 });

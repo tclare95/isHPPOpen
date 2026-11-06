@@ -10,6 +10,7 @@ jest.mock('next/dynamic', () => (loader) => {
   if (source.includes('react-leaflet-cluster')) return ({ children }) => <div data-testid="cluster">{children}</div>;
   if (source.includes('mod.Marker')) return ({ children }) => <div data-testid="marker">{children}</div>;
   if (source.includes('mod.Popup')) return ({ children }) => <div>{children}</div>;
+  if (source.includes('mod.GeoJSON')) return ({ data }) => <div data-testid="river-layer">{data.riverTracer.kind}</div>;
   return ({ children }) => <div>{children}</div>;
 });
 
@@ -21,6 +22,12 @@ const locations = [
 ];
 
 describe('WaterQualityMap', () => {
+  it('keeps the independent river layer when the spill filter has no markers', () => {
+    const riverTrace = { type: 'FeatureCollection', features: [{}], riverTracer: { releaseVersion: 'fixture', kind: 'point-downstream' } };
+    render(<WaterQualityMap locations={[]} health={{ state: 'fresh' }} riverTrace={riverTrace} now={now} />);
+    expect(screen.getByTestId('river-layer')).toHaveTextContent('point-downstream');
+    expect(screen.queryByTestId('marker')).not.toBeInTheDocument();
+  });
   it('renders loading, error and empty states', () => {
     const { rerender } = render(<WaterQualityMap isPending />);
     expect(screen.getByText('Loading map data…')).toBeInTheDocument();

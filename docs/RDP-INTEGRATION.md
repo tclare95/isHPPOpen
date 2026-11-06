@@ -8,6 +8,12 @@ For the complementary platform view see [RDP ecosystem and documentation ownersh
 
 ## Ownership: site product versus data platform
 
+The first [HPP River Tracer consumer slice](HPP-RIVER-TRACER.md) reuses the existing
+RDP API and server-side signed client. Its narrow isHPPOpen endpoint serves optional
+river layers and summaries in `/waterquality`; the owner confirmed licensing and
+authorised live publication on 6 November 2026. Local fixtures remain isolated
+from Vercel. No RDP endpoint or producer change is added.
+
 | Concern | Owner | isHPPOpen's role |
 | --- | --- | --- |
 | River observations, provider identities, collection health and verified history | [RDP](https://github.com/tclare95/river-data-platform) | Read supported published series, adapt to existing site-specific API contracts, handle freshness/fallback under reviewed policies. |

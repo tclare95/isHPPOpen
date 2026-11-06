@@ -10,6 +10,8 @@ import { spawnSync } from "node:child_process";
 import fixture from "./fixtures/rdp-read-api.json";
 import eaMetadata from "./fixtures/rdp-ea-metadata.json";
 import { runRdpPreviewSmoke } from "../libs/rdp/previewSmoke";
+import riverFixture from "../libs/rdp/fixtures/hpp-river.json";
+import { RIVER_MAX_BYTES } from "../libs/rdp/river";
 
 jest.mock("server-only", () => ({}));
 jest.mock("@vercel/oidc", () => ({ getVercelOidcToken: jest.fn() }));
@@ -88,6 +90,50 @@ test.each([preview, production])("correct environment signs only its own target"
   expect(options.headers).not.toHaveProperty("WebIdentityToken");
   expect(send.mock.calls[0][0].input).toEqual({ RoleArn: env.RDP_ROLE_ARN, RoleSessionName: `ishppopen-${getRdpConfig(env).stage}`, DurationSeconds: 900, WebIdentityToken: "sensitive-preview-token" });
   expect(STSClient).toHaveBeenCalledWith({ region: "eu-west-1", endpoint: "https://sts.eu-west-1.amazonaws.com", maxAttempts: 1, requestHandler: { connectionTimeout: 3000, requestTimeout: 5000, throwOnRequestTimeout: true } });
+});
+
+test.each([preview, production])("river reads reuse federation/signing and only their own stage", async (env) => {
+  global.fetch.mockImplementation(async (url) => new Response(JSON.stringify(
+    url.includes("/locate?") ? riverFixture.locate : url.includes("/upstream?") ? riverFixture.upstream : riverFixture.downstream)));
+  const client = createRdpClient(env);
+  const location = await client.locateRiver({ longitude: -1.094674, latitude: 52.944867 });
+  for (const direction of ["upstream", "downstream"]) {
+    const trace = await client.getRiverTrace(location, direction);
+    expect(trace.riverTracer.kind).toBe(`point-${direction}`);
+  }
+  expect(getVercelOidcToken).toHaveBeenCalledTimes(1);
+  expect(send.mock.calls[0][0].input.RoleArn).toBe(env.RDP_ROLE_ARN);
+  expect(global.fetch.mock.calls.map(([url]) => url)).toEqual([
+    `${env.RDP_API_URL}/v1/river/locate?lon=-1.094674&lat=52.944867`,
+    `${env.RDP_API_URL}${riverFixture.locate.data.links.upstream}?geometry=reaches`,
+    `${env.RDP_API_URL}${riverFixture.locate.data.links.downstream}?geometry=reaches`,
+  ]);
+  for (const [, options] of global.fetch.mock.calls) {
+    expect(options).toMatchObject({ cache: "no-store", redirect: "error" });
+    expect(options.headers.authorization).toMatch(/^AWS4-HMAC-SHA256 /);
+    expect(options.headers["x-amz-security-token"]).toBe("fixture-session");
+  }
+});
+
+test.each([
+  [410, { error: { code: "RELEASE_NOT_AVAILABLE" } }, "RELEASE_NOT_AVAILABLE"],
+  [413, { message: "sensitive gateway body" }, "RESULT_TOO_LARGE"],
+  [503, { error: { code: "DATA_INTEGRITY", message: "private bucket" } }, "DATA_INTEGRITY"],
+])("river HTTP %i returns only a safe fixed error", async (status, body, code) => {
+  global.fetch.mockResolvedValue(new Response(JSON.stringify(body), { status }));
+  await expect(createRdpClient(preview).locateRiver({ longitude: -1.094674, latitude: 52.944867 }))
+    .rejects.toMatchObject({ code, status, message: `RDP ${code}` });
+  expect(global.fetch).toHaveBeenCalledTimes(1);
+});
+
+test("river validation and decoded body limits fail without retries", async () => {
+  const client = createRdpClient(preview);
+  expect(() => client.locateRiver({ longitude: "-1", latitude: 52 })).toThrow("INVALID_QUERY");
+  expect(() => client.getRiverTrace(riverFixture.locate.data, "upstream/../measurements")).toThrow("INVALID_QUERY");
+  expect(send).not.toHaveBeenCalled();
+  global.fetch.mockResolvedValue(new Response("x".repeat(RIVER_MAX_BYTES + 1)));
+  await expect(client.locateRiver({ longitude: -1, latitude: 52 })).rejects.toMatchObject({ code: "RESULT_TOO_LARGE" });
+  expect(global.fetch).toHaveBeenCalledTimes(1);
 });
 
 test("latest preserves partial failures, no observations, freshness, negative values and request order", async () => {

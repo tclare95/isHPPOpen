@@ -1,0 +1,395 @@
+{
+  "_provenance": "6 Nov 2026: exact RDP RiverApiService locate and local API handler metadata over the existing orn-v2-gb-packs release at [-1.094674,52.944867]. Summary and stop lists abbreviated to keep a small contract fixture; features are SYNTHETIC test geometry, not a usable HPP map. Never publish this fixture as live evidence.",
+  "locate": {
+    "data": {
+      "match": {
+        "status": "Matched",
+        "reason": "SingleReachWithinMargin",
+        "reachId": "23210",
+        "reachName": "River Trent",
+        "candidates": [
+          {
+            "reachId": "23210",
+            "distanceM": 0,
+            "name": "River Trent",
+            "form": "inlandRiver"
+          }
+        ]
+      },
+      "release": {
+        "releaseId": "orn-v2-gb",
+        "version": "838c7ed826b26ee16a11ba2b5be9dc4d286bca8cc0159c6f33d540bf04c0155c",
+        "token": "838c7ed826b26ee1"
+      },
+      "basinId": "80",
+      "sample": {
+        "sampleId": "227995",
+        "position": [
+          -1.093826,
+          52.945248
+        ],
+        "snapOffsetM": 71,
+        "hasCatchment": true
+      },
+      "snapReason": "NearestDownstreamSample",
+      "links": {
+        "upstream": "/v1/river/releases/838c7ed826b26ee1/basins/80/samples/227995/upstream",
+        "downstream": "/v1/river/releases/838c7ed826b26ee1/basins/80/samples/227995/downstream"
+      },
+      "note": "Results are computed from the canonical sample: the nearest source sample point at or downstream of the coordinate (snapOffsetM along the river)."
+    }
+  },
+  "upstream": {
+    "type": "FeatureCollection",
+    "riverTracer": {
+      "schema": "rdp.river-tracer.route/v1",
+      "kind": "point-upstream",
+      "network": {
+        "networkId": "orn-v2-gb-basin-80",
+        "version": "3d3ceee25d1282f8854865d9d52b5917c5dc49a70b7477a7779ba02088e39075",
+        "dataset": "OpenRiversNetwork (ORN) v2.0 with ORN Catchments",
+        "release": "ORN v2.0 GeoPackage (2025-03); network corrected from OS Open Rivers as downloaded 2023-02-09",
+        "archiveSha256": "6804aeb36802ba0b43571af84f8f42eae81ae9dbbc0a1ecaf22f5715abf2999d",
+        "coordinateTransform": "EPSG:27700 to WGS84 via OS 7-parameter Helmert (approximately 5 m; OSTN15 not applied)",
+        "extent": [
+          -2.344059,
+          52.335264,
+          -0.243514,
+          54.488299
+        ]
+      },
+      "attribution": "© OpenRiversNetwork (ORN) 2023. GeoData Institute, University of Southampton. OpenRiverNetwork Catchments: Hornby, D.D., Naura, M. and Hill, C.T. (2024), GeoData Institute and River Restoration Centre. Built on OS Open Rivers (Ordnance Survey 2023) and OS Terrain 50. Contains OS data © Crown copyright and database right 2023.",
+      "licence": "UNRESOLVED for redistribution: the openrivers.net FAQ states OGL v3.0; its home page states OGL v3.0 and ODbL 1.0 / Database Contents License; the ORN Catchments report states OGL v3.0. Confirm with the maintainers before any public redistribution of derived data.",
+      "licenceUrl": "https://www.openrivers.net/faqs/",
+      "query": {
+        "longitude": -1.093826,
+        "latitude": 52.945248
+      },
+      "match": {
+        "status": "Matched",
+        "reachId": "23210",
+        "reason": "CanonicalSample",
+        "candidates": []
+      },
+      "route": {
+        "status": "traced",
+        "direction": "upstream",
+        "startReachId": "23210",
+        "completeness": "complete",
+        "termination": "source",
+        "paths": "branched",
+        "reasons": [],
+        "reachCount": 4026,
+        "lengthM": 4011195,
+        "branchNodeIds": [
+          "182290",
+          "182293"
+        ],
+        "stops": [
+          {
+            "kind": "source",
+            "nodeId": "23317",
+            "reachId": "23202"
+          },
+          {
+            "kind": "source",
+            "nodeId": "23299",
+            "reachId": "23184"
+          }
+        ]
+      },
+      "caveats": [
+        "Connectivity only: river reaches potentially downstream of the outfall on the mapped network. Not a measurement or model of pollution, concentration, dilution, travel time, exposure or water safety.",
+        "Generalised network: Ordnance Survey generalisation omits many headwater streams, so outfalls on unmapped streams cannot be linked to a reach.",
+        "Dendritic simplification: canals, drains and braided or secondary channels that broke the tree structure were deleted, so canal outfalls are not represented and distributaries are not traced.",
+        "The network derives from the February 2023 OS Open Rivers release; ORN has no scheduled updates.",
+        "Catchments are derived from the 50 m OS Terrain 50 DEM with stream burning and exist only where they passed the source's quality control."
+      ],
+      "geometry": "reaches",
+      "releaseVersion": "838c7ed826b26ee16a11ba2b5be9dc4d286bca8cc0159c6f33d540bf04c0155c",
+      "canonicalSample": {
+        "sampleId": "227995",
+        "reachId": "23210"
+      },
+      "summary": {
+        "mainStem": "River Trent <- Head of Trent <- source",
+        "mainStemSegments": [
+          {
+            "name": "River Trent",
+            "alternativeName": null,
+            "lengthM": 141224,
+            "reaches": 109
+          },
+          {
+            "name": "Head of Trent",
+            "alternativeName": null,
+            "lengthM": 7435,
+            "reaches": 5
+          },
+          {
+            "name": null,
+            "alternativeName": null,
+            "lengthM": 491,
+            "reaches": 2
+          },
+          {
+            "name": "Head of Trent",
+            "alternativeName": null,
+            "lengthM": 2123,
+            "reaches": 6
+          }
+        ],
+        "namedRiverCount": 452,
+        "namedRiversReturned": 3,
+        "chains": [
+          "River Tame -> River Trent",
+          "River Soar -> River Trent",
+          "River Dove -> River Trent"
+        ],
+        "namedRivers": [
+          {
+            "name": "River Trent",
+            "flowsInto": null,
+            "depth": 0,
+            "lengthM": 145243,
+            "upstreamLengthM": 4011410,
+            "joinsAt": [
+              -1.091264,
+              52.946402
+            ]
+          },
+          {
+            "name": "River Tame",
+            "flowsInto": "River Trent",
+            "depth": 1,
+            "lengthM": 80363,
+            "upstreamLengthM": 717444,
+            "joinsAt": [
+              -1.717202,
+              52.731216
+            ]
+          },
+          {
+            "name": "River Soar",
+            "flowsInto": "River Trent",
+            "depth": 1,
+            "lengthM": 73436,
+            "upstreamLengthM": 709975,
+            "joinsAt": [
+              -1.26762,
+              52.873276
+            ]
+          }
+        ]
+      },
+      "catchment": {
+        "status": "published",
+        "id": "catchment-227994",
+        "sampleId": "227994",
+        "areaKm2": 7481.745,
+        "pourPointOffsetM": 100.1,
+        "selection": "NearestDownstreamSample",
+        "note": "Source DEM catchment of the nearest published sample at or downstream of the start; it may include up to pourPointOffsetM of extra river. Area is from the full-resolution source; the polygon may be simplified."
+      }
+    },
+    "features": [
+      {
+        "type": "Feature",
+        "properties": {
+          "kind": "reach",
+          "fixture": true
+        },
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              -1.093826,
+              52.945248
+            ],
+            [
+              -1.091264,
+              52.946402
+            ]
+          ]
+        }
+      }
+    ]
+  },
+  "downstream": {
+    "type": "FeatureCollection",
+    "riverTracer": {
+      "schema": "rdp.river-tracer.route/v1",
+      "kind": "point-downstream",
+      "network": {
+        "networkId": "orn-v2-gb-basin-80",
+        "version": "3d3ceee25d1282f8854865d9d52b5917c5dc49a70b7477a7779ba02088e39075",
+        "dataset": "OpenRiversNetwork (ORN) v2.0 with ORN Catchments",
+        "release": "ORN v2.0 GeoPackage (2025-03); network corrected from OS Open Rivers as downloaded 2023-02-09",
+        "archiveSha256": "6804aeb36802ba0b43571af84f8f42eae81ae9dbbc0a1ecaf22f5715abf2999d",
+        "coordinateTransform": "EPSG:27700 to WGS84 via OS 7-parameter Helmert (approximately 5 m; OSTN15 not applied)",
+        "extent": [
+          -2.344059,
+          52.335264,
+          -0.243514,
+          54.488299
+        ]
+      },
+      "attribution": "© OpenRiversNetwork (ORN) 2023. GeoData Institute, University of Southampton. OpenRiverNetwork Catchments: Hornby, D.D., Naura, M. and Hill, C.T. (2024), GeoData Institute and River Restoration Centre. Built on OS Open Rivers (Ordnance Survey 2023) and OS Terrain 50. Contains OS data © Crown copyright and database right 2023.",
+      "licence": "UNRESOLVED for redistribution: the openrivers.net FAQ states OGL v3.0; its home page states OGL v3.0 and ODbL 1.0 / Database Contents License; the ORN Catchments report states OGL v3.0. Confirm with the maintainers before any public redistribution of derived data.",
+      "licenceUrl": "https://www.openrivers.net/faqs/",
+      "query": {
+        "longitude": -1.093826,
+        "latitude": 52.945248
+      },
+      "match": {
+        "status": "Matched",
+        "reachId": "23210",
+        "reason": "CanonicalSample",
+        "candidates": []
+      },
+      "route": {
+        "status": "traced",
+        "direction": "downstream",
+        "startReachId": "23210",
+        "completeness": "complete",
+        "termination": "tidal-outlet",
+        "paths": "single",
+        "reasons": [],
+        "reachCount": 93,
+        "lengthM": 148698,
+        "branchNodeIds": [],
+        "stops": [
+          {
+            "kind": "tidal-outlet",
+            "nodeId": "18319",
+            "reachId": "18215"
+          }
+        ]
+      },
+      "caveats": [
+        "Connectivity only: river reaches potentially downstream of the outfall on the mapped network. Not a measurement or model of pollution, concentration, dilution, travel time, exposure or water safety.",
+        "Generalised network: Ordnance Survey generalisation omits many headwater streams, so outfalls on unmapped streams cannot be linked to a reach.",
+        "Dendritic simplification: canals, drains and braided or secondary channels that broke the tree structure were deleted, so canal outfalls are not represented and distributaries are not traced.",
+        "The network derives from the February 2023 OS Open Rivers release; ORN has no scheduled updates.",
+        "Catchments are derived from the 50 m OS Terrain 50 DEM with stream burning and exist only where they passed the source's quality control."
+      ],
+      "geometry": "reaches",
+      "releaseVersion": "838c7ed826b26ee16a11ba2b5be9dc4d286bca8cc0159c6f33d540bf04c0155c",
+      "canonicalSample": {
+        "sampleId": "227995",
+        "reachId": "23210"
+      },
+      "summary": {
+        "text": "River Trent -> River Humber -> sea (tidal outlet)",
+        "segments": [
+          {
+            "name": "River Trent",
+            "alternativeName": null,
+            "lengthM": 30389,
+            "reaches": 20
+          },
+          {
+            "name": "Upper Water Mouth",
+            "alternativeName": "River Trent",
+            "lengthM": 116,
+            "reaches": 1
+          },
+          {
+            "name": "River Trent",
+            "alternativeName": null,
+            "lengthM": 6556,
+            "reaches": 3
+          },
+          {
+            "name": "Winthorpe Rack",
+            "alternativeName": "River Trent",
+            "lengthM": 1140,
+            "reaches": 1
+          },
+          {
+            "name": "River Trent",
+            "alternativeName": null,
+            "lengthM": 4590,
+            "reaches": 1
+          },
+          {
+            "name": "The Oven",
+            "alternativeName": "River Trent",
+            "lengthM": 400,
+            "reaches": 1
+          },
+          {
+            "name": "River Trent",
+            "alternativeName": null,
+            "lengthM": 6233,
+            "reaches": 4
+          },
+          {
+            "name": null,
+            "alternativeName": null,
+            "lengthM": 141,
+            "reaches": 1
+          },
+          {
+            "name": "River Trent",
+            "alternativeName": null,
+            "lengthM": 77907,
+            "reaches": 48
+          },
+          {
+            "name": "Trent Falls",
+            "alternativeName": "River Trent",
+            "lengthM": 636,
+            "reaches": 1
+          },
+          {
+            "name": null,
+            "alternativeName": null,
+            "lengthM": 667,
+            "reaches": 1
+          },
+          {
+            "name": "River Humber",
+            "alternativeName": null,
+            "lengthM": 6552,
+            "reaches": 4
+          },
+          {
+            "name": null,
+            "alternativeName": null,
+            "lengthM": 318,
+            "reaches": 1
+          },
+          {
+            "name": "River Humber",
+            "alternativeName": null,
+            "lengthM": 13053,
+            "reaches": 6
+          }
+        ]
+      }
+    },
+    "features": [
+      {
+        "type": "Feature",
+        "properties": {
+          "kind": "reach",
+          "fixture": true
+        },
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              -1.093826,
+              52.945248
+            ],
+            [
+              -1.091264,
+              52.946402
+            ]
+          ]
+        }
+      }
+    ]
+  }
+}

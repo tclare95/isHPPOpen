@@ -9,6 +9,7 @@ const MapContainer = dynamic(() => import('react-leaflet').then((mod) => mod.Map
 const TileLayer = dynamic(() => import('react-leaflet').then((mod) => mod.TileLayer), { ssr: false });
 const Marker = dynamic(() => import('react-leaflet').then((mod) => mod.Marker), { ssr: false });
 const Popup = dynamic(() => import('react-leaflet').then((mod) => mod.Popup), { ssr: false });
+const GeoJSON = dynamic(() => import('react-leaflet').then((mod) => mod.GeoJSON), { ssr: false });
 const MarkerClusterGroup = dynamic(() => import('react-leaflet-cluster').then((mod) => mod.default), { ssr: false });
 const center = [52.9458, -1.0907];
 const WINDOWS = [{ label: 'Current', hours: 0 }, { label: '6 hours', hours: 6 }, { label: '24 hours', hours: 24 }, { label: '48 hours', hours: 48 }];
@@ -28,7 +29,7 @@ function formatDuration(minutes) {
   return hours ? `${hours} hr ${minutes % 60} min` : `${minutes} min`;
 }
 
-export default function WaterQualityMap({ locations = [], health, isPending = false, error = null, now = new Date() }) {
+export default function WaterQualityMap({ locations = [], health, isPending = false, error = null, now = new Date(), riverTrace = null }) {
   const [windowHours, setWindowHours] = useState(6);
   const [icons, setIcons] = useState({ active: null, recent: null });
   useEffect(() => {
@@ -52,7 +53,8 @@ export default function WaterQualityMap({ locations = [], health, isPending = fa
 
   if (isPending) return <p>Loading map data…</p>;
   if (error) return <p>Unable to load map data right now.</p>;
-  if (!locations.length) return <p>No CSO location data is available.</p>;
+  const hasRiverGeometry = Boolean(riverTrace?.features?.length);
+  if (!locations.length && !hasRiverGeometry) return <p>No CSO location data is available.</p>;
   return (
     <div>
       {health?.state !== 'fresh' ? <div className="alert alert-warning py-2">Status data may be stale. No stale location is labelled as currently spilling.</div> : null}
@@ -62,9 +64,13 @@ export default function WaterQualityMap({ locations = [], health, isPending = fa
         </ButtonGroup>
         <div className="cso-map-legend"><span className="legend-active" aria-hidden="true">!</span> Currently spilling <span className="legend-recent" aria-hidden="true">≈</span> Stopped recently; flow remains downstream</div>
       </div>
-      {!filtered.length ? <p className="water-quality-muted">No locations match this time window.</p> : (
-        <MapContainer center={center} zoom={9} className="cso-map" aria-label="Upstream CSO activity map">
+      {!filtered.length && !hasRiverGeometry ? <p className="water-quality-muted">No locations match this time window.</p> : (
+        <MapContainer center={center} zoom={9} preferCanvas className="cso-map" aria-label="Upstream CSO activity map">
           <TileLayer attribution='&copy; OpenStreetMap contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+          {hasRiverGeometry ? <GeoJSON key={`${riverTrace.riverTracer.releaseVersion}-${riverTrace.riverTracer.kind}`}
+            data={riverTrace} attribution="River network and catchment: OpenRiversNetwork"
+            filter={(feature) => feature.geometry.type !== 'Point'}
+            style={(feature) => feature.properties.kind === 'catchment' ? { color: '#a78bfa', weight: 1, fillOpacity: 0.08 } : { color: '#0dcaf0', weight: 3, opacity: 0.75 }} /> : null}
           <MarkerClusterGroup chunkedLoading>
             {filtered.map((location) => (
               <Marker key={location.id} position={[location.coordinates.y, location.coordinates.x]} icon={icons[location.status] || undefined}>
@@ -95,4 +101,5 @@ WaterQualityMap.propTypes = {
   isPending: PropTypes.bool,
   error: PropTypes.object,
   now: PropTypes.instanceOf(Date),
+  riverTrace: PropTypes.object,
 };

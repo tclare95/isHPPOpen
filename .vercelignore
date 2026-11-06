@@ -1,0 +1,4 @@
+# Local evidence and environment files must never enter a deployment upload.
+.history-fixtures/
+.env*
+coverage/

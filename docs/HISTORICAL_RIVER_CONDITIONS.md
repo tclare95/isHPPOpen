@@ -29,7 +29,8 @@ browser ── /history (client) ──┬─ /api/history/colwick/month?year&mo
         │
 libs/history/historyService.js (server-only)
    └─ one bounded RDP read per UK calendar month, unstable_cache'd
-        ├─ completed months: revalidate 24h     ├─ current month: 15 min
+        ├─ completed months: revalidate 24–29h  ├─ current month: 15 min
+        ├─ at most 2 RDP month reads in flight per instance (incl. background revalidation)
         └─ digest-only layer for year/overview composition (no raw readings)
 libs/history/{ukCalendar,quality,digest,aggregate,present}.js — pure, unit-tested
 ```
@@ -43,6 +44,12 @@ libs/history/{ukCalendar,quality,digest,aggregate,present}.js — pure, unit-tes
   failed, the response is CDN-cached for only 60 s, and months already read stay cached, so a cold build
   completes over a few requests. Measured locally over the full 2016–2026 fixture set: ~0.8 s of compute,
   ~100 KB overview payload.
+- **Polite revalidation.** `unstable_cache` serves a stale month at once and refreshes it in the background,
+  outside the concurrency-4 composition limit. On 2026-11-06 every month filled the previous evening expired
+  together and ~500 requests hit RDP in one minute (5 req/s gateway limit: 429s and Lambda throttles). So
+  every RDP month read, foreground or background, now passes one per-instance gate
+  (`HISTORY_RDP_READ_CONCURRENCY = 2`); concurrent reads of the same month share one call; and completed
+  months are spread over six TTLs (24h … 29h, by month) with unchanged cache key parts, so expiry drifts apart.
 - **CDN.** `Cache-Control: public, s-maxage=3600` (completed), `900` (in progress), `60` (any month failed),
   each with `stale-while-revalidate=86400`.
 - **Failures** map to fixed public reasons (no raw errors): `integrity` (503, `ARCHIVE_INTEGRITY`),

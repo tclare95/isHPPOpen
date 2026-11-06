@@ -1,7 +1,9 @@
 /** @jest-environment node */
+import { unstable_cache } from "next/cache";
 import { createRdpClient } from "../libs/rdp/client";
 import { RdpError } from "../libs/rdp/errors";
 import {
+  HISTORY_RDP_READ_CONCURRENCY, PAST_MONTH_REVALIDATE_SECONDS, PAST_MONTH_TTL_SPREAD,
   __resetHistoryReaderForTests, describeHistoryError, getHistoryOverview, getMonthHistory, getYearHistory,
 } from "../libs/history/historyService";
 
@@ -99,6 +101,52 @@ test.each([
   ["PAGINATION_LIMIT", 502, "unreliable"],
 ])("%s maps to %i %s", (code, status, reason) => {
   expect(describeHistoryError(new RdpError(code))).toMatchObject({ status, reason, code });
+});
+
+// Wraps a reader so every page read waits a tick, recording the peak number in flight.
+function trackConcurrency(reader) {
+  const stats = { inFlight: 0, peak: 0 };
+  const inner = reader.getObservations;
+  reader.getObservations = jest.fn(async (...args) => {
+    stats.inFlight++;
+    stats.peak = Math.max(stats.peak, stats.inFlight);
+    try {
+      await new Promise((resolve) => setImmediate(resolve));
+      return await inner(...args);
+    } finally {
+      stats.inFlight--;
+    }
+  });
+  return stats;
+}
+
+test("RDP month reads are gated even when many callers start them at once", async () => {
+  const reader = fakeReader();
+  const stats = trackConcurrency(reader);
+  createRdpClient.mockReturnValue(reader);
+  // Background revalidation starts every stale month without settleAll's bound.
+  await Promise.all(Array.from({ length: 24 }, (_, index) => getMonthHistory(2020 + Math.floor(index / 12), (index % 12) + 1)));
+  expect(reader.getObservations).toHaveBeenCalledTimes(24);
+  expect(stats.peak).toBe(HISTORY_RDP_READ_CONCURRENCY);
+});
+
+test("concurrent reads of the same month share one RDP read", async () => {
+  const reader = fakeReader();
+  trackConcurrency(reader);
+  createRdpClient.mockReturnValue(reader);
+  const [first, second] = await Promise.all([getMonthHistory(2024, 6), getMonthHistory(2024, 6)]);
+  expect(reader.getObservations).toHaveBeenCalledTimes(1);
+  expect(second.summary).toEqual(first.summary);
+  await getMonthHistory(2024, 6);
+  expect(reader.getObservations).toHaveBeenCalledTimes(2);
+});
+
+test("completed months spread their daily TTL without changing cache keys", () => {
+  const past = unstable_cache.mock.calls
+    .filter(([, keyParts]) => ["history-colwick-month-v2", "history-colwick-month-digest-v2"].includes(keyParts[0]));
+  expect(past).toHaveLength(2 * PAST_MONTH_TTL_SPREAD);
+  const ttls = [...new Set(past.map(([, , options]) => options.revalidate))].sort((a, b) => a - b);
+  expect(ttls).toEqual(Array.from({ length: PAST_MONTH_TTL_SPREAD }, (_, hour) => PAST_MONTH_REVALIDATE_SECONDS + hour * 3600));
 });
 
 test("unexpected errors expose no internals", () => {

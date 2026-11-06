@@ -16,6 +16,14 @@ import { currentLondonMonth, londonParts, monthBounds, yearBounds } from "./ukCa
 export const PAST_MONTH_REVALIDATE_SECONDS = 24 * 60 * 60;
 export const CURRENT_MONTH_REVALIDATE_SECONDS = 15 * 60;
 export const HISTORY_READ_CONCURRENCY = 4;
+// Ceiling on RDP month reads in flight from one server instance, whoever started them.
+// unstable_cache serves a stale entry immediately and refreshes it in the background,
+// so HISTORY_READ_CONCURRENCY alone never bounds revalidation: without this gate every
+// expired month (~130 of them) re-read RDP at once and tripped its 5 req/s limit.
+export const HISTORY_RDP_READ_CONCURRENCY = 2;
+// Completed months are spread over this many daily TTLs (24h, 25h, ... 29h) so entries
+// filled together do not all expire, and revalidate, in the same minute.
+export const PAST_MONTH_TTL_SPREAD = 6;
 // Leaves headroom inside the route's 60s maxDuration. Months not started by then are
 // reported as not yet loaded; months already read stay cached for the next request.
 export const OVERVIEW_DEADLINE_MS = 40 * 1000;
@@ -39,7 +47,29 @@ export const MEASUREMENT = Object.freeze({
   source: "river-data-platform",
 });
 
-async function computeMonth(year, month) {
+// FIFO gate for RDP reads; slots pass directly to the next waiter.
+function createGate(limit) {
+  let active = 0;
+  const waiting = [];
+  return async function run(task) {
+    if (active < limit) active++;
+    else await new Promise((resolve) => waiting.push(resolve));
+    try {
+      return await task();
+    } finally {
+      const next = waiting.shift();
+      if (next) next();
+      else active--;
+    }
+  };
+}
+
+let rdpGate = createGate(HISTORY_RDP_READ_CONCURRENCY);
+// One read per month at a time: the month and digest caches, and concurrent requests,
+// revalidating the same month share a single RDP read.
+const inFlightMonths = new Map();
+
+async function readMonth(year, month) {
   const now = Date.now();
   const { from, to } = monthBounds(year, month);
   const pad = COLWICK_HISTORY.maxSupportedGapMs;
@@ -52,8 +82,25 @@ async function computeMonth(year, month) {
   };
 }
 
-const cachedPastMonth = unstable_cache(computeMonth, ["history-colwick-month-v2"],
-  { revalidate: PAST_MONTH_REVALIDATE_SECONDS, tags: [CACHE_TAG] });
+function computeMonth(year, month) {
+  const key = `${year}-${month}`;
+  let pending = inFlightMonths.get(key);
+  if (!pending) {
+    pending = rdpGate(() => readMonth(year, month)).finally(() => inFlightMonths.delete(key));
+    inFlightMonths.set(key, pending);
+  }
+  return pending;
+}
+
+// Each spread bucket keeps the same key parts, so entries cached before the spread stay
+// valid; only their TTL differs. A month always maps to the same bucket.
+function spreadPastCache(fn, keyParts) {
+  const buckets = Array.from({ length: PAST_MONTH_TTL_SPREAD }, (_, hour) => unstable_cache(fn, keyParts,
+    { revalidate: PAST_MONTH_REVALIDATE_SECONDS + hour * 60 * 60, tags: [CACHE_TAG] }));
+  return (year, month) => buckets[(year * 12 + month) % PAST_MONTH_TTL_SPREAD](year, month);
+}
+
+const cachedPastMonth = spreadPastCache(computeMonth, ["history-colwick-month-v2"]);
 const cachedCurrentMonth = unstable_cache(computeMonth, ["history-colwick-current-month-v2"],
   { revalidate: CURRENT_MONTH_REVALIDATE_SECONDS, tags: [CACHE_TAG] });
 
@@ -69,8 +116,8 @@ export function getMonthEvidence(year, month) {
 const withoutReadings = ({ readings, ...digest }) => digest;
 
 // Digest-only cache keeps year/overview composition small (no raw readings).
-const cachedPastDigest = unstable_cache(async (year, month) => withoutReadings(await cachedPastMonth(year, month)),
-  ["history-colwick-month-digest-v2"], { revalidate: PAST_MONTH_REVALIDATE_SECONDS, tags: [CACHE_TAG] });
+const cachedPastDigest = spreadPastCache(async (year, month) => withoutReadings(await cachedPastMonth(year, month)),
+  ["history-colwick-month-digest-v2"]);
 
 function getMonthDigest(year, month) {
   return isCurrentMonth(year, month) ? cachedCurrentMonth(year, month).then(withoutReadings) : cachedPastDigest(year, month);
@@ -319,4 +366,6 @@ export function describeHistoryError(error) {
 
 export function __resetHistoryReaderForTests() {
   reader = null;
+  rdpGate = createGate(HISTORY_RDP_READ_CONCURRENCY);
+  inFlightMonths.clear();
 }

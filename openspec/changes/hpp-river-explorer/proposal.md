@@ -20,6 +20,20 @@ A visitor opens an HPP-focused River Explorer and can:
 
 Keep the first release anchored to HPP; optional click-to-trace for another river location can be separately added after the fixed-site experience is proven. The public feature is **consumer UX**, not a new generic RDP portal or public API.
 
+## Second outcome: replace Sewage Map at runtime
+
+The existing scraper depends on Sewage Map's **information-point GeoJSON**, not just a river map. It chooses the nearest information point to HPP (within 250 m) and consumes `CSOs`, `number_upstream_CSOs` and `number_CSOs_per_km2`. Those IDs drive Severn Trent status work; the summary and density feed the current site view and historical water-quality calibration.
+
+The HPP consumer SHOULD migrate to a **reviewed RDP-derived site membership and metric source**, ultimately making **no Sewage Map runtime request**. This is a second, independently approved delivery slice of the same consumer change—not a prerequisite for publishing an independently useful river map.
+
+- Resolve HPP's upstream CSO identities through the verified #71 outfall catalogue and #47 network/catchment evidence, recording confidently linked, catchment-only/unlinked, ambiguous, unavailable and excluded cases.
+- Compare an evidence-captured Sewage Map baseline with RDP membership and investigate each significant difference (source coverage, asset coordinates, ID matching, geographic extent and active/recent status semantics). Do not automatically add candidates to operational polling.
+- Produce a **reviewed, versioned HPP membership** with stable canonical/provider IDs and source/network versions. RDP already has offline candidate matching and catchment commands: a reviewed generated artifact could suffice **without a new online API**. A first-party upstream-outfalls endpoint is the natural later reusable product capability.
+- Reconcile the precise meaning and denominator of `number_upstream_CSOs` and `number_CSOs_per_km2`. Static upstream catalogue membership is not the same thing as time-varying active/recent activity density; do not silently feed new semantics into historical charts or calibrated alerts.
+- Introduce the selected new source behind an independently reversible source switch, with parity evidence and explicit treatment of history continuity. Keep the existing status/alert/public data contract until changes are deliberately approved.
+
+**Important:** removing the *Sewage Map relationship lookup* does not require all CSO event/status reads to have moved to RDP. The current scraper may still fetch Severn Trent statuses for a reviewed, fixed selection during the transition. Retiring those remaining scraper responsibilities belongs to [#68](https://github.com/tclare95/isHPPOpen/issues/68) and RDP [#72](https://github.com/tclare95/river-data-platform/issues/72).
+
 ## Boundaries
 
 - **RDP owns** river dataset, reach matching, route/catchment semantics, version and upstream GeoJSON contract. isHPPOpen owns the HPP anchor, interpretation, user interface and client-side/public presentation.

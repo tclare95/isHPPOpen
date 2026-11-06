@@ -122,8 +122,34 @@ ignored under `.history-fixtures/`; none is included in the change.
   200 for upstream summary-only and downstream fixtures, and 400 for an arbitrary
   coordinate parameter. No RDP/AWS call was made by that fixture endpoint.
 
-Production release evidence is recorded below after verifying the deployed
-isHPPOpen caller's signed locate and both trace reads. No AWS/IAM permission,
-producer deployment, Vercel project setting or operational source-mode change is
-included. CSO membership/parity, source replacement and dynamic spill overlays
-remain separate work; connectivity is not pollution or safety.
+No AWS/IAM permission, producer deployment, Vercel project setting or operational
+source-mode change is included. CSO membership/parity, source replacement and
+dynamic spill overlays remain separate work; connectivity is not pollution or safety.
+
+## Production caller and release evidence — 6 November 2026
+
+The production-target candidate `dpl_Hr5M7g4xdLgVzeqaX3fe7npchHGr`, runtime code
+commit `897d0c952bb7ac2edab9af97647afa3ebc293c2f`, built successfully using the
+existing Production configuration, without moving `ishppopen.co.uk`.
+Requests through its Next.js handler used the normal **production** Vercel
+OIDC/SigV4 caller and returned `source: river-data-platform`, not fixtures:
+
+| Request | Verified result |
+| --- | --- |
+| Upstream, `geometry=none` | HTTP 200, reviewed release/Trent match, complete 4,026-reach summary and published catchment evidence, no returned features |
+| Upstream, full geometry | HTTP 200, 4,028 features, 2,116,121-byte consumer response, complete to source |
+| Downstream, full geometry | HTTP 200, 94 features, 42,719-byte consumer response, complete 148,698 m route to tidal outlet |
+
+The browser displayed upstream network/catchment geometry and the existing CSO
+markers together, plus the catchment displacement, named rivers and source
+details. Switching downstream displayed Trent → Humber → sea. The narrow mobile
+layout remained usable. This proves function-runtime production federation,
+not just a build token or a fixture match.
+
+All **702 tests in 67 suites** passed locally. Lint passed with nine existing
+unused-disable warnings. The required GitHub `Web checks` run
+[`42278201493`](https://github.com/tclare95/isHPPOpen/actions/runs/42278201493)
+passed lint, tests and the production build. Live release is tracked in
+[PR #116](https://github.com/tclare95/isHPPOpen/pull/116), through protected main
+and the existing Vercel Git integration. Raw local response bodies stay ignored;
+only this bounded evidence is versioned.

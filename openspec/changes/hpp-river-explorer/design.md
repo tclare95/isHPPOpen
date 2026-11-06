@@ -12,11 +12,21 @@ The [product requirements](specs/hpp-river-explorer/spec.md) are normative. Thes
 
 ## Sensible first implementation
 
-Prefer one discoverable HPP-focused page/section with direction switching, map polyline(s), optional catchment layer and concise summaries; link it from the existing site/navigation and water-quality explanation. Keep a reviewed fixed HPP river point as the first scope. A second stage could let a visitor click another point to explore; no unrestricted public coordinate proxy is required to ship HPP.
+**Existing product affordances to reuse:** `app/waterquality/page.js` owns the dashboard; `components/functional/csoMap.js` already renders Leaflet markers/cluster popups, active/recent time filters and stale-data notices; `components/functional/csoChart.js` owns the time series; `libs/services/waterQualityService.js` is the existing Mongo snapshot/status read; `libs/waterQualityIndicator.js` and `libs/services/colwickAlertsService.js` own site interpretation and alerts. Corresponding component/service tests already cover current/6-hour filters, stale/offline behavior, calibrated thresholds and service serialization. Reuse these established seams, not their business semantics for network geometry.
+
+Prefer adding **optional river polylines/catchment with direction switching** to the existing `/waterquality` map and a concise textual route/tributary summary adjacent to it. Do not build a new water-quality dashboard, duplicate maps and event-window controls, or migrate the calibrated risk indicator merely to display river geometry. Keep a reviewed fixed HPP river point as the first scope. A second stage could let a visitor click another point to explore; no unrestricted public coordinate proxy is required to ship HPP.
 
 Use the least invasive read flow that safely obtains `locate` and a matching direction result from the **same network release**. Cache immutable release URLs and/or bounded display responses where useful, handle a `410` by locating again, and avoid rebuilding a topology graph in the web app. Distinguish locate's JSON envelope from the trace's GeoJSON contract. Avoid masking source provenance when adapting responses. Bound response size, user inputs, failures and cache lifetime; reject unexpected upstream origins.
 
 A selected route can be too large or a catchment polygon may be unavailable. A textual upstream tributary/main-stem view and a downstream named path should remain useful on their own. Explicit text states for partial, ambiguous and unserved results are better than drawing guessed connectors. For map licensing, obtain a positive redistribution decision before enabling public derived GeoJSON/summaries; retain required attribution.
+
+## Compatibility and review notes
+
+- The existing dashboard's source is **legacy Mongo**: `water_quality.CSO_IDs` determines which records `waterQualityService` queries and plots. The `Current / 6 / 24 / 48 hours` buttons filter existing status events; they are not routing or modelling controls. Preserve these independently of the optional static river overlay.
+- `number_CSOs_per_km2` is used in the site's **three-hour rolling** CSO assessment and the 24-hour/5-day chart; calibration (`libs/waterQualityCalibration.json`, 2026-08-31) includes 60th/80th-percentile boundaries. `getCsoActivityAssessment` also influences subscriber water-quality alerts. A replacement metric changes more than a display label, so the cutover must prove equivalence or be treated as a separately calibrated version.
+- Legacy reads `Number(waterQuality.number_CSOs_per_km2) || 0` for its summary, and `Number(row.water_quality.number_CSOs_per_km2)` for history. A missing value could be confused with a true zero (notably JSON `null`). Before source migration, explicitly test no-source/partial/unknown semantics and avoid automatically promoting missing activity to zero.
+- At present the map only plots locations classified fresh active/recent; unknown/offline are counted but not plotted. Overlaying network geometry must not accidentally imply confirmed status or connectivity for these hidden/unmapped assets.
+- Existing behavior is supported by repository tests; this review did **not** execute production API, deploy code, or validate live data freshness.
 
 ## Independent readiness/release boundaries
 

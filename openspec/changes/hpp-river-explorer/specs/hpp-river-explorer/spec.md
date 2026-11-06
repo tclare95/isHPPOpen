@@ -70,6 +70,46 @@ The River Explorer SHALL consume RDP through trusted isHPPOpen server-side infra
 - **WHEN** a release-scoped URL becomes unavailable or RDP publishes a newer network
 - **THEN** the consumer re-resolves the HPP anchor as needed and does not silently combine geometry or summaries from incompatible releases.
 
+### Requirement: HPP can use RDP-derived upstream outfall membership instead of Sewage Map
+
+isHPPOpen SHALL be able to consume a reviewed, attributable and versioned set of HPP-upstream CSOs derived from RDP's official provider catalogue and river-connectivity/catchment evidence. A live Sewage Map request SHALL NOT be required after the separately approved membership cutover. Included identities SHALL be explicitly distinguishable from unmapped, uncertain, excluded and newly discovered candidates; spill activity does not determine membership.
+
+#### Scenario: Verified upstream asset
+- **WHEN** an outfall is linked confidently to an upstream connected reach and its provider identity is verified
+- **THEN** it is eligible for HPP's reviewed membership, with source identity, evidence version and rationale preserved.
+
+#### Scenario: Candidate or missing outfall mapping
+- **WHEN** an outfall falls in the catchment but cannot be linked to the river network, has ambiguous asset coordinates, or is present only in the legacy selection
+- **THEN** it is surfaced for review and is neither silently included as verified nor silently removed as irrelevant.
+
+#### Scenario: Membership changes after source update
+- **WHEN** RDP's provider catalogue or network release changes
+- **THEN** HPP's approved selection does not automatically expand or shrink; proposed additions/removals require review and the effective version remains auditable.
+
+### Requirement: Sewage Map replacement preserves defensible activity semantics
+
+Before replacing legacy `number_upstream_CSOs` or `number_CSOs_per_km2`, isHPPOpen SHALL document their actual time-window, scope and denominator semantics and either reproduce them from compatible evidence or explicitly introduce a new explained metric with reviewed recalibration. Static upstream membership SHALL NOT be passed off as currently active CSO density. Missing or stale status is unknown, not zero.
+
+#### Scenario: Two sources disagree
+- **WHEN** the RDP-derived membership or activity metric differs from an attributed Sewage Map baseline
+- **THEN** the review records shared, added, missing and unresolved identities, explains material metric differences, and does not silently overwrite calibration or past readings.
+
+#### Scenario: Historical calibration is not equivalent
+- **WHEN** the proposed replacement density cannot be meaningfully compared with the historical `number_CSOs_per_km2` series
+- **THEN** current risk thresholds, chart labels and alert behaviour are not silently applied to it; a compatible transition or explicit recalibration/series boundary must be approved.
+
+### Requirement: Sewage Map cutover is independently reversible
+
+The relationship-source cutover SHALL have demonstrated parity, clearly recorded residual unknowns, a single effective source and a rollback route that does not erase historic evidence or issue duplicate alerts. No RDP candidate search SHALL automatically change #71 polling sets or HPP's active site membership.
+
+#### Scenario: Approved replacement is available
+- **WHEN** the reviewed HPP selection and supporting activity metrics satisfy agreed acceptance evidence
+- **THEN** the consumer can stop requesting Sewage Map at runtime while continuing to preserve supported site water-quality/CSO status contracts.
+
+#### Scenario: New source unavailable during migration
+- **WHEN** an RDP-generated membership artifact or read is missing, stale, incompatible or unverified
+- **THEN** the consumer holds the last reviewed effective selection or explicitly reverts under an approved source policy rather than treating all upstream CSOs as absent, showing zero activity or silently switching source.
+
 ### Requirement: Existing HPP operational and water-quality behaviour is unchanged
 
 The new River Explorer SHALL be informational and independently degradable. It SHALL NOT change HPP open/closed decisions, river-level reads, CSO membership/polling, spill-status calculations, density history, calibrated water-quality indication, alerts, or legacy source selection.

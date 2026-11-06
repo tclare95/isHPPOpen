@@ -25,6 +25,6 @@ All tasks are **unstarted**. They express user-visible outcomes and verification
 ## Separately scoped later opportunities
 
 - [ ] Evaluate opt-in tracing from another selected river point, only after the HPP default has demonstrated reasonable map usability and error handling. This is **not a first-release prerequisite**.
-- [ ] When RDP exposes reviewed outfall relationship/impact data, prepare a **separate** isHPPOpen parity and CSO cutover OpenSpec. No automatic Sewage Map replacement or CSO selection is authorised by this change.
+- [ ] When RDP exposes reviewed dynamic outfall relationships/impact layers and #72 status/events, consider a further platform-native CSO read migration; it is not required for the separately reviewed Sewage Map membership-source cutover.
 
 **Specification PR only:** no implementation, deployment, new IAM rights, public API exposure, source switch, CSO collection changes or production data writes.

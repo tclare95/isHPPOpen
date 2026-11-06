@@ -65,6 +65,8 @@ The [canonical RDP River Tracer OpenSpec](https://github.com/tclare95/river-data
 
 The first enables a Sewage Map-style visualisation in RDP's own standalone map; the second can eventually replace isHPPOpen's HPP dependence on Sewage Map's information layer.
 
+**Near-term HPP consumer:** [HPP River Explorer #114](../openspec/changes/hpp-river-explorer/proposal.md) proposes a HPP-anchored upstream/downstream map and named-river/catchment summaries using the River Tracer locate/upstream/downstream routes. This is a public isHPPOpen **view** of a scoped server-side IAM-protected RDP read, not a browser-anonymous RDP API and not a CSO source cutover. The current three River Tracer endpoints do not supply reviewed outfall relationships or active/recent CSO-impact overlays. Production caller access and public network-data redistribution licensing require independent verification.
+
 **Migration is not automatic.** HPP must compare canonical outfall IDs and network confidence against the legacy selection, resolve mismatches, review risk/calibration effects and approve a controlled cutover. RDP discovery/mapping cannot silently change #71's explicit selected polling set. A downstream river corridor is **potential connectivity, not proof of water pollution or safe/unsafe conditions**.
 
 ## Cross-repository change and documentation rules

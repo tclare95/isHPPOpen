@@ -63,6 +63,8 @@ The existing [#51 consumer OpenSpec](../openspec/changes/unify-gauge-consumers/p
 
 ## River Tracer and replacement of Sewage Map
 
+See the [Sewage Map compatibility inventory](SEWAGE-MAP-COMPATIBILITY.md) for exact legacy fields, consumers, reviewed-artifact requirements and the unresolved density gate before runtime-source removal.
+
 Today the legacy scraper requests Sewage Map's **information-point GeoJSON** for downstream impact, picks a nearby HPP point, and extracts `properties.CSOs` as the HPP CSO IDs. That is an external relationship lookup, separate from Severn Trent's authoritative status source.
 
 The [canonical RDP River Tracer OpenSpec](https://github.com/tclare95/river-data-platform/blob/main/openspec/changes/river-network-routing/proposal.md) (original [isHPPOpen proposal](../openspec/changes/river-network-routing/proposal.md) retained as a historical copy) includes both:

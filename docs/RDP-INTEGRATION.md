@@ -65,7 +65,11 @@ The [canonical RDP River Tracer OpenSpec](https://github.com/tclare95/river-data
 
 The first enables a Sewage Map-style visualisation in RDP's own standalone map; the second can eventually replace isHPPOpen's HPP dependence on Sewage Map's information layer.
 
-**Migration is not automatic.** HPP must compare canonical outfall IDs and network confidence against the legacy selection, resolve mismatches, review risk/calibration effects and approve a controlled cutover. RDP discovery/mapping cannot silently change #71's explicit selected polling set. A downstream river corridor is **potential connectivity, not proof of water pollution or safe/unsafe conditions**.
+**Near-term HPP consumer:** [HPP River Explorer #114](../openspec/changes/hpp-river-explorer/proposal.md) proposes a HPP-anchored upstream/downstream map and named-river/catchment summaries using the River Tracer locate/upstream/downstream routes. This is a public isHPPOpen **view** of a scoped server-side IAM-protected RDP read, not a browser-anonymous RDP API and not a CSO source cutover. The current three River Tracer endpoints do not supply reviewed outfall relationships or active/recent CSO-impact overlays. Production caller access and public network-data redistribution licensing require independent verification.
+
+**Sewage Map replacement planning:** [HPP River Explorer #114](../openspec/changes/hpp-river-explorer/proposal.md) also includes an independently gated consumer migration of HPP's `CSO_IDs` and count/density source away from Sewage Map's information point. A reviewed, RDP-generated static HPP membership is an acceptable first migration even if a reusable upstream-outfalls API is not yet available. The map itself does **not** switch the CSO source; legacy density calibration, historical charts, alerts, provider status and explicit #71 polling selection need separate compatibility evidence.
+
+**Migration is not automatic.** HPP must compare canonical outfall IDs and network confidence against the legacy selection, resolve mismatches, review risk/calibration effects and approve a controlled cutover. A reviewed static membership artifact may remove runtime Sewage Map dependency before RDP's future upstream-outfall information read API is released. RDP discovery/mapping cannot silently change #71's explicit selected polling set. A downstream river corridor is **potential connectivity, not proof of water pollution or safe/unsafe conditions**.
 
 ## Cross-repository change and documentation rules
 

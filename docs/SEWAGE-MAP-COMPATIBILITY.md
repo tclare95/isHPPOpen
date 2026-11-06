@@ -2,7 +2,8 @@
 
 Reviewed 6 November 2026 against web `a9127f6` and legacy scraper source
 (`waterQuality.mjs` blob `6dc9da5`, `app.mjs` blob `bb456e8`, matching GitHub main).
-Repository/issue inspection only: no live Sewage Map, provider, MongoDB or AWS reads.
+Repository/issue and public upstream source inspection only: no hosted Sewage Map
+GeoJSON, provider, MongoDB or AWS reads.
 This records consumer requirements, not an approved membership or source switch.
 
 ## 1. Exact legacy input and application entry
@@ -94,6 +95,8 @@ site. These are required **contents**, not a prescribed JSON schema or new servi
 - State whether membership is all reviewed upstream assets or an active/recent
   subset. Record the separate count/density meaning/window/denominator decision
   or explicitly mark it unresolved. A static artifact supplies **no live status**.
+  For legacy metric parity, retain evidence of the selected D8 cell, upstream
+  area and raster identity/hash; an RDP catchment area is not automatically equivalent.
 
 Before consumption, validate supported version, integrity, site/provider,
 nonblank unique provider IDs and review completeness; reject unintended empty
@@ -120,12 +123,36 @@ at least eight samples. Runoff is separately calibrated over four-hour rises
 (`0.081` / `0.101` m; only 49 calibration samples). These are relative indication
 bands, not contamination/safety limits or density derived from current status.
 
-**Unresolved:** exact upstream numerator; whether `CSOs`/count/density all share
-the same active/recent scope; the 48h inclusion boundary and stale/offline rules;
-area denominator (catchment, connected contributing area or another area), units/
-geometry version, coverage and rounding; source publication lag and historical
-algorithm changes. The filename and field name do not establish these semantics.
-No captured live parity series or reproduction of calibration was obtained here.
+**Resolved from upstream code (follow-up review):**
+
+- Sewage Map [`update_downstream.py`](https://github.com/AlexLipp/sewage-map/blob/d8171e2778e93bfc3d4a7b17f6136309f0ea78be/update_downstream.py)
+  publishes this exact info filename using `get_downstream_info_geojson(include_recent_discharges=True)`.
+  [POOPy's selector](https://github.com/AlexLipp/POOPy/blob/a14e36d91da6e51e44912b5b87afe78cc453c59b/poopy/poopy.py#L1378-L1401)
+  takes monitors with truthy `discharge_in_last_48h`: this is an **activity-filtered
+  membership**, not every upstream asset.
+- The [Severn Trent adapter](https://github.com/AlexLipp/POOPy/blob/a14e36d91da6e51e44912b5b87afe78cc453c59b/poopy/companies/severn_trent.py#L75-L120)
+  sets that flag for `Status=1`, otherwise for a non-null `LatestEventEnd` with
+  `company timestamp - event end <= 48h`. Offline monitors can therefore qualify;
+  missing end dates yield `None` and are omitted unless currently discharging.
+  This predicate has no `LastUpdated` freshness check or future-end lower bound.
+  Monitor `site_name`, used in output `CSOs`, is Severn Trent `Id`.
+- [`_calculate_downstream_info`](https://github.com/AlexLipp/POOPy/blob/a14e36d91da6e51e44912b5b87afe78cc453c59b/poopy/poopy.py#L1175-L1241)
+  uses D8 flow accumulation: `number_upstream_CSOs = impact[cell]` and
+  `number_CSOs_per_km2 = impact[cell] / drainage_area_km2[cell]`. Area is accumulated
+  raster-cell area (`pixel width * -pixel height / 1,000,000`), not river length
+  or a count of assets. Information points exist only where impact is positive.
+- The [impact calculation](https://github.com/AlexLipp/POOPy/blob/a14e36d91da6e51e44912b5b87afe78cc453c59b/poopy/poopy.py#L1073-L1108)
+  assigns **one per occupied source cell** before accumulation, while the ID list
+  appends each contributing monitor. Co-located monitors can thus make the count
+  differ from `CSOs.length`. Synthetic example: two qualifying IDs in one source
+  cell, both upstream of a 100 km² point, give two IDs, count 1 and density 0.01.
+
+**Still unverified:** the POOPy revision/raster actually deployed behind CloudFront
+and used throughout the calibration year, the HPP selected cell and numeric area,
+collocated/out-of-bounds cases in real data, publication lag, timezone/invalid-date
+effects and time-aligned parity. Public code identifies the formula; it does not
+establish deployed/historical equivalence to RDP. No live parity series or
+calibration reproduction was obtained here.
 
 Beware coercion: summary missing/invalid values become zero; history drops
 `undefined`/nonnumeric values but `Number(null)` and `Number('')` are zero. A
@@ -135,12 +162,13 @@ thresholds. Membership parity alone does not establish density parity.
 
 ## 5. Smallest reversible migration, after separate approval
 
-1. Complete #64's reviewed artifact and timestamp-aligned comparison, including
-   whether legacy membership changes with activity. A single captured set is not
-   proof of parity over time; expanding to all static upstream IDs can change
+1. Complete #64's reviewed artifact and timestamp-aligned comparison of the
+   activity-filtered legacy set. A single captured set is not proof of parity
+   over time; expanding to all static upstream IDs can change
    polling load and unknown/offline counts even when active markers match.
 2. Prove equivalent dynamic count/density from compatible evidence and windows
-   before removing the shared request. For unchanged public behaviour, preserve
+   before removing the shared request, using the source formula above as the
+   compatibility reference. For unchanged public behaviour, preserve
    the existing density series meaning, calibration and alert decisions. If
    equivalence fails, versioning/recalibration/history treatment is separate work
    and this behaviour-preserving cutover is **no-go**.

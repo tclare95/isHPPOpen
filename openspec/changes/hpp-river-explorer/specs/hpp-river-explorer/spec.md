@@ -110,9 +110,9 @@ The relationship-source cutover SHALL have demonstrated parity, clearly recorded
 - **WHEN** an RDP-generated membership artifact or read is missing, stale, incompatible or unverified
 - **THEN** the consumer holds the last reviewed effective selection or explicitly reverts under an approved source policy rather than treating all upstream CSOs as absent, showing zero activity or silently switching source.
 
-### Requirement: Existing HPP operational and water-quality behaviour is unchanged
+### Requirement: River Explorer and Sewage Map cutover have separate operational boundaries
 
-The new River Explorer SHALL be informational and independently degradable. It SHALL NOT change HPP open/closed decisions, river-level reads, CSO membership/polling, spill-status calculations, density history, calibrated water-quality indication, alerts, or legacy source selection.
+The River Explorer **map** SHALL be informational and independently degradable; adding the map SHALL NOT change HPP open/closed decisions, river-level reads, CSO membership/polling, spill-status calculations, density history, calibrated water-quality indication, alerts, or legacy source selection. Any later **approved** Sewage Map source migration SHALL have its own parity, continuity, calibration and rollback evidence; it SHALL NOT silently change operational meaning merely because the map has launched.
 
 #### Scenario: River Tracer is unavailable while HPP data is healthy
 - **WHEN** River Tracer fails

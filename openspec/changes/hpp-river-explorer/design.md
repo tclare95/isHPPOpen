@@ -37,6 +37,6 @@ Keep review evidence for **both membership and density semantics**. A static lis
 
 A migration may require changes in `ishppopenScraper` and/or isHPPOpen consumers; keep those as explicitly reviewed implementation work. Do not authorize automatic #71 selection changes, unverified spatial matching, dual authoritative writers, historical series rewriting or new alert semantics via this documentation PR.
 
-## Future CSO migration is distinct
+## Full RDP CSO status/event migration remains distinct
 
-The current legacy scraper derives `CSO_IDs` from Sewage Map **information-point** `properties.CSOs`, not simply from a river map. The currently exposed River Tracer locate/upstream/downstream routes do **not** return equivalent reviewed upstream CSO IDs or active/recent impact layers. A future site-specific change should consume a verified RDP outfall-relationship contract, compare against existing selections, investigate unmatched/ambiguous assets, prove water-quality parity and require an explicit reversible cutover. Keep this out of the first River Explorer implementation.
+The current legacy scraper derives `CSO_IDs` from Sewage Map **information-point** `properties.CSOs`, not simply from a river map. The currently exposed River Tracer locate/upstream/downstream routes do **not** return equivalent reviewed upstream CSO IDs or active/recent impact layers. The separately gated Sewage Map **membership-source** migration in this OpenSpec may use an offline, reviewed artifact before an RDP runtime outfall-relationship contract exists. Full migration of status/event ingestion to RDP #72, and retirement of scraper SQS/Mongo writers, remain independent work requiring additional parity and reversal controls.

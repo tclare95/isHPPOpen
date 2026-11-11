@@ -96,3 +96,9 @@ Historic suite-wide specifications are retained as noncanonical references to or
 - RDP actual platform behaviour and release gates: [read API](https://github.com/tclare95/river-data-platform/blob/main/docs/READ-API.md), [production operations](https://github.com/tclare95/river-data-platform/blob/main/docs/PRODUCTION.md).
 - App adapters and migration evidence: [#51-A](RDP-CLIENT-51A.md), [#51-B](RDP-TRENT-51B.md), [#51-C](RDP-LEVELS-51C.md), [#51-D](RDP-GAUGE-ALERTS-51D.md).
 - Historical planning: [RDP direction](RIVER_DATA_PLATFORM_DIRECTION.md) is an **October architecture decision record**, not the latest standalone product plan.
+
+## CSO consumer migration review (11 November 2026)
+
+The producer now has six authenticated CSO read routes, event revisions, verified history and gap/coverage semantics. The production configuration selects four HPP Severn Trent outfalls and three Wessex Water test outfalls; a live read/health check remains necessary. The website's CSO status and time-varying density still depend on legacy Node/SQS/Mongo/Sewage Map. **The existing River Tracer overlay is delivered; do not replan it.**
+
+See the [capability, dependency and migration review](WATER_QUALITY_CSO_RDP_PM_REVIEW.md) and the [consumer OpenSpec](../openspec/changes/rdp-cso-water-quality-consumer/proposal.md). The sequence is read-only shadow [#120](https://github.com/tclare95/isHPPOpen/issues/120), optional evidence-aware history [#121](https://github.com/tclare95/isHPPOpen/issues/121), independently gated membership/density [#114](https://github.com/tclare95/isHPPOpen/issues/114), and writer retirement [#68](https://github.com/tclare95/isHPPOpen/issues/68). Stage configuration or merged RDP code is not by itself evidence of a completed consumer cutover.

@@ -1,0 +1,30 @@
+# Acceptance plan — isHPPOpen RDP CSO consumer
+
+All tasks unchecked. Implementation/release approvals are separate from this documentation.
+
+## Slice A — verify and shadow (#120): immediately implementable without source switch
+- [ ] Inspect actual deployed signed production RDP CSO read routes, selected IDs, catalogue/health, source lag, 15-min collection continuity, events/coverage; record evidence and open producer gaps under RDP-owned issues.
+- [ ] Capture existing Mongo-facing current status, filters, map/card counts, per-CSO detail, density, alert outcomes and timestamp/freshness fixtures.
+- [ ] Add minimal server-only RDP status/events shadow adaptation and time-aligned discrepancy diagnostics; legacy remains authoritative, no new writes or public contract change.
+- [ ] Exercise stale/offline/contradictory, selection mismatch, missing row, changed end, ongoing carry-in, ambiguous hold, incomplete coverage, API 403/404/429/503 and cursor/archive error; guard request budgets/cache.
+
+## Slice B — optional history (#121): separate feature release
+- [ ] Add optional event chronology/drill-down or comparison on existing water-quality page; distinguish current, recent, historical imported and uncertain evidence.
+- [ ] Show coverage gaps, carry-in/out, revisions, unknown vs no reported event, source attribution and method.
+- [ ] Show duration/count aggregates only with observed denominator and meaningful uncertainty; do not equate EDM 12/24 annual counts with raw intervals.
+- [ ] Compare event-derived activity against legacy density without replacing thresholds/alerts.
+
+## Slice C — independently approved current read switch (#120)
+- [ ] Record signed API/SLO, error handling, status/event parity, versioned selection, exact public compatibility and rollback proof.
+- [ ] Obtain explicit approval before any authoritative status/events source change; preserve old density and water-quality alert source unless separately approved.
+- [ ] Keep one canonical provider event writer: RDP canonical events, Mongo remains legacy only until reader transition and controlled retirement.
+
+## Slice D — distinct membership/metric/alert and writer decisions (#114/#68)
+- [ ] RDP #64 supplies reviewed HPP upstream relationship artifact; isHPPOpen accepts actual selected set and coverage.
+- [ ] Prove legacy dynamic 48h, co-location occupancy, D8 drainage-area denominator and calibration-year risk/alert transition parity or version/recalibrate with explicit acceptance.
+- [ ] Approve Sewage Map runtime lookup retirement **separately**; do not emit fresh zeros for missing data.
+- [ ] Obtain separately approved risk/alert switch and protect subscription/rearm/delivery continuity.
+- [ ] Prove old SQS/Mongo writers and archives no longer have active consumers before removal; Node mixed-schedule shutdown last.
+
+## Review-only
+No build/test execution, AWS interaction, schema changes, import, code implementation, new live writer, source switch or deployment performed by this OpenSpec.

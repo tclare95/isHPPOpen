@@ -5,8 +5,8 @@ All tasks unchecked. Implementation/release approvals are separate from this doc
 ## Slice A — verify and shadow (#120): immediately implementable without source switch
 - [ ] Inspect actual deployed signed production RDP CSO read routes, selected IDs, catalogue/health, source lag, 15-min collection continuity, events/coverage; record evidence and open producer gaps under RDP-owned issues.
 - [ ] Capture existing Mongo-facing current status, filters, map/card counts, per-CSO detail, density, alert outcomes and timestamp/freshness fixtures.
-- [ ] Add minimal server-only RDP status/events shadow adaptation and time-aligned discrepancy diagnostics; legacy remains authoritative, no new writes or public contract change.
-- [ ] Exercise stale/offline/contradictory, selection mismatch, missing row, changed end, ongoing carry-in, ambiguous hold, incomplete coverage, API 403/404/429/503 and cursor/archive error; guard request budgets/cache.
+- [x] Add minimal server-only RDP status/events shadow adaptation and time-aligned discrepancy diagnostics; legacy remains authoritative, no new writes or public contract change. ([RDP-CSO-120](../../../docs/RDP-CSO-120.md); `RDP_CSO_SOURCE`, `/api/admin/cso-shadow`)
+- [x] (offline fixtures; live evidence pending the production caller grant) Exercise stale/offline/contradictory, selection mismatch, missing row, changed end, ongoing carry-in, ambiguous hold, incomplete coverage, API 403/404/429/503 and cursor/archive error; guard request budgets/cache.
 
 ## Slice B — optional history (#121): separate feature release
 - [ ] Add optional event chronology/drill-down or comparison on existing water-quality page; distinguish current, recent, historical imported and uncertain evidence.

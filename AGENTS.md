@@ -22,6 +22,9 @@ Create `.env.local` with values for:
 
 Without MongoDB env vars, imports from `libs/database.js` throw immediately.
 
+Optional: `RDP_CSO_SOURCE` (`legacy|shadow|rdp`, default `legacy`) selects the current CSO status source for the
+public water-quality routes only; alerts stay legacy. See [docs/RDP-CSO-120.md](docs/RDP-CSO-120.md).
+
 Optional, development only: `HISTORY_DEV_FIXTURE_DIR` serves local EA Hydrology fixtures to `/history`
 (`npm run history:fixtures`), because the RDP client needs Vercel OIDC and cannot run locally. It is ignored
 outside `NODE_ENV=development`; see [docs/HISTORICAL_RIVER_CONDITIONS.md](docs/HISTORICAL_RIVER_CONDITIONS.md).

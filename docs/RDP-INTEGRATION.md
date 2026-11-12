@@ -54,6 +54,7 @@ Existing adapter work permits `legacy`, `shadow` and `rdp` modes, chosen **indep
 | Trent gauge display | `RDP_TRENT_SOURCE`, [#51-B](RDP-TRENT-51B.md) | Bounded RDP histories adapted to existing station order/unit/shape; display may use validated legacy fallback under its documented policy. |
 | Colwick observed levels | `RDP_LEVELS_SOURCE`, [#51-C](RDP-LEVELS-51C.md) | Migrates observed `level_data`, not the government's `forecast_data` in the old public snapshot. |
 | Live gauge alerts | `RDP_GAUGE_ALERTS_SOURCE`, [#51-D](RDP-GAUGE-ALERTS-51D.md) | Alert-safe freshness, continuity and delivery handling. In RDP mode **do not automatically fall back** to legacy measurements for alerts. |
+| Current CSO status/events on `/waterquality` | `RDP_CSO_SOURCE`, [#120](RDP-CSO-120.md) | Legacy membership kept; RDP supplies identity, status and recent event ends. Alerts, density and `waterQualityIndicator.js` stay legacy in every mode. Production caller lacks CSO routes as of 2026-11-12. |
 | RDP transport / authentication | [#51-A](RDP-CLIENT-51A.md) | First-party reads and credentials remain server-side, errors sanitized, separate stage/production caller identity. |
 | Historical conditions exploration | [historical conditions](HISTORICAL_RIVER_CONDITIONS.md) | UI and derived statistics are isHPPOpen features; history and provenance originate in the canonical source. |
 

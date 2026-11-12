@@ -58,7 +58,7 @@ Editorial writes use the shared `libs/cache/revalidate.js` helper with `revalida
   - `app/api/hppstatus/route.js`: computes closure days over time windows.
    - `app/api/levels/route.js`: reads the latest river snapshot via `libs/services/levelsService.js`. `RDP_LEVELS_SOURCE` (`legacy|shadow|rdp`, default `legacy`) selects the observed `level_data` source only; `libs/rdp/levelsSource.js` is loaded only outside legacy. See [RDP-LEVELS-51C.md](RDP-LEVELS-51C.md).
    - `app/api/trentweirs/route.js`: serves the cached Trent gauge snapshot via `libs/services/trentWeirsService.js`.
-   - `app/api/waterquality/route.js`: reads water-quality snapshots via `libs/services/waterQualityService.js`.
+   - `app/api/waterquality/route.js`: reads water-quality snapshots via `libs/services/waterQualityService.js`. `RDP_CSO_SOURCE` (`legacy|shadow|rdp`, default `legacy`) selects current CSO status for this route and `/api/waterquality/cso*` only; `libs/rdp/csoSource.js` is loaded only outside legacy, and alert evaluation keeps the legacy snapshot. Diagnostics: `/api/admin/cso-shadow`. See [RDP-CSO-120.md](RDP-CSO-120.md).
    - `app/api/waterquality/river/route.js`: fixed-HPP River Tracer consumer via `libs/services/hppRiverService.js`, serving optional river/catchment layers and summaries in the existing water-quality map. Reuses the server-only RDP signed transport, stage isolation and a bounded 24-hour CDN cache; local fixtures are development-only. Public use was authorised after owner licensing confirmation on 6 November 2026. Water-quality calculations and CSO membership stay independent. See [HPP-RIVER-TRACER.md](HPP-RIVER-TRACER.md).
    - `app/api/trentlockapi/route.js`: persists Trent Lock submissions via `libs/services/trentLockService.js`.
 

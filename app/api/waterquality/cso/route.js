@@ -1,6 +1,6 @@
 import { HttpError, mapApiError } from "../../../../libs/api/http";
 import { sendRouteError, sendRouteSuccess } from "../../../../libs/api/httpApp";
-import { getCsoDetailsByIds } from "../../../../libs/services/waterQualityService";
+import { getPublicCsoDetailsByIds } from "../../../../libs/services/waterQualityService";
 
 export const revalidate = 900;
 
@@ -12,7 +12,7 @@ export async function GET(request) {
     const idArray = ids.split(",").map((s) => s.trim()).filter(Boolean);
     if (idArray.length === 0) throw new HttpError(400, "No valid ids provided");
 
-    const response = await getCsoDetailsByIds(idArray);
+    const response = await getPublicCsoDetailsByIds(idArray);
     return sendRouteSuccess({ csoData: response });
   } catch (error) {
     const { statusCode, message } = mapApiError(error);

@@ -8,11 +8,17 @@ import { getRdpConfig } from "./config.js";
 import { getCanonicalMeasurement } from "./measurements.js";
 import { RdpError } from "./errors.js";
 import { parseRiverLocation, parseRiverTrace, riverCoordinates, riverSamplePath, readRiverJson } from "./river.js";
+import {
+  assertCsoAssetId, assertCsoCursor, isCsoTimestamp, parseCsoCatalogue, parseCsoEvents, parseCsoHealth, parseCsoStatus,
+} from "./csoContract.js";
+
+export const CSO_STATUS_BATCH_LIMIT = 20;
+export const CSO_EVENTS_MAX_WINDOW_MS = 366 * 86400000;
 
 const API_CODES = new Set([
   "VALIDATION_ERROR", "MEASUREMENT_NOT_FOUND", "INVALID_CURSOR", "CURSOR_EXPIRED",
   "CURSOR_STALE", "ARCHIVE_INTEGRITY", "STORAGE_UNAVAILABLE", "QUERY_TIMEOUT", "FORBIDDEN", "NOT_FOUND",
-  "RESULT_TOO_LARGE", "RELEASE_NOT_AVAILABLE", "DATA_INTEGRITY",
+  "RESULT_TOO_LARGE", "RELEASE_NOT_AVAILABLE", "DATA_INTEGRITY", "ASSET_NOT_FOUND",
 ]);
 const RETRY_CODES = new Set(["THROTTLED", "UPSTREAM_ERROR", "STORAGE_UNAVAILABLE", "QUERY_TIMEOUT", "NETWORK_ERROR"]);
 
@@ -131,6 +137,30 @@ export function createRdpClient(env = process.env) {
   }
 
   return Object.freeze({
+    // CSO reads (#72 PR 3). Bounded bodies, validated query bounds and fully validated envelopes.
+    listCsoOutfalls({ limit = 1000, cursor } = {}) {
+      if (!Number.isInteger(limit) || limit < 1 || limit > 1000) throw new RdpError("INVALID_QUERY");
+      assertCsoCursor(cursor);
+      return request("/v1/cso/outfalls", { limit: String(limit), ...(cursor === undefined ? {} : { cursor }) }, parseCsoCatalogue, true);
+    },
+    getCsoStatus(ids) {
+      if (!Array.isArray(ids) || ids.length < 1 || ids.length > CSO_STATUS_BATCH_LIMIT || new Set(ids).size !== ids.length) throw new RdpError("INVALID_QUERY");
+      ids.forEach(assertCsoAssetId);
+      return request("/v1/cso/outfalls/status", { ids: ids.join(",") }, (body) => parseCsoStatus(body, ids), true);
+    },
+    getCsoEvents(id, { from, to, limit = 100, cursor } = {}) {
+      assertCsoAssetId(id);
+      assertCsoCursor(cursor);
+      if (!isCsoTimestamp(from) || !isCsoTimestamp(to) || !from.endsWith("Z") || !to.endsWith("Z") ||
+          Date.parse(from) >= Date.parse(to) || Date.parse(to) - Date.parse(from) > CSO_EVENTS_MAX_WINDOW_MS ||
+          !Number.isInteger(limit) || limit < 1 || limit > 500) throw new RdpError("INVALID_QUERY");
+      return request(`/v1/cso/outfalls/${id}/events`,
+        { from, to, limit: String(limit), ...(cursor === undefined ? {} : { cursor }) }, (body) => parseCsoEvents(body, id), true);
+    },
+    getCsoHealth(id) {
+      assertCsoAssetId(id);
+      return request(`/v1/cso/outfalls/${id}/health`, {}, (body) => parseCsoHealth(body, id), true);
+    },
     locateRiver(point) {
       return request("/v1/river/locate", riverCoordinates(point), parseRiverLocation, true);
     },

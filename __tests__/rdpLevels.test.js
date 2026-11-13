@@ -1,9 +1,9 @@
 /** @jest-environment node */
 import { createRdpClient } from "../libs/rdp/client";
 import { RdpError } from "../libs/rdp/errors";
-import { __resetRdpLevelsStateForTests, LEVELS_READING_LIMIT, validateLegacyLevels } from "../libs/rdp/levelsSource";
+import { __resetRdpLevelsStateForTests, LEVELS_READING_LIMIT } from "../libs/rdp/levelsSource";
 import { __resetRdpTrentStateForTests } from "../libs/rdp/trentSource";
-import { getLatestLevelsSnapshot, getLegacyLevelsSnapshot } from "../libs/services/levelsService";
+import { __resetLegacyLevelsStateForTests, EA_LEVELS_READ_DEADLINE_MS, getLatestLevelsSnapshot, getLegacyLevelsSnapshot } from "../libs/services/levelsService";
 import { getTrentWeirsSnapshot } from "../libs/services/trentWeirsService";
 import { GET, revalidate } from "../app/api/levels/route";
 
@@ -14,8 +14,10 @@ jest.mock("../libs/rdp/client", () => ({ createRdpClient: jest.fn() }));
 const NOW = Date.parse("2026-10-24T10:00:00Z");
 const STEP = 15 * 60 * 1000;
 const HOUR = 60 * 60 * 1000;
-const S3_URL = "https://example.com/levels/latest.json";
+const EA_URL = "https://environment.data.gov.uk/flood-monitoring/id/stations/4009/readings?_sorted&_limit=672&parameter=level";
+const LEGACY_S3_URL = "https://example.com/levels/latest.json";
 const COLWICK = { measurementId: "ea-colwick-level", unit: "mASD", datum: "ASD", providerMeasureId: "4009-level-stage-i-15_min-mASD" };
+const RETIRED_FORECAST = { source: "government-forecast", state: "unavailable", generatedAt: null, ageSeconds: null, reason: "retired" };
 const iso = (time) => new Date(time).toISOString().replace(/\.000Z$/, "Z");
 // i counts back from the newest reading; identical values on both sides unless overridden.
 const valueAt = (i) => Number((1.2 - i * 0.003).toFixed(3));
@@ -25,8 +27,15 @@ function series({ count, ageMs = 0, skip = [] }) {
     .filter(({ i }) => !skip.includes(i));
 }
 
-function levelReadings(options = {}) {
+function levelData(options = {}) {
   return series({ count: 480, ...options }).map(({ i, time }) => ({ reading_date: iso(time), reading_level: valueAt(i) }));
+}
+
+function eaItems(options = {}) {
+  return series({ count: 672, ...options }).map(({ i, time }) => ({
+    dateTime: iso(time), value: valueAt(i), quality: "Good",
+    measure: `http://environment.data.gov.uk/flood-monitoring/id/measures/${COLWICK.providerMeasureId}`,
+  }));
 }
 
 function rdpRows(options = {}) {
@@ -36,18 +45,9 @@ function rdpRows(options = {}) {
   }));
 }
 
-const FORECAST = [
-  { forecast_date: "2026-10-24T12:00:00Z", forecast_reading: 1.25 },
-  { forecast_date: "2026-10-24T18:00:00Z", forecast_reading: 1.3 },
-];
-
-function s3Payload(overrides = {}) {
-  return { model_date: new Date(NOW - 5 * 60 * 1000).toISOString(), level_readings: levelReadings(), forecast_readings: FORECAST, level_source: "flood-api", ...overrides };
-}
-
 const page = (data, nextCursor = null) => ({ data, meta: { measurementId: COLWICK.measurementId, pageIntegrity: "verified", nextCursor } });
 
-let s3Behaviour;
+let eaBehaviour;
 let rdpBehaviour;
 let client;
 let logs;
@@ -56,16 +56,19 @@ beforeEach(() => {
   jest.useFakeTimers({ now: NOW });
   __resetRdpTrentStateForTests();
   __resetRdpLevelsStateForTests();
+  __resetLegacyLevelsStateForTests();
   delete process.env.RDP_LEVELS_SOURCE;
   delete process.env.RDP_TRENT_SOURCE;
-  process.env.S3_LEVELS_URL = S3_URL;
-  s3Behaviour = undefined;
+  // Still set in deployed environments until removed; it must never be read.
+  process.env.S3_LEVELS_URL = LEGACY_S3_URL;
+  eaBehaviour = undefined;
   rdpBehaviour = undefined;
-  logs = Object.fromEntries(["log", "warn", "error"].map((level) => [level, jest.spyOn(console, level).mockImplementation(() => {})]));
+  logs = Object.fromEntries(["log", "warn", "error"].map((level) => [level, jest.spyOn(console, level).mockImplementation(() => {}).mockClear()]));
   global.fetch = jest.fn(async (url) => {
-    if (url !== S3_URL) return { ok: true, json: async () => ({ items: [] }) };
-    if (s3Behaviour === "fail") return { ok: false, json: async () => ({}) };
-    return { ok: true, json: async () => s3Behaviour ?? s3Payload() };
+    if (url !== EA_URL) return { ok: true, json: async () => ({ items: [] }) };
+    if (eaBehaviour === "fail") return { ok: false, json: async () => ({}) };
+    if (eaBehaviour === "hang") return new Promise(() => {});
+    return { ok: true, json: async () => ({ items: eaBehaviour ?? eaItems() }) };
   });
   client = { getObservations: jest.fn(async () => {
     if (rdpBehaviour instanceof Error) throw rdpBehaviour;
@@ -81,32 +84,36 @@ afterEach(() => {
 });
 
 const loggedJson = (spy, prefix) => JSON.parse(spy.mock.calls.map(([line]) => line).findLast((line) => line.includes(prefix)).split(prefix)[1]);
-const s3Calls = () => global.fetch.mock.calls.filter(([url]) => url === S3_URL);
+const eaCalls = () => global.fetch.mock.calls.filter(([url]) => url === EA_URL);
+const s3Calls = () => global.fetch.mock.calls.filter(([url]) => url === LEGACY_S3_URL);
 
 describe("source mode selection", () => {
-  test("default and explicit legacy never construct the RDP client and keep the legacy result", async () => {
+  test("default and explicit legacy serve direct EA and never construct the RDP client", async () => {
     const legacy = await getLegacyLevelsSnapshot();
     expect(await getLatestLevelsSnapshot()).toEqual(legacy);
     process.env.RDP_LEVELS_SOURCE = "legacy";
     expect(await getLatestLevelsSnapshot()).toEqual(legacy);
 
     expect(createRdpClient).not.toHaveBeenCalled();
-    expect(legacy.health.source).toBe("scraper-levels");
-    expect(legacy.level_data).toEqual(levelReadings());
-    expect(legacy.forecast_data).toEqual(FORECAST);
+    expect(legacy.level_data).toEqual(levelData());
+    expect(legacy.forecast_data).toEqual([]);
+    expect(legacy.health).toMatchObject({
+      source: "environment-agency-levels", state: "fresh", generatedAt: "2026-10-24T10:00:00.000Z",
+      observed: { origin: "ea", state: "fresh" }, forecast: RETIRED_FORECAST,
+    });
   });
 
   test("invalid mode is logged and serves legacy", async () => {
     process.env.RDP_LEVELS_SOURCE = "RDP";
     const snapshot = await getLatestLevelsSnapshot();
     expect(createRdpClient).not.toHaveBeenCalled();
-    expect(snapshot.health.source).toBe("scraper-levels");
+    expect(snapshot.health.source).toBe("environment-agency-levels");
     expect(logs.error).toHaveBeenCalledWith(expect.stringContaining("Invalid RDP_LEVELS_SOURCE"));
   });
 
   test("levels and Trent source keys are independent", async () => {
     process.env.RDP_TRENT_SOURCE = "rdp";
-    expect((await getLatestLevelsSnapshot()).health.source).toBe("scraper-levels");
+    expect((await getLatestLevelsSnapshot()).health.source).toBe("environment-agency-levels");
     expect(client.getObservations).not.toHaveBeenCalled();
 
     delete process.env.RDP_TRENT_SOURCE;
@@ -115,71 +122,111 @@ describe("source mode selection", () => {
     expect(client.getObservations).not.toHaveBeenCalled();
   });
 
-  test("the route keeps its 900s cache and the legacy S3 read keeps its 900s fetch cache in rdp mode", async () => {
-    process.env.RDP_LEVELS_SOURCE = "rdp";
+  test.each(["legacy", "shadow", "rdp"])("%s mode never reads the scraper's levels/latest.json", async (mode) => {
+    process.env.RDP_LEVELS_SOURCE = mode;
+    rdpBehaviour = new RdpError("UPSTREAM_ERROR", 503);
+    await getLatestLevelsSnapshot();
+    expect(s3Calls()).toHaveLength(0);
+  });
+
+  test("the route keeps its 900s cache and the EA read keeps its 900s fetch cache", async () => {
     await getLatestLevelsSnapshot();
     expect(revalidate).toBe(900);
-    expect(global.fetch).toHaveBeenCalledWith(S3_URL, { next: { revalidate: 900 } });
+    expect(global.fetch).toHaveBeenCalledWith(EA_URL, { next: { revalidate: 900 } });
+  });
+});
+
+describe("legacy (direct EA) mode", () => {
+  test("a partial or wrong-measure EA series is rejected as a whole", async () => {
+    const items = eaItems();
+    items[5] = { ...items[5], measure: "http://environment.data.gov.uk/flood-monitoring/id/measures/4009-flow--i-15_min-m3_s" };
+    eaBehaviour = items;
+    await expect(getLatestLevelsSnapshot()).rejects.toThrow("Failed to fetch levels data");
+    expect(loggedJson(logs.warn, "EA levels unavailable ")).toEqual({ eaError: "EA_INVALID_SERIES" });
+  });
+
+  test("an EA outage serves this instance's last-known series as stale, never as fresh", async () => {
+    await getLatestLevelsSnapshot();
+    eaBehaviour = "fail";
+    jest.setSystemTime(NOW + HOUR);
+
+    const snapshot = await getLatestLevelsSnapshot();
+
+    expect(snapshot.level_data).toEqual(levelData());
+    expect(snapshot.health).toMatchObject({ state: "stale", ageSeconds: 3600, observed: { origin: "cache", state: "stale" } });
+  });
+
+  test("an EA outage with no last-known series makes the route serve its empty payload", async () => {
+    eaBehaviour = "fail";
+    const payload = await (await GET()).json();
+    expect(payload).toMatchObject({ ok: true, data: { level_data: [], forecast_data: [], health: { source: "levels", state: "unavailable", forecast: RETIRED_FORECAST } } });
   });
 });
 
 describe("rdp display mode", () => {
   beforeEach(() => { process.env.RDP_LEVELS_SOURCE = "rdp"; });
 
-  test("fresh RDP reproduces the legacy level_data contract and keeps legacy forecast_data", async () => {
-    const legacy = await getLegacyLevelsSnapshot();
-
+  test("fresh RDP reproduces the level_data contract, makes no EA request and reports the retired government forecast", async () => {
     const snapshot = await getLatestLevelsSnapshot();
 
     expect(client.getObservations).toHaveBeenCalledTimes(1);
     expect(client.getObservations).toHaveBeenCalledWith("ea-colwick-level", expect.objectContaining({ from: "2026-10-17T10:00:00.000Z", to: "2026-10-24T10:00:00.000Z" }));
     expect(snapshot.level_data).toHaveLength(LEVELS_READING_LIMIT);
-    expect(snapshot.level_data).toEqual(legacy.level_data);
+    expect(snapshot.level_data).toEqual(levelData());
     expect(Object.keys(snapshot.level_data[0])).toEqual(["reading_date", "reading_level"]);
-    expect(snapshot.forecast_data).toEqual(legacy.forecast_data);
+    expect(snapshot.forecast_data).toEqual([]);
+    expect(eaCalls()).toHaveLength(0);
     expect(snapshot.health).toMatchObject({
       source: "river-data-platform-levels", state: "fresh", generatedAt: "2026-10-24T10:00:00.000Z", ageSeconds: 0,
       observed: { origin: "rdp", state: "fresh", observedAt: "2026-10-24T10:00:00Z", ageSeconds: 0 },
-      forecast: { source: "scraper-levels", state: "fresh", ageSeconds: 300 },
+      forecast: RETIRED_FORECAST,
     });
+    expect(logs.warn).not.toHaveBeenCalled();
+  });
+
+  test("identical source data gives the same level_data from RDP and direct EA", async () => {
+    const fromRdp = await getLatestLevelsSnapshot();
+    process.env.RDP_LEVELS_SOURCE = "legacy";
+    expect((await getLatestLevelsSnapshot()).level_data).toEqual(fromRdp.level_data);
   });
 
   test.each([
     ["403 wrong stage", new RdpError("AUTHORIZATION_FAILED", 403)],
     ["timeout", new RdpError("TIMEOUT")],
     ["archive integrity", new RdpError("ARCHIVE_INTEGRITY", 500)],
-  ])("RDP outage (%s) falls back to the fresh complete legacy series", async (_, error) => {
+  ])("RDP outage (%s) falls back to one bounded direct-EA read", async (_, error) => {
     rdpBehaviour = error;
 
     const snapshot = await getLatestLevelsSnapshot();
 
-    expect(snapshot.level_data).toEqual(levelReadings());
-    expect(snapshot.forecast_data).toEqual(FORECAST);
-    expect(snapshot.health).toMatchObject({ state: "fallback", observed: { origin: "legacy", state: "fresh" }, forecast: { state: "fresh" } });
+    expect(eaCalls()).toHaveLength(1);
+    expect(snapshot.level_data).toEqual(levelData());
+    expect(snapshot.forecast_data).toEqual([]);
+    expect(snapshot.health).toMatchObject({ state: "fallback", observed: { origin: "ea", state: "fresh" }, forecast: RETIRED_FORECAST });
     expect(JSON.stringify(snapshot)).not.toContain(error.code);
-    expect(logs.warn).toHaveBeenCalledWith(expect.stringContaining(`"rdpError":"${error.code}"`));
+    expect(loggedJson(logs.warn, "RDP levels display degraded ")).toMatchObject({ rdpError: error.code, eaError: null, origin: "ea" });
   });
 
   test("an empty RDP history is treated as missing, not as an empty fresh series", async () => {
     rdpBehaviour = [];
     const snapshot = await getLatestLevelsSnapshot();
-    expect(snapshot.health.observed).toMatchObject({ origin: "legacy", state: "fresh" });
+    expect(snapshot.health.observed).toMatchObject({ origin: "ea", state: "fresh" });
     expect(loggedJson(logs.warn, "RDP levels display degraded ")).toMatchObject({ rdpError: "NO_OBSERVATIONS" });
   });
 
-  test("stale RDP is replaced by fresh legacy without mixing points", async () => {
+  test("stale RDP is replaced by fresh EA without mixing points", async () => {
     rdpBehaviour = rdpRows({ ageMs: 2 * HOUR });
-    s3Behaviour = s3Payload({ level_readings: levelReadings({ count: 10 }) });
+    eaBehaviour = eaItems({ count: 10 });
 
     const snapshot = await getLatestLevelsSnapshot();
 
-    expect(snapshot.level_data).toEqual(levelReadings({ count: 10 }));
-    expect(snapshot.health).toMatchObject({ state: "fallback", observed: { origin: "legacy" } });
+    expect(snapshot.level_data).toEqual(levelData({ count: 10 }));
+    expect(snapshot.health).toMatchObject({ state: "fallback", observed: { origin: "ea" } });
   });
 
   test("when both sources are stale the newest is served and reported stale, never fallback", async () => {
     rdpBehaviour = rdpRows({ ageMs: 2 * HOUR });
-    s3Behaviour = s3Payload({ level_readings: levelReadings({ ageMs: 3 * HOUR }) });
+    eaBehaviour = eaItems({ ageMs: 3 * HOUR });
 
     const snapshot = await getLatestLevelsSnapshot();
 
@@ -187,50 +234,33 @@ describe("rdp display mode", () => {
     expect(snapshot.health).toMatchObject({ state: "stale", ageSeconds: 7200, observed: { origin: "rdp", state: "stale", ageSeconds: 7200 } });
   });
 
-  test("partial or invalid legacy data is rejected as a whole series", async () => {
+  test("a hanging EA response is bounded by its deadline", async () => {
     rdpBehaviour = new RdpError("UPSTREAM_ERROR", 503);
-    const rows = levelReadings();
-    rows[5] = { reading_date: rows[5].reading_date, reading_level: "1.1" };
-    s3Behaviour = s3Payload({ level_readings: rows });
+    eaBehaviour = "hang";
 
-    const snapshot = await getLatestLevelsSnapshot();
-
-    expect(snapshot.level_data).toEqual([]);
-    expect(snapshot.forecast_data).toEqual(FORECAST);
-    expect(snapshot.health).toMatchObject({ state: "unavailable", observed: { origin: null, state: "unavailable" }, forecast: { state: "fresh" } });
-    expect(loggedJson(logs.warn, "RDP levels display degraded ")).toMatchObject({ legacyLevelsValid: false, origin: null });
+    const assertion = expect(getLatestLevelsSnapshot()).rejects.toThrow("Failed to fetch levels data");
+    await jest.advanceTimersByTimeAsync(EA_LEVELS_READ_DEADLINE_MS);
+    await assertion;
+    expect(loggedJson(logs.warn, "RDP levels display degraded ")).toMatchObject({ rdpError: "UPSTREAM_ERROR", eaError: "EA_TIMEOUT", origin: null });
   });
 
-  test("forecast unavailable while RDP observations are healthy is reported separately", async () => {
-    s3Behaviour = "fail";
+  test("an invalid EA series is rejected as a whole and the route serves its empty payload", async () => {
+    rdpBehaviour = new RdpError("UPSTREAM_ERROR", 503);
+    const items = eaItems();
+    items[5] = { ...items[5], value: "not a number" };
+    eaBehaviour = items;
 
-    const snapshot = await getLatestLevelsSnapshot();
+    await expect(getLatestLevelsSnapshot()).rejects.toThrow("Failed to fetch levels data");
+    expect(loggedJson(logs.warn, "RDP levels display degraded ")).toMatchObject({ eaError: "EA_INVALID_SERIES", origin: null });
 
-    expect(snapshot.level_data).toHaveLength(LEVELS_READING_LIMIT);
-    expect(snapshot.forecast_data).toEqual([]);
-    expect(snapshot.health).toMatchObject({ state: "fresh", observed: { origin: "rdp" }, forecast: { state: "unavailable", generatedAt: null } });
-  });
-
-  test("forecast and observation ages are independent: an old snapshot cannot hide behind future forecast dates", async () => {
-    s3Behaviour = s3Payload({ model_date: new Date(NOW - 4 * HOUR).toISOString() });
-
-    const snapshot = await getLatestLevelsSnapshot();
-
-    expect(snapshot.health).toMatchObject({ state: "fresh", forecast: { state: "stale", ageSeconds: 14400 } });
-    expect(snapshot.forecast_data).toEqual(FORECAST);
-  });
-
-  test("a missing levels URL only removes the forecast", async () => {
-    delete process.env.S3_LEVELS_URL;
-    const snapshot = await getLatestLevelsSnapshot();
-    expect(snapshot.level_data).toHaveLength(LEVELS_READING_LIMIT);
-    expect(snapshot.health.forecast.state).toBe("unavailable");
+    const payload = await (await GET()).json();
+    expect(payload).toMatchObject({ ok: true, data: { level_data: [], forecast_data: [], health: { state: "unavailable", forecast: RETIRED_FORECAST } } });
   });
 
   test("last-known levels age into stale when both sources later fail", async () => {
     await getLatestLevelsSnapshot();
     rdpBehaviour = new RdpError("STORAGE_UNAVAILABLE", 503);
-    s3Behaviour = s3Payload({ level_readings: [], forecast_readings: FORECAST });
+    eaBehaviour = "fail";
     jest.setSystemTime(NOW + HOUR);
 
     const snapshot = await getLatestLevelsSnapshot();
@@ -239,27 +269,17 @@ describe("rdp display mode", () => {
     expect(snapshot.health).toMatchObject({ state: "stale", ageSeconds: 3600, observed: { origin: "cache", state: "stale" } });
   });
 
-  test("invalid RDP configuration keeps observed levels on fresh legacy fallback", async () => {
+  test("invalid RDP configuration keeps observed levels on fresh EA fallback", async () => {
     createRdpClient.mockImplementation(() => { throw new RdpError("CONFIGURATION_ERROR"); });
     const snapshot = await getLatestLevelsSnapshot();
-    expect(snapshot.health).toMatchObject({ state: "fallback", observed: { origin: "legacy" } });
-  });
-
-  test("throws when observed levels and forecast are both unavailable so the route serves its empty payload", async () => {
-    rdpBehaviour = new RdpError("UPSTREAM_ERROR", 503);
-    s3Behaviour = "fail";
-
-    await expect(getLatestLevelsSnapshot()).rejects.toThrow("Failed to fetch levels data");
-
-    const payload = await (await GET()).json();
-    expect(payload).toMatchObject({ ok: true, data: { level_data: [], forecast_data: [], health: { state: "unavailable" } } });
+    expect(snapshot.health).toMatchObject({ state: "fallback", observed: { origin: "ea" } });
   });
 });
 
 describe("shadow mode", () => {
   beforeEach(() => { process.env.RDP_LEVELS_SOURCE = "shadow"; });
 
-  test("serves the legacy result unchanged and logs timestamp-aligned parity", async () => {
+  test("serves the legacy (direct EA) result unchanged and logs timestamp-aligned parity", async () => {
     delete process.env.RDP_LEVELS_SOURCE;
     const legacy = await getLatestLevelsSnapshot();
     process.env.RDP_LEVELS_SOURCE = "shadow";
@@ -295,33 +315,16 @@ describe("shadow mode", () => {
     });
   });
 
-  // Production shadow 2026-11-07..12: `lag` with 0s lag and ~360/480 matched. The scraper had kept
-  // gauge-page `…T17:30Z` beside flood-API `…T17:30:00Z` for the same instants.
-  test("scraper duplicate spellings of one instant are classified, not reported as lag", async () => {
-    const rows = levelReadings();
-    const shortSpelling = rows.slice(0, 119).map((row) => ({ ...row, reading_date: row.reading_date.replace(":00Z", "Z") }));
-    const merged = [...shortSpelling, ...rows].sort((a, b) => Date.parse(b.reading_date) - Date.parse(a.reading_date)).slice(0, 480);
-    s3Behaviour = s3Payload({ level_readings: merged, level_source: "gauge-page-fallback" });
-
-    const snapshot = await getLatestLevelsSnapshot();
-
-    expect(snapshot.level_data).toEqual(merged);
-    expect(loggedJson(logs.log, "RDP levels shadow comparison ").series).toMatchObject({
-      status: "duplicate_instants", matched: 361, legacyDuplicates: 119, rdpDuplicates: 0, valueMismatches: 0, missingInRdp: 0, latestLagSeconds: 0,
-    });
-    expect(validateLegacyLevels(merged)).toBeNull();
-  });
-
   test("an RDP failure is recorded without affecting the legacy response", async () => {
     rdpBehaviour = new RdpError("THROTTLED", 429);
     const snapshot = await getLatestLevelsSnapshot();
-    expect(snapshot.health.source).toBe("scraper-levels");
-    expect(snapshot.level_data).toEqual(levelReadings());
+    expect(snapshot.health.source).toBe("environment-agency-levels");
+    expect(snapshot.level_data).toEqual(levelData());
     expect(loggedJson(logs.log, "RDP levels shadow comparison ").series).toMatchObject({ status: "rdp_error", rdpError: "THROTTLED" });
   });
 
   test("a legacy failure still fails exactly as legacy does", async () => {
-    s3Behaviour = "fail";
+    eaBehaviour = "fail";
     await expect(getLatestLevelsSnapshot()).rejects.toThrow("Failed to fetch levels data");
     expect(loggedJson(logs.log, "RDP levels shadow comparison ")).toMatchObject({ legacyState: "unavailable", series: { status: "legacy_missing" } });
   });
@@ -332,7 +335,7 @@ describe("rollback", () => {
     process.env.RDP_LEVELS_SOURCE = "rdp";
     expect((await getLatestLevelsSnapshot()).health.source).toBe("river-data-platform-levels");
 
-    // Roll back while RDP is degraded and the scraper is the only source.
+    // Roll back while RDP is degraded and direct EA is the only source.
     process.env.RDP_LEVELS_SOURCE = "legacy";
     rdpBehaviour = new RdpError("ARCHIVE_INTEGRITY", 500);
     client.getObservations.mockClear();
@@ -340,34 +343,15 @@ describe("rollback", () => {
     expect(rolledBack).toEqual(await getLegacyLevelsSnapshot());
     expect(client.getObservations).not.toHaveBeenCalled();
 
-    // Rolling back does not hide a legacy outage behind earlier RDP data.
-    s3Behaviour = "fail";
+    // Rolling back does not hide an EA outage behind earlier RDP data.
+    __resetLegacyLevelsStateForTests();
+    eaBehaviour = "fail";
     await expect(getLatestLevelsSnapshot()).rejects.toThrow("Failed to fetch levels data");
 
-    s3Behaviour = undefined;
+    eaBehaviour = undefined;
     rdpBehaviour = undefined;
     process.env.RDP_LEVELS_SOURCE = "rdp";
     expect((await getLatestLevelsSnapshot()).health).toMatchObject({ source: "river-data-platform-levels", state: "fresh" });
-    expect(s3Calls().length).toBeGreaterThan(0);
-  });
-});
-
-describe("legacy fallback validation", () => {
-  test("accepts a complete newest-first series", () => {
-    expect(validateLegacyLevels(levelReadings({ count: 2 }))).toEqual([
-      { dateTime: "2026-10-24T10:00:00Z", value: 1.2 },
-      { dateTime: "2026-10-24T09:45:00Z", value: 1.197 },
-    ]);
-  });
-
-  test.each([
-    ["empty", []],
-    ["not an array", null],
-    ["oldest first", levelReadings({ count: 2 }).reverse()],
-    ["duplicate time", [levelReadings({ count: 1 })[0], levelReadings({ count: 1 })[0]]],
-    ["non-finite level", [{ reading_date: "2026-10-24T10:00:00Z", reading_level: Number.NaN }]],
-    ["bad date", [{ reading_date: "not a date", reading_level: 1 }]],
-  ])("rejects the whole series when %s", (_, rows) => {
-    expect(validateLegacyLevels(rows)).toBeNull();
+    expect(s3Calls()).toHaveLength(0);
   });
 });

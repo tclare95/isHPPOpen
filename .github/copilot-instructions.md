@@ -17,9 +17,9 @@ Route Handlers in `app/api/` validate and authorize requests, then delegate to
 MongoDB connection in `libs/database.js`. Public reads stay public; protected
 routes use `requireRouteSession()`.
 
-Operational levels are scraper-produced S3 JSON configured by `S3_LEVELS_URL`,
-read by `libs/services/levelsService.js`. Predictor forecasts are S3 CSV configured
-by `S3_FORECAST_URL`, read by `libs/services/forecastService.js`. MongoDB stores
+Observed Colwick levels come from RDP (or direct EA) via `libs/services/levelsService.js`;
+`S3_LEVELS_URL` is no longer read (#90). Predictor forecasts, the only primary forecast,
+are S3 CSV configured by `S3_FORECAST_URL`, read by `libs/services/forecastService.js`. MongoDB stores
 events, banners, HPP status, water quality and alerts; `riverschemas` is a legacy
 levels collection, not the current `/api/levels` source.
 

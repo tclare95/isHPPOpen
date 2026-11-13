@@ -1,5 +1,7 @@
 > **Historical copy — moved to RDP.** This file's maintained version is [RDP `forecast-publication-contract`](https://github.com/tclare95/river-data-platform/blob/main/openspec/changes/forecast-publication-contract/proposal.md). The old content is retained for the linked isHPPOpen issues, PRs and acceptance history; **do not use it as a second editable specification**. Migration: [RDP #50](https://github.com/tclare95/river-data-platform/issues/50). No deployment or activation is implied.
 
+> **Superseded on the government forecast (13 November 2026, [#90](https://github.com/tclare95/isHPPOpen/issues/90)):** trent-predictor's ML forecast is the only primary forecast; the government forecast and `levels/` snapshot are retired with no compatibility publisher. The website no longer reads `levels/latest.json` and serves `forecast_data: []` ([FORECAST-ML-PRIMARY-90](../../../docs/FORECAST-ML-PRIMARY-90.md)). The RDP canonical spec needs the same update.
+
 # Proposal: Forecast publication and compatibility contract
 
 **Tracking:** [#90](https://github.com/tclare95/isHPPOpen/issues/90), umbrella [#68](https://github.com/tclare95/isHPPOpen/issues/68). **Stage:** documentation/contract only, not implementation authorisation.

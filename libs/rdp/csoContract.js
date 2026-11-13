@@ -107,33 +107,82 @@ export function parseCsoCatalogue(payload) {
   return { assets, total: payload.meta.total, catalogues, nextCursor: payload.meta.nextCursor, retrievedAt: time(payload.meta.retrievedAt) };
 }
 
+function parseStatusRow(row, assetId) {
+  check(object(row) && row.assetId === assetId && STATUS_VALUES.includes(row.status) &&
+    REPORTED_STATES.includes(row.reportedState) && EFFECTIVE_STATES.includes(row.effectiveState) &&
+    FRESHNESS.includes(row.freshness) && (row.reasons === undefined || (Array.isArray(row.reasons) && row.reasons.every((reason) => text(reason, 200)))) &&
+    (row.sourceAgeSeconds === undefined || row.sourceAgeSeconds === null || Number.isFinite(row.sourceAgeSeconds)) &&
+    (row.errorCode === undefined || row.errorCode === null || text(row.errorCode, 80)));
+  // A spilling effective state without a valid source time cannot be verified evidence.
+  if (row.effectiveState !== "unknown") check(row.status === "available" && isCsoTimestamp(row.sourceUpdatedAt));
+  return {
+    assetId: row.assetId,
+    status: row.status,
+    reportedState: row.reportedState,
+    effectiveState: row.effectiveState,
+    freshness: row.freshness,
+    statusStart: nullableTime(row.statusStart),
+    sourceUpdatedAt: nullableTime(row.sourceUpdatedAt),
+    sourceAgeSeconds: row.sourceAgeSeconds ?? null,
+    fetchedAt: nullableTime(row.fetchedAt),
+    lastSuccessfulPollAt: nullableTime(row.lastSuccessfulPollAt),
+    reasons: row.reasons ? [...row.reasons] : [],
+    errorCode: row.errorCode ?? null,
+  };
+}
+
 export function parseCsoStatus(payload, ids) {
   check(object(payload) && Array.isArray(payload.data) && object(payload.meta) && typeof payload.meta.partial === "boolean" &&
     payload.data.length === ids.length);
-  const rows = payload.data.map((row, index) => {
-    check(object(row) && row.assetId === ids[index] && STATUS_VALUES.includes(row.status) &&
-      REPORTED_STATES.includes(row.reportedState) && EFFECTIVE_STATES.includes(row.effectiveState) &&
-      FRESHNESS.includes(row.freshness) && (row.reasons === undefined || (Array.isArray(row.reasons) && row.reasons.every((reason) => text(reason, 200)))) &&
-      (row.sourceAgeSeconds === undefined || row.sourceAgeSeconds === null || Number.isFinite(row.sourceAgeSeconds)) &&
-      (row.errorCode === undefined || row.errorCode === null || text(row.errorCode, 80)));
-    // A spilling effective state without a valid source time cannot be verified evidence.
-    if (row.effectiveState !== "unknown") check(row.status === "available" && isCsoTimestamp(row.sourceUpdatedAt));
-    return {
-      assetId: row.assetId,
-      status: row.status,
-      reportedState: row.reportedState,
-      effectiveState: row.effectiveState,
-      freshness: row.freshness,
-      statusStart: nullableTime(row.statusStart),
-      sourceUpdatedAt: nullableTime(row.sourceUpdatedAt),
-      sourceAgeSeconds: row.sourceAgeSeconds ?? null,
-      fetchedAt: nullableTime(row.fetchedAt),
-      lastSuccessfulPollAt: nullableTime(row.lastSuccessfulPollAt),
-      reasons: row.reasons ? [...row.reasons] : [],
-      errorCode: row.errorCode ?? null,
-    };
-  });
+  const rows = payload.data.map((row, index) => parseStatusRow(row, ids[index]));
   return { rows, partial: payload.meta.partial, retrievedAt: time(payload.meta.retrievedAt) };
+}
+
+// ---- Whole-set activity (ADR-002 D3, `GET /v1/cso/sets/{set}/activity`) ----
+export const CSO_SET_NAME = /^[a-z0-9][a-z0-9-]{0,79}$/;
+export const CSO_SET_ACTIVITY_MAX_ITEMS = 100;
+
+export function assertCsoSetName(value) {
+  if (typeof value !== "string" || !CSO_SET_NAME.test(value)) throw new RdpError("INVALID_QUERY");
+  return value;
+}
+
+// One page of a collection set. Each item is the outfall's status (same rules as the status read) and, unless
+// RDP could not read it, its events and collection coverage over [meta.from, meta.to). Duplicate outfalls in
+// one page, a different set or window, or a malformed item are contract errors, never silently merged.
+export function parseCsoSetActivity(payload, set, hours) {
+  check(object(payload) && Array.isArray(payload.data) && payload.data.length <= CSO_SET_ACTIVITY_MAX_ITEMS && object(payload.meta));
+  const { meta } = payload;
+  check(meta.set === set && text(meta.provider, 80) && text(meta.sourceId, 80) && meta.windowHours === hours &&
+    nonNegativeInteger(meta.total) && typeof meta.partial === "boolean" && cursor(meta.nextCursor));
+  const from = time(meta.from);
+  const to = time(meta.to);
+  check(from < to);
+  const items = payload.data.map((item) => {
+    check(object(item) && object(item.status) && text(item.status.assetId, 200) && CSO_ASSET_ID.test(item.status.assetId) &&
+      item.status.assetId.startsWith(`${meta.provider}:${meta.sourceId}:`));
+    const assetId = item.status.assetId;
+    const status = parseStatusRow(item.status, assetId);
+    if (item.events === null || item.events === undefined) return { status, events: null };
+    check(object(item.events) && Array.isArray(item.events.data) && item.events.data.length <= 100 && typeof item.events.truncated === "boolean");
+    const events = item.events.data.map((event) => parseEvent(event, assetId));
+    check(new Set(events.map((event) => event.eventId)).size === events.length);
+    return { status, events: { events, coverage: parseCoverage(item.events.coverage), truncated: item.events.truncated } };
+  });
+  check(new Set(items.map((item) => item.status.assetId)).size === items.length);
+  return {
+    items,
+    set: meta.set,
+    provider: meta.provider,
+    sourceId: meta.sourceId,
+    windowHours: meta.windowHours,
+    from,
+    to,
+    retrievedAt: time(meta.retrievedAt),
+    total: meta.total,
+    partial: meta.partial,
+    nextCursor: meta.nextCursor,
+  };
 }
 
 function parseEvent(event, id) {

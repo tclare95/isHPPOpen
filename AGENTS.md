@@ -26,6 +26,8 @@ Optional: `RDP_CSO_SOURCE` (`legacy|shadow|rdp`, default `legacy`) selects the c
 public water-quality routes only; alerts stay legacy. See [docs/RDP-CSO-120.md](docs/RDP-CSO-120.md).
 Optional: `RDP_CSO_HISTORY=on` (default off) enables the "Recent upstream spills" event history on `/waterquality`;
 it is independent of `RDP_CSO_SOURCE` and never feeds the indicator or alerts. See [docs/RDP-CSO-HISTORY-121.md](docs/RDP-CSO-HISTORY-121.md).
+Optional: `RDP_CSO_CATCHMENT=on` (default off) enables "Whole-catchment monitoring" from RDP's `hpp-catchment` set on
+`/waterquality`. Its counts are not Sewage Map density: never feed them to the indicator, thresholds or alerts. See [docs/RDP-CSO-CATCHMENT-114.md](docs/RDP-CSO-CATCHMENT-114.md).
 
 Optional, development only: `HISTORY_DEV_FIXTURE_DIR` serves local EA Hydrology fixtures to `/history`
 (`npm run history:fixtures`), because the RDP client needs Vercel OIDC and cannot run locally. It is ignored

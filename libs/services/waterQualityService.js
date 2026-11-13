@@ -194,6 +194,48 @@ export async function getWaterQualityDensitySeries(hours = 120, endTime = new Da
   return bucketDensityRows(rows, intervalMinutes);
 }
 
+// ---- Read-only legacy history for the catchment comparison (#114). Never used by the indicator or alerts. ----
+export const LEGACY_HISTORY_MAX_ROWS = 2000;
+export const LEGACY_STATUS_MAX_ROWS = 20000;
+
+// Legacy summaries in [from, to], oldest first, at their own observation time (`scrape_timestamp`).
+export async function getLegacyWaterQualityObservations(from, to) {
+  const { db } = await connectToDatabase();
+  const documents = await db.collection('waterQuality').find(
+    { scrape_timestamp: { $gte: new Date(from), $lte: new Date(to) } },
+    { projection: { scrape_timestamp: 1, 'water_quality.number_CSOs_per_km2': 1, 'water_quality.number_upstream_CSOs': 1, 'water_quality.CSO_IDs': 1 } },
+  ).sort({ scrape_timestamp: 1 }).limit(LEGACY_HISTORY_MAX_ROWS).toArray();
+  return documents.map((doc) => {
+    const observedAt = validDate(doc?.scrape_timestamp);
+    if (!observedAt) return null;
+    const density = Number(doc.water_quality?.number_CSOs_per_km2);
+    const upstream = Number(doc.water_quality?.number_upstream_CSOs);
+    return {
+      observedAt: observedAt.toISOString(),
+      numberCSOsPerKm2: Number.isFinite(density) ? density : null,
+      numberUpstreamCSOs: Number.isFinite(upstream) ? upstream : null,
+      csoIds: uniqueIds(doc.water_quality?.CSO_IDs),
+    };
+  }).filter(Boolean);
+}
+
+// Legacy per-outfall status records (`csoData`) for the given provider IDs in [from, to], oldest first.
+export async function getLegacyCsoStatusHistory(ids, from, to) {
+  const normalizedIds = uniqueIds(ids);
+  if (!normalizedIds.length) return [];
+  const { db } = await connectToDatabase();
+  const documents = await db.collection('csoData').find(
+    { 'attributes.Id': { $in: normalizedIds }, DateScraped: { $gte: new Date(from), $lte: new Date(to) } },
+    { projection: { DateScraped: 1, 'attributes.Id': 1, 'attributes.Status': 1 } },
+  ).sort({ DateScraped: 1 }).limit(LEGACY_STATUS_MAX_ROWS).toArray();
+  return documents.map((doc) => {
+    const scrapedAt = validDate(doc?.DateScraped);
+    const status = Number(doc?.attributes?.Status);
+    return scrapedAt && typeof doc.attributes?.Id === 'string'
+      ? { id: doc.attributes.Id, scrapedAt: scrapedAt.toISOString(), status: Number.isFinite(status) ? status : null } : null;
+  }).filter(Boolean);
+}
+
 export async function getCsoDetailsByIds(ids) {
   const normalizedIds = uniqueIds(ids);
   if (!normalizedIds.length) throw new HttpError(400, 'No valid ids provided');
@@ -258,6 +300,18 @@ export async function getPublicCsoEventHistory(windowKey) {
   if (!isCsoHistoryEnabled()) return { enabled: false };
   const { getCsoEventHistory } = await import('../rdp/csoHistory');
   return { enabled: true, ...(await getCsoEventHistory(windowKey)) };
+}
+
+// ---- RDP_CSO_CATCHMENT (#114): optional whole-catchment monitoring section ----
+// Off unless exactly `on`. Descriptive only: never read by the indicator, density chart, thresholds or alerts.
+export function isCsoCatchmentEnabled(env = process.env) {
+  return env.RDP_CSO_CATCHMENT === 'on';
+}
+
+export async function getPublicCsoCatchmentMonitoring(setKey) {
+  if (!isCsoCatchmentEnabled()) return { enabled: false };
+  const { getCatchmentMonitoring } = await import('../rdp/csoCatchment');
+  return { enabled: true, ...(await getCatchmentMonitoring(setKey)) };
 }
 
 export async function getPublicCsoEventDetail(eventId) {

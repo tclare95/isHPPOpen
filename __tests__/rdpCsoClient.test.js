@@ -5,7 +5,7 @@ import { createRdpClient } from "../libs/rdp/client";
 import { RDP_STAGING_API_URL } from "../libs/rdp/config";
 import { RIVER_MAX_BYTES } from "../libs/rdp/river";
 import {
-  ST, CURSOR, asset, catalogue, status, statusResponse, event, eventsResponse, healthResponse,
+  ST, CURSOR, asset, catalogue, status, statusResponse, event, eventsResponse, healthResponse, setActivityItem, setActivityResponse,
 } from "../testUtils/rdpCsoFixtures";
 
 jest.mock("server-only", () => ({}));
@@ -179,4 +179,43 @@ test("event detail and revisions are bounded, id-validated reads", async () => {
   expect(() => createRdpClient(preview).getCsoEventRevisions(id, { limit: 201 })).toThrow("INVALID_QUERY");
   global.fetch.mockResolvedValueOnce(json({ error: { code: "EVENT_NOT_FOUND", message: "x" }, requestId: "r" }, 404));
   await expect(createRdpClient(preview).getCsoEvent(id)).rejects.toMatchObject({ code: "EVENT_NOT_FOUND" });
+});
+
+describe("set activity (ADR-002 D3)", () => {
+  test("signs one bounded GET for a page and parses status, events and coverage", async () => {
+    global.fetch.mockResolvedValue(json(setActivityResponse([setActivityItem("SVT1", { events: [event("SVT1")] }), setActivityItem("SVT2", { events: null })],
+      { total: 150, nextCursor: CURSOR })));
+    const page = await createRdpClient(preview).getCsoSetActivity("hpp-catchment", { hours: 48, limit: 100, cursor: CURSOR });
+    expect(requested().pathname).toBe("/staging/v1/cso/sets/hpp-catchment/activity");
+    expect(Object.fromEntries(requested().searchParams)).toEqual({ hours: "48", limit: "100", cursor: CURSOR });
+    expect(page).toMatchObject({ set: "hpp-catchment", total: 150, nextCursor: CURSOR, partial: false, windowHours: 48 });
+    expect(page.items[0].events.events[0]).toMatchObject({ lifecycle: "completed", endedAt: "2026-11-12T08:00:00.000Z" });
+    expect(page.items[0].events.coverage.status).toBe("partial");
+    expect(page.items[1].events).toBeNull();
+  });
+
+  test.each([
+    ["Bad set", {}], ["hpp-catchment", { hours: 0 }], ["hpp-catchment", { hours: 169 }], ["hpp-catchment", { limit: 101 }],
+    ["hpp-catchment", { cursor: "short" }], ["../outfalls", {}],
+  ])("rejects %s %j before any request", (set, options) => {
+    expect(() => createRdpClient(preview).getCsoSetActivity(set, options)).toThrow("INVALID_QUERY");
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  test.each([
+    ["another set", setActivityResponse([setActivityItem("SVT1")], { set: "bath-avon" })],
+    ["another window", setActivityResponse([setActivityItem("SVT1")], { hours: 24 })],
+    ["the same outfall twice in one page", setActivityResponse([setActivityItem("SVT1"), setActivityItem("SVT1")])],
+    ["an outfall from another provider", (() => { const body = setActivityResponse([setActivityItem("SVT1")]); body.data[0].status.assetId = "wessex-water:storm-overflow-activity:SVT1"; return body; })()],
+    ["an unverifiable spilling report", setActivityResponse([setActivityItem("SVT1", { status: { effectiveState: "spilling", sourceUpdatedAt: null } })])],
+  ])("treats %s as a contract error", async (_, body) => {
+    global.fetch.mockResolvedValue(json(body));
+    await expect(createRdpClient(preview).getCsoSetActivity("hpp-catchment")).rejects.toMatchObject({ code: "RESPONSE_CONTRACT_ERROR" });
+  });
+
+  test("maps a set not enabled on this stage to SET_NOT_FOUND without retrying", async () => {
+    global.fetch.mockResolvedValue(json({ error: { code: "SET_NOT_FOUND", message: "x" }, requestId: "r" }, 404));
+    await expect(createRdpClient(preview).getCsoSetActivity("hpp-catchment")).rejects.toMatchObject({ code: "SET_NOT_FOUND", status: 404 });
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
 });

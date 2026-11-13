@@ -50,14 +50,14 @@ describe("HPP acceptance: evidence window and crossings", () => {
   it("does not start the window until the first eligible run", () => {
     const state = stateWith({ health: { firstEligibleAt: null, holdSince: FIRST_RUN.toISOString(), holdReason: "identity_mismatch", gaps: [] } });
     const acceptance = acceptanceFor({ state, now: ELIGIBLE });
-    expect(acceptance.window).toMatchObject({ since: null, days: 0 });
+    expect(acceptance.window).toMatchObject({ since: null, hours: 0, requiredHours: 48 });
     expect(statusOf(acceptance, "evidence_window")).toBe("pending");
     // An open review-class hold needs explaining even before the window starts.
     expect(statusOf(acceptance, "gaps_explained")).toBe("review");
   });
 
-  it("passes with paired crossings in both directions after 14 days of evidence", () => {
-    const now = new Date(ELIGIBLE.getTime() + 14 * DAY + MINUTE);
+  it("passes with paired crossings in both directions after 48 hours of evidence", () => {
+    const now = new Date(ELIGIBLE.getTime() + 2 * DAY + 60 * MINUTE);
     const transitions = [shadowTx(1, false, 2 * DAY, 2 * DAY + 10 * MINUTE), shadowTx(2, true, 5 * DAY, 5 * DAY + 25 * MINUTE)];
     // Legacy poll times lag the RDP observation by 37 and 52 minutes, but
     // trail the shadow's own evaluation by less than 30 minutes.
@@ -73,6 +73,11 @@ describe("HPP acceptance: evidence window and crossings", () => {
     expect(acceptance.ready).toBe(true);
   });
 });
+
+it("passes the window at exactly 48 hours of eligible evaluation, not before", () => {
+    expect(statusOf(acceptanceFor({ state: stateWith(), now: new Date(ELIGIBLE.getTime() + 2 * DAY - MINUTE) }), "evidence_window")).toBe("pending");
+    expect(statusOf(acceptanceFor({ state: stateWith(), now: new Date(ELIGIBLE.getTime() + 2 * DAY) }), "evidence_window")).toBe("pass");
+  });
 
 describe("HPP acceptance: disagreements", () => {
   it("fails pairing when legacy saw a crossing the shadow did not, and the status disagrees", () => {

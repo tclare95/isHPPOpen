@@ -11,10 +11,11 @@
 // crossings in each direction or an explicitly recorded waiver.
 
 const MINUTE_MS = 60 * 1000;
-const DAY_MS = 24 * 60 * MINUTE_MS;
+const HOUR_MS = 60 * MINUTE_MS;
 
 export const ACCEPTANCE = Object.freeze({
-  requiredDays: 14,
+  // Owner decision (13 Nov 2026): 48 hours of eligible evaluation, not 14 days.
+  requiredHours: 48,
   pairToleranceMs: 30 * MINUTE_MS,
   closureDayTolerance: 1,
   unexplainedGapMs: 2 * 60 * MINUTE_MS,
@@ -135,7 +136,7 @@ export function buildAcceptance({ state, transitions = [], legacyRecords = [], c
   const nowMs = now.getTime();
   const sinceMs = time(health.firstEligibleAt);
   const seedMs = time(state?.seed?.timestamp) ?? -Infinity;
-  const days = sinceMs === null ? 0 : (nowMs - sinceMs) / DAY_MS;
+  const hours = sinceMs === null ? 0 : (nowMs - sinceMs) / HOUR_MS;
 
   const legacy = legacyTransitionsAfter(legacyRecords, Math.max(seedMs, sinceMs ?? Infinity));
   const shadow = sinceMs === null ? [] : transitions.filter((doc) => time(doc.observedAt) >= seedMs);
@@ -187,9 +188,9 @@ export function buildAcceptance({ state, transitions = [], legacyRecords = [], c
 
   const checks = [
     sinceMs === null
-      ? check("evidence_window", "pending", "No eligible evaluation yet; the 14-day window has not started")
-      : check("evidence_window", days >= ACCEPTANCE.requiredDays ? "pass" : "pending",
-        `${days.toFixed(1)} of ${ACCEPTANCE.requiredDays} days since first eligible run ${health.firstEligibleAt}`),
+      ? check("evidence_window", "pending", "No eligible evaluation yet; the evidence window has not started")
+      : check("evidence_window", hours >= ACCEPTANCE.requiredHours ? "pass" : "pending",
+        `${hours.toFixed(1)} of ${ACCEPTANCE.requiredHours} hours since first eligible run ${health.firstEligibleAt}`),
     check("crossings_both_directions", crossings.closed > 0 && crossings.opened > 0 ? "pass" : "pending",
       `${crossings.closed} closing and ${crossings.opened} opening shadow transitions; without both, record a waiver on #89`),
     check("contiguous_sequence", state && sequencesContiguous(transitions, state) ? "pass" : "fail",
@@ -218,7 +219,7 @@ export function buildAcceptance({ state, transitions = [], legacyRecords = [], c
     ready: blocking.length === 0,
     blocking,
     checks,
-    window: { since: health.firstEligibleAt ?? null, days: Number(days.toFixed(2)), requiredDays: ACCEPTANCE.requiredDays },
+    window: { since: health.firstEligibleAt ?? null, hours: Number(hours.toFixed(2)), requiredHours: ACCEPTANCE.requiredHours },
     crossings,
     pairing,
     gaps,

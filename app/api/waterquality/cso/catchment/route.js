@@ -6,7 +6,7 @@ import { getPublicCsoCatchmentMonitoring } from "../../../../../libs/services/wa
 // A complete read is shared through the CDN; partial, unavailable or disabled answers are cached briefly so a
 // recovering RDP is picked up quickly without every visitor causing a whole-set walk.
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+export const maxDuration = 180;
 
 export async function GET(request) {
   try {

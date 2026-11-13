@@ -8,7 +8,7 @@ import {
   __resetRdpCsoStateForTests, CSO_MAX_EVENT_READS,
 } from "../libs/rdp/csoSource";
 import {
-  getLatestWaterQualitySnapshot, getPublicWaterQualitySnapshot, getPublicCsoDetailsByIds, getCsoSourceMode,
+  getLatestWaterQualitySnapshot, getLatestWaterQualitySummaryHealth, getPublicWaterQualitySnapshot, getPublicCsoDetailsByIds, getCsoSourceMode,
 } from "../libs/services/waterQualityService";
 import { ST, NOW } from "../testUtils/rdpCsoFixtures";
 
@@ -236,13 +236,40 @@ describe("rdp mode snapshot", () => {
     expect(snapshot.ActiveCSOIds).toEqual(["SVT1"]);
   });
 
-  test("total RDP failure serves the whole legacy snapshot as fallback, never a mix", async () => {
-    mockMongo(summary(["SVT1"]), [legacyRecord("SVT1", { Status: 1, LatestEventStart: new Date("2026-11-12T08:00:00Z") })]);
+  test("total RDP failure reports status unavailable and never reads csoData or claims spilling or clear", async () => {
+    const csoData = mockMongo(summary(["SVT1", "SVT2"]), [legacyRecord("SVT1", { Status: 1, LatestEventStart: new Date("2026-11-12T08:00:00Z") })]);
     rdp.listCsoOutfalls.mockRejectedValue(new RdpError("AUTHORIZATION_FAILED", 403));
+    const warn = jest.spyOn(console, "warn").mockImplementation(() => {});
     const snapshot = await getRdpWaterQualitySnapshot(NOW);
-    expect(snapshot.ActiveCSOIds).toEqual(["SVT1"]);
-    expect(snapshot.locations[0]).not.toHaveProperty("statusReason");
-    expect(snapshot.health).toMatchObject({ source: "mongodb-water-quality", state: "fallback", cso: { origin: "legacy", rdpError: "AUTHORIZATION_FAILED" } });
+    expect(csoData.aggregate).not.toHaveBeenCalled();
+    expect(snapshot.ActiveCSOIds).toEqual([]);
+    expect(snapshot.ActiveCSOCount).toBeNull();
+    expect(snapshot.statusSummary).toEqual({ currentlySpilling: null, recentlyStopped48h: null, offline: null, unknown: 2 });
+    expect(snapshot.WaterQuality).toMatchObject({ CSOIds: ["SVT1", "SVT2"], CSOActiveTime: null, NumberCSOsPerKm2: 0.04 });
+    expect(snapshot.locations.map((l) => [l.id, l.status, l.statusReason])).toEqual([["SVT1", "unknown", "rdp_unavailable"], ["SVT2", "unknown", "rdp_unavailable"]]);
+    expect(snapshot.health).toMatchObject({ source: "river-data-platform-cso", state: "unavailable",
+      cso: { origin: "rdp", available: false, rdpError: "AUTHORIZATION_FAILED", unknown: 2 } });
+    expect(warn.mock.calls.flat().join(" ")).not.toMatch(/serving legacy/);
+    warn.mockRestore();
+  });
+
+  test("a hung RDP read reports unavailable at the deadline rather than falling back", async () => {
+    const csoData = mockMongo(summary(["SVT1"]));
+    rdp.listCsoOutfalls.mockImplementation(() => new Promise(() => {}));
+    const warn = jest.spyOn(console, "warn").mockImplementation(() => {});
+    const pending = getRdpWaterQualitySnapshot(NOW);
+    await jest.advanceTimersByTimeAsync(12000);
+    await expect(pending).resolves.toMatchObject({ health: { state: "unavailable", cso: { available: false, rdpError: "TIMEOUT" } } });
+    expect(csoData.aggregate).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
+  test("an available RDP read never touches csoData", async () => {
+    const csoData = mockMongo(summary(["SVT1"]));
+    rdp = fakeClient({ assets: [asset("SVT1")], statusRows: { [ST("SVT1")]: spilling("SVT1") } });
+    const snapshot = await getRdpWaterQualitySnapshot(NOW);
+    expect(snapshot.health.cso).toMatchObject({ origin: "rdp", available: true });
+    expect(csoData.aggregate).not.toHaveBeenCalled();
   });
 
   test("detail compatibility uses the legacy record shape; unverified status is null, never 0", async () => {
@@ -346,11 +373,17 @@ describe("source-mode switching", () => {
     console.log.mockRestore();
   });
 
-  test("alert evaluation's legacy snapshot ignores RDP_CSO_SOURCE", async () => {
-    process.env.RDP_CSO_SOURCE = "rdp";
-    mockMongo(summary(["SVT1"]), [legacyRecord("SVT1", { Status: 0 })]);
-    const snapshot = await getLatestWaterQualitySnapshot(NOW);
-    expect(snapshot.health.source).toBe("mongodb-water-quality");
+  test("alert and operational-health freshness reads only the summary, in every mode", async () => {
+    for (const mode of ["legacy", "shadow", "rdp"]) {
+      process.env.RDP_CSO_SOURCE = mode;
+      const csoData = mockMongo(summary(["SVT1"]), [legacyRecord("SVT1", { Status: 0 })]);
+      const result = await getLatestWaterQualitySummaryHealth(NOW);
+      expect(result).toEqual({ Id: "wq-1", ScrapeTimestamp: new Date("2026-11-12T11:50:00Z"),
+        health: expect.objectContaining({ source: "mongodb-water-quality", state: "fresh" }) });
+      expect(csoData.aggregate).not.toHaveBeenCalled();
+    }
     expect(createRdpClient).not.toHaveBeenCalled();
+    mockMongo(null);
+    await expect(getLatestWaterQualitySummaryHealth(NOW)).resolves.toBeNull();
   });
 });

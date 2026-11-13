@@ -22,9 +22,9 @@ The variable is read independently of `RDP_TRENT_SOURCE`, `RDP_LEVELS_SOURCE` an
 
 Callers that are **not** switched:
 
-- `colwickAlertsService` and `/api/admin/operational-health` call `getLatestWaterQualitySnapshot()`,
-  which stays legacy-only in every mode. Alerts therefore keep exactly their current inputs (density
-  plus summary freshness).
+- `colwickAlertsService` and `/api/admin/operational-health` call `getLatestWaterQualitySummaryHealth()`
+  (summary freshness only, no `csoData` read, #68) in every mode. Alerts therefore keep exactly their current
+  inputs (density plus summary freshness).
 - `/api/waterquality/csodensity` and the homepage density tile read Mongo `waterQuality` as before.
 
 ## Code map
@@ -132,9 +132,10 @@ Other limits in this mode:
 membership summary's `scrape_timestamp`, so a stale membership shows as `stale`. It also carries
 `cso: { origin: "rdp", partial, unknown }`.
 
-If the catalogue read fails, or every status batch fails, the **whole** legacy snapshot is served instead.
-In that case health has `state: "fallback"` and `cso: { origin: "legacy", rdpError }`. Sources are never
-mixed per location.
+If the catalogue read fails, or every status batch fails, current status is reported as **unavailable**
+(superseded by [#68](RDP-CSO-RETIREMENT-68.md)): every member is `unknown` with `statusReason: "rdp_unavailable"`,
+spill/recent counts are `null`, health has `state: "unavailable"` and `cso: { origin: "rdp", available: false, rdpError }`.
+Nothing falls back to Mongo `csoData`, and sources are never mixed per location.
 
 ### Request budget and caching
 

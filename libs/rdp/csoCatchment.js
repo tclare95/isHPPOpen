@@ -337,7 +337,12 @@ function legacyStatusAt(records, time) {
 
 // Each row is one legacy observation, at its own `scrape_timestamp`, with RDP's evidence at that same instant. The
 // two sides have different catchments, populations and denominators: they are shown side by side, never combined.
+// `statusHistory` (legacy `csoData`) is optional (#68): `null` means it could not be read. Once the legacy CSO
+// collection is retired it is empty for new periods; the density comparison still runs, and the per-outfall
+// agreement is reported as `null` rather than as "not spilling" or as a run of not-comparable members.
 export function compareWithLegacy({ rows, observations, statusHistory, provider, sourceId, from, to }) {
+  const legacyStatus = statusHistory === null ? "unavailable" : statusHistory.length ? "available" : "none";
+  statusHistory ??= [];
   const byExternal = new Map(rows.map((row) => [row.externalId, row]));
   const legacyById = new Map();
   for (const record of statusHistory) {
@@ -351,14 +356,15 @@ export function compareWithLegacy({ rows, observations, statusHistory, provider,
     const collected = rows.filter((row) => covers(row.rawCoverage, time, row.asOf));
     const spilling = collected.map((row) => ({ row, ...spillingAt(row.events, time) }));
     const lower = spilling.filter((entry) => entry.lower).map((entry) => entry.row);
-    const members = { listed: observation.csoIds.length, reporting: 0, spilling: 0, inRdpSet: 0, rdpCollected: 0, rdpSpilling: 0 };
+    const legacyCount = legacyStatus === "available" ? 0 : null;
+    const members = { listed: observation.csoIds.length, reporting: legacyCount, spilling: legacyCount, inRdpSet: 0, rdpCollected: 0, rdpSpilling: 0 };
     for (const id of observation.csoIds) {
       const legacy = legacyStatusAt(legacyById.get(id) ?? [], time);
       const rdp = byExternal.get(id);
       const rdpCovered = rdp ? covers(rdp.rawCoverage, time, rdp.asOf) : false;
       const rdpState = rdpCovered ? spillingAt(rdp.events, time) : null;
-      if (legacy && legacy.status !== null) members.reporting += 1;
-      if (legacy?.status === 1) members.spilling += 1;
+      if (members.reporting !== null && legacy && legacy.status !== null) members.reporting += 1;
+      if (members.spilling !== null && legacy?.status === 1) members.spilling += 1;
       if (rdp) members.inRdpSet += 1;
       if (rdpCovered) members.rdpCollected += 1;
       if (rdpState?.lower) members.rdpSpilling += 1;
@@ -389,7 +395,8 @@ export function compareWithLegacy({ rows, observations, statusHistory, provider,
     rows: aligned,
     observations: aligned.length,
     rdpCollectedObservations: aligned.filter((row) => row.rdp.collectedOutfalls > 0).length,
-    memberAgreement: agreement,
+    legacyStatusHistory: { state: legacyStatus, records: statusHistory.length },
+    memberAgreement: legacyStatus === "available" ? agreement : null,
     provider,
     sourceId,
     legacyThresholds: {
@@ -406,7 +413,8 @@ async function readLegacyComparison(rows, walk) {
   const observations = await getLegacyWaterQualityObservations(walk.from, walk.to);
   const members = [...new Set(observations.flatMap((observation) => observation.csoIds))].slice(0, CATCHMENT_LEGACY_MEMBER_LIMIT);
   const since = new Date(Date.parse(walk.from) - LEGACY_STATUS_MATCH_MS).toISOString();
-  const statusHistory = await getLegacyCsoStatusHistory(members, since, walk.to);
+  // Optional input: a failed or empty legacy status read never hides the density comparison.
+  const statusHistory = await getLegacyCsoStatusHistory(members, since, walk.to).catch(() => null);
   return compareWithLegacy({ rows, observations, statusHistory, provider: walk.provider, sourceId: walk.sourceId, from: walk.from, to: walk.to });
 }
 

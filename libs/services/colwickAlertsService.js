@@ -4,7 +4,7 @@ import { HttpError } from "../api/http";
 import { connectToDatabase } from "../database";
 import { getLatestForecastSnapshot } from "./forecastService";
 import { getHppStatusSnapshot } from "./hppStatusService";
-import { getLatestWaterQualitySnapshot, getWaterQualityDensitySeries } from "./waterQualityService";
+import { getLatestWaterQualitySummaryHealth, getWaterQualityDensitySeries } from "./waterQualityService";
 import { TRENT_DASHBOARD_STATIONS, getTrentStationKey } from "../trentWeirsConfig";
 import { sendAlertConfirmationEmail, sendManageAlertsAccessEmail, sendThresholdAlertEmail } from "./alertMailerService";
 import { getCsoActivityAssessment } from "../waterQualityIndicator";
@@ -448,7 +448,7 @@ export async function runColwickAlerts({ now = new Date() } = {}) {
     const shadowRules = gaugeMode === "shadow" ? structuredClone(liveRules) : null;
     const shadowRead = gaugeMode === "shadow" && gaugeKeys.length ? readGauges("rdp", gaugeKeys, now).catch(() => null) : null;
     const authoritativeGauges = gaugeMode ? readGauges(gaugeMode === "rdp" ? "rdp" : "legacy", gaugeKeys, now) : Promise.resolve(new Map());
-    const [gaugeResult, forecast, hpp, water, cso] = await Promise.allSettled([authoritativeGauges, getLatestForecastSnapshot(), getHppStatusSnapshot(), getLatestWaterQualitySnapshot(), getWaterQualityDensitySeries(3)]);
+    const [gaugeResult, forecast, hpp, water, cso] = await Promise.allSettled([authoritativeGauges, getLatestForecastSnapshot(), getHppStatusSnapshot(), getLatestWaterQualitySummaryHealth(), getWaterQualityDensitySeries(3)]);
     const gauges = gaugeResult.status === "fulfilled" ? gaugeResult.value : new Map();
     const gaugeHoldReasons = {};
     const sources = { gauges, gaugeHoldReasons, forecast, hpp, water, cso };

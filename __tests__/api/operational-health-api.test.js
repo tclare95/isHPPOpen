@@ -1,14 +1,14 @@
 jest.mock('../../libs/services/levelsService', () => ({ getLatestLevelsSnapshot: jest.fn() }));
 jest.mock('../../libs/services/forecastService', () => ({ getLatestForecastSnapshot: jest.fn() }));
 jest.mock('../../libs/services/hppStatusService', () => ({ getHppStatusSnapshot: jest.fn() }));
-jest.mock('../../libs/services/waterQualityService', () => ({ getLatestWaterQualitySnapshot: jest.fn() }));
+jest.mock('../../libs/services/waterQualityService', () => ({ getLatestWaterQualitySummaryHealth: jest.fn() }));
 jest.mock('../../libs/services/trentWeirsService', () => ({ getTrentWeirsSnapshot: jest.fn() }));
 
 const { getServerSession } = require('next-auth');
 const { getLatestLevelsSnapshot } = require('../../libs/services/levelsService');
 const { getLatestForecastSnapshot } = require('../../libs/services/forecastService');
 const { getHppStatusSnapshot } = require('../../libs/services/hppStatusService');
-const { getLatestWaterQualitySnapshot } = require('../../libs/services/waterQualityService');
+const { getLatestWaterQualitySummaryHealth } = require('../../libs/services/waterQualityService');
 const { getTrentWeirsSnapshot } = require('../../libs/services/trentWeirsService');
 const { GET } = require('../../app/api/admin/operational-health/route');
 
@@ -17,7 +17,7 @@ const sources = [
   ['levels', getLatestLevelsSnapshot, 10],
   ['forecast', getLatestForecastSnapshot, 20],
   ['hppStatus', getHppStatusSnapshot, 30],
-  ['waterQuality', getLatestWaterQualitySnapshot, 40],
+  ['waterQuality', getLatestWaterQualitySummaryHealth, 40],
   ['trentWeirs', getTrentWeirsSnapshot, 50],
 ];
 const healthFor = (source) => ({ source, state: 'fresh', generatedAt: startedAt.toISOString(), fetchedAt: startedAt.toISOString(), ageSeconds: 0 });

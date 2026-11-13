@@ -23,7 +23,9 @@ Create `.env.local` with values for:
 Without MongoDB env vars, imports from `libs/database.js` throw immediately.
 
 Optional: `RDP_CSO_SOURCE` (`legacy|shadow|rdp`, default `legacy`) selects the current CSO status source for the
-public water-quality routes only; alerts stay legacy. See [docs/RDP-CSO-120.md](docs/RDP-CSO-120.md).
+public water-quality routes only; alerts read only density and summary freshness in every mode. `rdp` mode never reads
+Mongo `csoData` and never falls back to it: an RDP outage is reported as unavailable, never as zero or clear. Legacy CSO
+collection retirement is ordered in [docs/RDP-CSO-RETIREMENT-68.md](docs/RDP-CSO-RETIREMENT-68.md); never delete `csoData` or S3 archives as part of it. See [docs/RDP-CSO-120.md](docs/RDP-CSO-120.md).
 Optional: `RDP_CSO_HISTORY=on` (default off) enables the "Recent upstream spills" event history on `/waterquality`;
 it is independent of `RDP_CSO_SOURCE` and never feeds the indicator or alerts. See [docs/RDP-CSO-HISTORY-121.md](docs/RDP-CSO-HISTORY-121.md).
 Optional: `RDP_CSO_CATCHMENT=on` (default off) enables "Whole-catchment monitoring" from RDP's `hpp-catchment` set on

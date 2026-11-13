@@ -3,7 +3,7 @@ import { requireRouteSession, sendRouteError, sendRouteSuccess } from "../../../
 import { getLatestLevelsSnapshot } from "../../../../libs/services/levelsService";
 import { getLatestForecastSnapshot } from "../../../../libs/services/forecastService";
 import { getHppStatusSnapshot } from "../../../../libs/services/hppStatusService";
-import { getLatestWaterQualitySnapshot } from "../../../../libs/services/waterQualityService";
+import { getLatestWaterQualitySummaryHealth } from "../../../../libs/services/waterQualityService";
 import { getTrentWeirsSnapshot } from "../../../../libs/services/trentWeirsService";
 
 export const dynamic = "force-dynamic";
@@ -12,7 +12,7 @@ const checks = [
   ["levels", async () => (await getLatestLevelsSnapshot()).health],
   ["forecast", async () => (await getLatestForecastSnapshot()).health],
   ["hppStatus", async () => (await getHppStatusSnapshot()).data.health],
-  ["waterQuality", async () => (await getLatestWaterQualitySnapshot())?.health],
+  ["waterQuality", async () => (await getLatestWaterQualitySummaryHealth())?.health],
   ["trentWeirs", async () => (await getTrentWeirsSnapshot()).health],
 ];
 

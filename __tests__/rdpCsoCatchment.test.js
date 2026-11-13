@@ -349,6 +349,17 @@ describe("comparison with legacy density and status history", () => {
     expect(result).toMatchObject({ rdpCollectedObservations: 1, memberAgreement: { notComparable: 1, neither: 1 } });
   });
 
+  test("the gap awaiting RDP's next poll does not make the latest observation look uncollected", () => {
+    const rawCoverage = { status: "partial", collectedFrom: "2026-11-12T00:00:00Z", collectedTo: "2026-11-12T10:40:00Z",
+      gaps: [{ from: "2026-11-12T10:40:00Z", to: "2026-11-12T11:00:00Z", reason: "not_collected" }] };
+    const base = { from: "2026-11-12T00:00:00Z", to: "2026-11-12T11:00:00Z", provider: "severn-trent", sourceId: "storm-overflow-activity", statusHistory: [],
+      observations: [{ observedAt: "2026-11-12T10:52:00.000Z", numberCSOsPerKm2: 0, numberUpstreamCSOs: 0, csoIds: [] }] };
+    const row = { externalId: "A", locationKey: null, events: [], rawCoverage };
+    expect(compareWithLegacy({ ...base, rows: [{ ...row, asOf: "2026-11-12T11:00:00Z" }] }).rows[0].rdp.collectedOutfalls).toBe(1);
+    // The same gap long before the answer is a real outage.
+    expect(compareWithLegacy({ ...base, rows: [{ ...row, asOf: "2026-11-12T12:00:00Z" }] }).rows[0].rdp.collectedOutfalls).toBe(0);
+  });
+
   test("a legacy status older than the freshness window does not describe the observation", () => {
     const rows = [{ externalId: "A", locationKey: null, events: [], rawCoverage: { status: "partial", collectedFrom: "2026-11-12T00:00:00Z", collectedTo: "2026-11-12T12:00:00Z", gaps: [] } }];
     const result = compareWithLegacy({ rows, from: "2026-11-12T00:00:00Z", to: "2026-11-12T12:00:00Z", provider: "severn-trent", sourceId: "storm-overflow-activity",

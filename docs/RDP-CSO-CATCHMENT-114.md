@@ -43,10 +43,10 @@ While the flag is off, the route returns `{ enabled: false }`, the section rende
 
 | Read | Bound | Cache |
 | --- | --- | --- |
-| Set activity pages | `hours=48`, `limit=100`; pages follow the cursor sequentially (the cursor chains them, so they cannot run in parallel); at most 25 pages (2,500 outfalls); no new page after 25 s | Data cache 10 min, only for a **complete** walk |
+| Set activity pages | `hours=48`, `limit=100`; pages follow the cursor sequentially (the cursor chains them, so they cannot run in parallel); at most 25 pages (2,500 outfalls); no new page after 120 s (production pages take about 4 s each, so 1,514 outfalls take about 70 s) | Data cache 10 min, only for a **complete** walk |
 | Catalogue (locations, names, set attribution) | shared with #120/#121 (≤ 10 pages) | 6 h |
 | Legacy summaries and `csoData` in the window | ≤ 2,000 summaries; ≤ 20,000 status rows for ≤ 100 listed IDs | none (one read per CDN miss) |
-| Whole request | 55 s deadline; route `maxDuration` 60 s | CDN `s-maxage=300, stale-while-revalidate=600` when `available`, else `s-maxage=60`; errors `no-store` |
+| Whole request | 170 s deadline; route `maxDuration` 180 s | CDN `s-maxage=300, stale-while-revalidate=600` when `available`, else `s-maxage=60`; errors `no-store` |
 
 At 1,514 outfalls a walk is 16 page requests. Concurrent misses in one instance share one walk (`coalesce`), and the CDN
 and data cache mean a page view never starts a walk by itself. Only reviewed sets (`CATCHMENT_SETS`) are accepted, so the
@@ -181,6 +181,26 @@ evidence. Any replacement metric must:
   - a size mismatch is shown on the page.
 - **Staging / Preview.** Staging has `cso_read: false` and no enabled sets, so Preview shows "not enabled" or "temporarily
   unavailable".
+
+## Production activation (2026-11-13)
+
+- Approved by the owner. `RDP_CSO_CATCHMENT=on` (Production, sensitive) was added, and the merge build
+  `dpl_BiKt6Er1nf3XGR29UbVnM2sPqJRj` (`9852fe1`) was redeployed. It was the newest Production deployment when re-listed
+  immediately before the redeploy. Result: `is-hpp-open-46cjc70ky`, aliased `ishppopen.co.uk`.
+- First live read (about 10:56Z):
+  - `enabled: true`, `selection.reportedTotal` 1,514 (`matchesReviewed`, 1,514 catalogue members);
+  - no auth or `SET_NOT_FOUND` failure.
+- **The walk stopped on its 25 s time budget after 6 of 16 pages** (about 4.2 s per page), so `state: partial` with 914
+  outfalls `not_read`. Because partial walks are not cached, every CDN miss repeated a 6-page walk.
+- Fix: the budget is now 120 s and the route `maxDuration` 180 s (the River route already runs at 180 s in Production).
+- Read outfalls:
+  - 600 outfalls at 553 distinct locations (84 outfalls at 37 shared locations);
+  - 596 fresh reports (0 active, 2 recent), 4 offline;
+  - collection began 2026-11-12T16:41:51Z, so all 600 were partly collected (mean 38 % of the 48 h).
+- Comparison: 48 hourly observations, RDP collected at 18 of them. The legacy density was a flat 0.00067. Listed-member
+  agreement: both 1, legacy only 2, RDP only 2, neither 49, not comparable 221 (mostly before RDP collection began).
+- Second fix: the latest comparison row showed "Not collected" because the gap awaiting RDP's next poll was treated as
+  missing collection. It now uses the same awaiting-next-check rule as the coverage summary.
 
 ## Rollout
 

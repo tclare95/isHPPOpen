@@ -33,9 +33,10 @@ export const CATCHMENT_WINDOW_HOURS = 48;
 export const CATCHMENT_PAGE_LIMIT = 100;
 export const CATCHMENT_MAX_OUTFALLS = 2500;
 export const CATCHMENT_MAX_PAGES = Math.ceil(CATCHMENT_MAX_OUTFALLS / CATCHMENT_PAGE_LIMIT);
-// No new page is started after this; with the client's 30 s request timeout a walk ends within the route's 60 s.
-export const CATCHMENT_WALK_BUDGET_MS = 25000;
-export const CATCHMENT_READ_DEADLINE_MS = 55000;
+// Production pages take about 4 s each (1,514 outfalls = 16 pages, about 70 s). No new page is started after this;
+// with the client's 30 s request timeout a walk ends within the route's 180 s.
+export const CATCHMENT_WALK_BUDGET_MS = 120000;
+export const CATCHMENT_READ_DEADLINE_MS = 170000;
 export const CATCHMENT_CATALOGUE_DEADLINE_MS = 10000;
 export const CATCHMENT_CACHE_SECONDS = 600;
 export const CATCHMENT_HIGHLIGHT_LIMIT = 50;
@@ -285,12 +286,15 @@ function highlights(rows) {
 
 // ---- Read-only comparison against legacy density and status history ----
 
-function covers(rawCoverage, time) {
+// A gap that opens within one collection tolerance of RDP's answer is the next poll not having run yet
+// (`awaitingNextCheck` in summariseCoverage), not missing collection.
+function covers(rawCoverage, time, asOf) {
   if (!rawCoverage || rawCoverage.status === "unknown" || !rawCoverage.collectedFrom) return false;
   const from = Date.parse(rawCoverage.collectedFrom);
   const to = rawCoverage.collectedTo ? Date.parse(rawCoverage.collectedTo) + CSO_COLLECTION_TOLERANCE_MS : from;
   if (time < from || time > to) return false;
-  return !rawCoverage.gaps.some((gap) => time >= Date.parse(gap.from) && time < Date.parse(gap.to));
+  const pendingSince = asOf ? Date.parse(asOf) - CSO_COLLECTION_TOLERANCE_MS : Infinity;
+  return !rawCoverage.gaps.some((gap) => Date.parse(gap.from) < pendingSince && time >= Date.parse(gap.from) && time < Date.parse(gap.to));
 }
 
 // Spilling at `time` on provider-reported evidence only (`lower`), or also allowing events whose end was never
@@ -344,14 +348,14 @@ export function compareWithLegacy({ rows, observations, statusHistory, provider,
   const agreement = { bothSpilling: 0, legacyOnly: 0, rdpOnly: 0, neither: 0, rdpUncertain: 0, notComparable: 0 };
   const aligned = hourlyObservations(observations, from, to).map((observation) => {
     const time = Date.parse(observation.observedAt);
-    const collected = rows.filter((row) => covers(row.rawCoverage, time));
+    const collected = rows.filter((row) => covers(row.rawCoverage, time, row.asOf));
     const spilling = collected.map((row) => ({ row, ...spillingAt(row.events, time) }));
     const lower = spilling.filter((entry) => entry.lower).map((entry) => entry.row);
     const members = { listed: observation.csoIds.length, reporting: 0, spilling: 0, inRdpSet: 0, rdpCollected: 0, rdpSpilling: 0 };
     for (const id of observation.csoIds) {
       const legacy = legacyStatusAt(legacyById.get(id) ?? [], time);
       const rdp = byExternal.get(id);
-      const rdpCovered = rdp ? covers(rdp.rawCoverage, time) : false;
+      const rdpCovered = rdp ? covers(rdp.rawCoverage, time, rdp.asOf) : false;
       const rdpState = rdpCovered ? spillingAt(rdp.events, time) : null;
       if (legacy && legacy.status !== null) members.reporting += 1;
       if (legacy?.status === 1) members.spilling += 1;

@@ -1,9 +1,9 @@
 // MongoDB store for the in-app HPP status service in shadow mode (#89).
 //
-// Reads legacy `openIndicator` (find/findOne only) and writes only the two
-// non-authoritative shadow collections below. There is deliberately no code
-// path that writes openIndicator: authoritative writing is a separately
-// approved cutover, not a configuration switch.
+// Reads legacy `openIndicator` (find/findOne/countDocuments only) and writes
+// only the two non-authoritative shadow collections below. This store has no
+// openIndicator write; the gated authoritative writer is a separate store
+// (hppAuthoritativeStore.js) behind an operator handover.
 
 import { HPP_STATE_ID } from "./hppHistory.js";
 import { getHistoryWindowStart } from "./hppWindows.js";

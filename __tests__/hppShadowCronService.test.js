@@ -2,6 +2,7 @@
 jest.mock("../libs/database", () => ({ connectToDatabase: jest.fn() }));
 
 import { connectToDatabase } from "../libs/database";
+import { createHppAuthoritativeService } from "../libs/hpp/hppAuthoritativeService";
 import { createHppShadowService } from "../libs/hpp/hppShadowService";
 import { LEGACY_COLLECTION, SHADOW_COLLECTIONS } from "../libs/hpp/hppShadowStore";
 import { getHppShadowReport, getHppStatusSource, runHppShadowCron } from "../libs/services/hppShadowCronService";
@@ -19,7 +20,11 @@ function fakeService(rows = [row(1.1, "2026-11-03T13:00:00.000Z")]) {
   const fake = createFakeDb({ uniqueIndexes: { [SHADOW_COLLECTIONS.state]: [{ _id: 1 }], [SHADOW_COLLECTIONS.transitions]: [{ _id: 1 }] } });
   fake.docs(LEGACY_COLLECTION).push({ _id: "l1", timestamp: "2026-03-13T10:52:23.617Z", value: true });
   const getObservations = jest.fn(async () => ({ meta: { measurementId: "ea-colwick-level", pageIntegrity: "verified" }, data: rows }));
-  const create = jest.fn(async () => createHppShadowService({ db: fake.db, getClient: async () => ({ getObservations }) }));
+  const getClient = async () => ({ getObservations });
+  const create = jest.fn(async () => ({
+    shadow: createHppShadowService({ db: fake.db, getClient }),
+    authoritative: createHppAuthoritativeService({ db: fake.db, getClient }),
+  }));
   return { fake, create, getObservations };
 }
 
@@ -27,7 +32,8 @@ describe("HPP status source mode", () => {
   it("defaults to legacy and rejects unknown modes", () => {
     expect(getHppStatusSource({})).toBe("legacy");
     expect(getHppStatusSource({ HPP_STATUS_SOURCE: "shadow" })).toBe("shadow");
-    expect(() => getHppStatusSource({ HPP_STATUS_SOURCE: "authoritative" })).toThrow(expect.objectContaining({ statusCode: 500 }));
+    expect(getHppStatusSource({ HPP_STATUS_SOURCE: "authoritative" })).toBe("authoritative");
+    expect(() => getHppStatusSource({ HPP_STATUS_SOURCE: "Authoritative" })).toThrow(expect.objectContaining({ statusCode: 500 }));
   });
 
   it("does nothing in legacy mode", async () => {
@@ -51,7 +57,7 @@ describe("HPP shadow cron in Production", () => {
     const { fake, create } = fakeService();
     const summary = await runHppShadowCron({ env: PRODUCTION, now: NOW, runId: "run-1", create });
     expect(summary).toEqual({
-      mode: "shadow", ran: true, action: "none", reason: "unchanged", persisted: true, sourceError: null,
+      mode: "shadow", ran: true, writer: "legacy", authoritative: false, warning: null, action: "none", reason: "unchanged", persisted: true, sourceError: null,
       transitionId: null, state: expect.objectContaining({ open: true, sequence: 0 }),
       observedAt: "2026-11-03T13:00:00.000Z", observationAgeMs: 7 * 60 * 1000,
     });

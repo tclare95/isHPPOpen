@@ -32,7 +32,14 @@ export const HOLD_REASONS = Object.freeze({
   NO_ESTABLISHED_STATE: "no_established_state",
 });
 
-const IDENTITY_FIELDS = ["measurementId", "unit", "datum", "providerMeasureId", "sourceId"];
+// Per-row identity. RDP observation rows do not repeat `measurementId` (it is
+// page metadata), so a row inherits the page's id when it carries none.
+const ROW_IDENTITY_FIELDS = ["unit", "datum", "providerMeasureId", "sourceId"];
+
+const identityMatches = (page, row, rule) =>
+  (row?.measurementId ?? page.measurementId) === rule.measurementId &&
+  (page.measurementId === undefined || page.measurementId === rule.measurementId) &&
+  ROW_IDENTITY_FIELDS.every((field) => row?.[field] === rule[field]);
 
 const toTime = (value) => {
   const time = value instanceof Date ? value.getTime() : Date.parse(value);
@@ -47,15 +54,16 @@ export function isOpenAtLevel(levelMetres, rule = HPP_RULE_V1) {
 /**
  * Decide whether an RDP observations page can drive an HPP decision.
  *
- * `page` is `{ pageIntegrity, rows }`, with rows as returned by the RDP
- * observations endpoint. Only the newest row is evaluated, as the legacy
- * writer did; every row must still match the rule's measurement identity.
+ * `page` is `{ pageIntegrity, measurementId?, rows }`, with rows as returned
+ * by the RDP observations endpoint and `measurementId` from its `meta`. Only
+ * the newest row is evaluated, as the legacy writer did; every row must still
+ * match the rule's measurement identity.
  */
 export function assessEvidence(page, now, rule = HPP_RULE_V1) {
   const rows = Array.isArray(page?.rows) ? page.rows : [];
   if (rows.length === 0) return { eligible: false, reason: HOLD_REASONS.MISSING };
   if (page.pageIntegrity !== "verified") return { eligible: false, reason: HOLD_REASONS.UNVERIFIED };
-  if (rows.some((row) => IDENTITY_FIELDS.some((field) => row?.[field] !== rule[field]))) {
+  if (rows.some((row) => !identityMatches(page, row, rule))) {
     return { eligible: false, reason: HOLD_REASONS.IDENTITY_MISMATCH };
   }
 

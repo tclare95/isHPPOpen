@@ -21,12 +21,13 @@ export function createHppShadowService({ db, getClient, rule = HPP_RULE_V1 }) {
 
     /** Read-only health, continuity and legacy comparison evidence. */
     async report({ now = new Date() } = {}) {
-      const [state, transitions, legacyRecords] = await Promise.all([
+      const [state, transitions, legacyRecords, legacySummary] = await Promise.all([
         store.loadState(),
         store.listTransitions(rule.ruleId),
         store.readLegacyHistory(now),
+        store.legacySummary(),
       ]);
-      return buildShadowReport({ state, transitions, legacyRecords, now });
+      return buildShadowReport({ state, transitions, legacyRecords, legacySummary, now });
     },
   });
 }

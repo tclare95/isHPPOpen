@@ -3,6 +3,7 @@
 // Pure functions only: no I/O or clock. Used by the in-app HPP status
 // service (hppShadowService.js); the web's public reader is unchanged.
 
+import { buildAcceptance } from "./hppAcceptance.js";
 import { stateFromOpenIndicator } from "./hppDecision.js";
 import { calculateHppStatus } from "./hppWindows.js";
 
@@ -153,13 +154,14 @@ function serviceStatus(state, now, maxRunAgeMs) {
  * Read-only shadow evidence: last-known state, evidence freshness, recorded
  * hold intervals and the legacy comparison. Safe to expose to operators.
  */
-export function buildShadowReport({ state, transitions = [], legacyRecords = [], now, maxRunAgeMs = MAX_RUN_AGE_MS }) {
+export function buildShadowReport({ state, transitions = [], legacyRecords = [], legacySummary = null, now, maxRunAgeMs = MAX_RUN_AGE_MS }) {
   const status = serviceStatus(state, now, maxRunAgeMs);
   if (!state) return { status, generatedAt: now.toISOString(), authoritative: false };
 
   const serviceRecords = projectServiceHistory({ legacyRecords, seed: state.seed, transitions });
   const health = state.health ?? {};
   const sequences = transitions.map((doc) => doc.sequence).sort((a, b) => a - b);
+  const comparison = compareWithLegacy({ serviceRecords, legacyRecords, now });
   return {
     status,
     generatedAt: now.toISOString(),
@@ -175,6 +177,9 @@ export function buildShadowReport({ state, transitions = [], legacyRecords = [],
       lastObservedAt: health.lastObservedAt ?? null,
       lastEligibleAt: health.lastEligibleAt ?? null,
       lastObservationAgeMs: health.lastObservationAgeMs ?? null,
+      firstRunAt: health.firstRunAt ?? null,
+      firstEligibleAt: health.firstEligibleAt ?? null,
+      eligibleRuns: health.eligibleRuns ?? 0,
       holdSince: health.holdSince ?? null,
       consecutiveHolds: health.consecutiveHolds ?? 0,
       runs: health.runs ?? 0,
@@ -187,6 +192,8 @@ export function buildShadowReport({ state, transitions = [], legacyRecords = [],
       contiguous: sequences.every((sequence, index) => sequence === index + 1) &&
         sequences.length === state.sequence,
     },
-    comparison: compareWithLegacy({ serviceRecords, legacyRecords, now }),
+    comparison,
+    // Runbook acceptance checks (hppAcceptance.js); `ready` is advisory only.
+    acceptance: buildAcceptance({ state, transitions, legacyRecords, comparison, legacySummary, now }),
   };
 }

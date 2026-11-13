@@ -9,8 +9,8 @@ import { getCanonicalMeasurement } from "./measurements.js";
 import { RdpError } from "./errors.js";
 import { parseRiverLocation, parseRiverTrace, riverCoordinates, riverSamplePath, readRiverJson } from "./river.js";
 import {
-  assertCsoAssetId, assertCsoCursor, assertCsoEventId, isCsoTimestamp, parseCsoCatalogue, parseCsoEvent, parseCsoEvents, parseCsoHealth,
-  parseCsoRevisions, parseCsoStatus,
+  assertCsoAssetId, assertCsoCursor, assertCsoEventId, assertCsoSetName, isCsoTimestamp, parseCsoCatalogue, parseCsoEvent, parseCsoEvents,
+  parseCsoHealth, parseCsoRevisions, parseCsoSetActivity, parseCsoStatus, CSO_SET_ACTIVITY_MAX_ITEMS,
 } from "./csoContract.js";
 
 export const CSO_STATUS_BATCH_LIMIT = 20;
@@ -19,7 +19,7 @@ export const CSO_EVENTS_MAX_WINDOW_MS = 366 * 86400000;
 const API_CODES = new Set([
   "VALIDATION_ERROR", "MEASUREMENT_NOT_FOUND", "INVALID_CURSOR", "CURSOR_EXPIRED",
   "CURSOR_STALE", "ARCHIVE_INTEGRITY", "STORAGE_UNAVAILABLE", "QUERY_TIMEOUT", "FORBIDDEN", "NOT_FOUND",
-  "RESULT_TOO_LARGE", "RELEASE_NOT_AVAILABLE", "DATA_INTEGRITY", "ASSET_NOT_FOUND", "EVENT_NOT_FOUND",
+  "RESULT_TOO_LARGE", "RELEASE_NOT_AVAILABLE", "DATA_INTEGRITY", "ASSET_NOT_FOUND", "EVENT_NOT_FOUND", "SET_NOT_FOUND",
 ]);
 const RETRY_CODES = new Set(["THROTTLED", "UPSTREAM_ERROR", "STORAGE_UNAVAILABLE", "QUERY_TIMEOUT", "NETWORK_ERROR"]);
 
@@ -168,6 +168,16 @@ export function createRdpClient(env = process.env) {
       if (!Number.isInteger(limit) || limit < 1 || limit > 200) throw new RdpError("INVALID_QUERY");
       return request(`/v1/cso/events/${eventId}/revisions`, { limit: String(limit), ...(cursor === undefined ? {} : { cursor }) },
         (body) => parseCsoRevisions(body, eventId), true);
+    },
+    // One page of a collection set's status, events and coverage (ADR-002 D3). Callers walk `nextCursor`.
+    getCsoSetActivity(set, { hours = 48, limit = CSO_SET_ACTIVITY_MAX_ITEMS, cursor } = {}) {
+      assertCsoSetName(set);
+      assertCsoCursor(cursor);
+      if (!Number.isInteger(hours) || hours < 1 || hours > 168 || !Number.isInteger(limit) || limit < 1 || limit > CSO_SET_ACTIVITY_MAX_ITEMS) {
+        throw new RdpError("INVALID_QUERY");
+      }
+      return request(`/v1/cso/sets/${set}/activity`, { hours: String(hours), limit: String(limit), ...(cursor === undefined ? {} : { cursor }) },
+        (body) => parseCsoSetActivity(body, set, hours), true);
     },
     getCsoHealth(id) {
       assertCsoAssetId(id);

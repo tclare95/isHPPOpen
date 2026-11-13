@@ -60,3 +60,16 @@ export function healthResponse(externalId, overrides = {}) {
     meta: { retrievedAt: "2026-11-12T11:59:00Z" },
   };
 }
+
+// One page of `GET /v1/cso/sets/{set}/activity` (ADR-002 D3). `items` are [status, events | null] pairs.
+export function setActivityItem(externalId, { status: statusOverrides = {}, events = [], cover = coverage, truncated = false } = {}) {
+  return { status: status(externalId, statusOverrides), events: events === null ? null : { data: events, coverage: cover, truncated } };
+}
+
+export function setActivityResponse(items, { set = "hpp-catchment", total = items.length, nextCursor = null, partial = false, hours = 48,
+  retrievedAt = "2026-11-12T11:59:00Z", from = "2026-11-10T11:59:00Z", to = retrievedAt } = {}) {
+  return {
+    data: items,
+    meta: { set, provider: "severn-trent", sourceId: "storm-overflow-activity", windowHours: hours, from, to, retrievedAt, total, partial, nextCursor },
+  };
+}

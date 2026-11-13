@@ -13,6 +13,7 @@ import SourceHealthBadge from '../../components/functional/sourceHealthBadge';
 import WaterQualityIndicator from '../../components/functional/vomitfactor';
 import RiverContext from '../../components/functional/riverContext';
 import CsoEventHistory from '../../components/functional/csoEventHistory';
+import CsoCatchmentMonitoring from '../../components/functional/csoCatchmentMonitoring';
 import useFetch from '../../libs/useFetch';
 import { SWR_15_MINUTES } from '../../libs/dataFreshness';
 
@@ -93,6 +94,8 @@ export default function WaterQualityPage() {
 
         <CsoEventHistory selectedOutfallId={historyOutfallId} onSelectOutfall={setHistoryOutfallId}
           onShowOnMap={(id) => { setMapFocusId(id); scrollToSection('cso-map-panel'); }} />
+
+        <CsoCatchmentMonitoring />
 
         <Accordion className="mb-4">
           <Accordion.Item eventKey="0">

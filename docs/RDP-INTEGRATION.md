@@ -56,6 +56,7 @@ Existing adapter work permits `legacy`, `shadow` and `rdp` modes, chosen **indep
 | Live gauge alerts | `RDP_GAUGE_ALERTS_SOURCE`, [#51-D](RDP-GAUGE-ALERTS-51D.md) | Alert-safe freshness, continuity and delivery handling. In RDP mode **do not automatically fall back** to legacy measurements for alerts. |
 | Current CSO status/events on `/waterquality` | `RDP_CSO_SOURCE`, [#120](RDP-CSO-120.md) | Legacy membership kept; RDP supplies identity, status and recent event ends. Alerts, density and `waterQualityIndicator.js` stay legacy in every mode. Production caller granted all seven `/v1/cso/*` routes (verified 2026-11-12). |
 | Recorded CSO event history on `/waterquality` | `RDP_CSO_HISTORY`, [#121](RDP-CSO-HISTORY-121.md) | Descriptive event list, coverage and revisions only; no effect on risk, density or alerts. Default off. |
+| Whole-catchment CSO monitoring on `/waterquality` | `RDP_CSO_CATCHMENT`, [#114](RDP-CSO-CATCHMENT-114.md) | RDP `hpp-catchment` set status, coverage and a read-only legacy comparison. Not Sewage Map density; no effect on risk, thresholds or alerts. Default off. |
 | RDP transport / authentication | [#51-A](RDP-CLIENT-51A.md) | First-party reads and credentials remain server-side, errors sanitized, separate stage/production caller identity. |
 | Historical conditions exploration | [historical conditions](HISTORICAL_RIVER_CONDITIONS.md) | UI and derived statistics are isHPPOpen features; history and provenance originate in the canonical source. |
 

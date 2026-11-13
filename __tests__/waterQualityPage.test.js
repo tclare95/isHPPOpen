@@ -11,6 +11,7 @@ jest.mock('next/dynamic', () => (loader) => {
   return ({ data }) => <div data-testid="density-chart">{data.length}</div>;
 });
 jest.mock('../components/functional/vomitfactor', () => () => <div data-testid="indicator" />);
+jest.mock('../components/functional/csoCatchmentMonitoring', () => () => <div data-testid="catchment" />);
 jest.mock('../components/functional/csoEventHistory', () => ({ onShowOnMap }) => <button type="button" data-testid="history" onClick={() => onShowOnMap('A')}>history</button>);
 
 describe('WaterQualityPage', () => {
@@ -34,5 +35,6 @@ describe('WaterQualityPage', () => {
     fireEvent.change(screen.getByLabelText('Explore the river at Holme Pierrepont'), { target: { value: 'downstream' } });
     expect(useFetch).toHaveBeenCalledWith('/api/waterquality/river?direction=downstream', expect.objectContaining({ shouldRetryOnError: false }));
     expect(screen.getByTestId('indicator')).toBeInTheDocument();
+    expect(screen.getByTestId('catchment')).toBeInTheDocument();
   });
 });

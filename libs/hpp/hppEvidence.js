@@ -27,7 +27,7 @@ function withDeadline(work, ms) {
 }
 
 /**
- * Returns `readEvidence(now)` → `{ pageIntegrity, rows }` for one bounded,
+ * Returns `readEvidence(now)` → `{ pageIntegrity, measurementId, rows }` for one bounded,
  * uncached window. Failures throw an error carrying only a fixed `code`
  * (RdpError codes pass through), which the shadow run records as a hold.
  */
@@ -49,7 +49,8 @@ export function createRdpEvidenceReader({
       }), deadlineMs);
       if (!page?.meta || !Array.isArray(page.data)) throw failure("RESPONSE_CONTRACT_ERROR");
       if (page.data.length > rowBudget || page.meta.nextCursor) throw failure("CATCHUP_BUDGET_EXCEEDED");
-      return { pageIntegrity: page.meta.pageIntegrity, rows: page.data };
+      // RDP rows omit measurementId; the page's meta carries it (#89 fix).
+      return { pageIntegrity: page.meta.pageIntegrity, measurementId: page.meta.measurementId, rows: page.data };
     } catch (error) {
       throw failure(typeof error?.code === "string" ? error.code : "UNEXPECTED_ERROR");
     }

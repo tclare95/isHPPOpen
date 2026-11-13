@@ -55,6 +55,15 @@ export function createMongoShadowStore(db, { stateId = HPP_STATE_ID } = {}) {
       { timestamp: { $exists: true }, value: { $in: [true, false] } },
       { sort: { timestamp: -1 } },
     ),
+    /** Count and latest record of openIndicator, for the no-side-effect review. */
+    async legacySummary() {
+      const [count, latest] = await Promise.all([
+        legacy.countDocuments({}),
+        legacy.findOne({ timestamp: { $exists: true } }, { sort: { timestamp: -1 } }),
+      ]);
+      const stamp = latest?.timestamp instanceof Date ? latest.timestamp.toISOString() : latest?.timestamp ?? null;
+      return { count, latest: latest ? { id: String(latest._id), timestamp: stamp, value: latest.value ?? null } : null };
+    },
     /** The same two bounded reads as /api/hppstatus: window plus carried-in record. */
     async readLegacyHistory(now) {
       const historyStart = getHistoryWindowStart(now);

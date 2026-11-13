@@ -45,7 +45,7 @@ function setup({ legacy = [{ _id: "legacy-1", timestamp: LEGACY_AT, value: true 
   };
 }
 
-const legacyWrites = (fake) => fake.calls.filter((call) => call.collection === LEGACY_COLLECTION && !["find", "findOne"].includes(call.op));
+const legacyWrites = (fake) => fake.calls.filter((call) => call.collection === LEGACY_COLLECTION && !["find", "findOne", "countDocuments"].includes(call.op));
 
 describe("HPP shadow evaluation: threshold and state", () => {
   it("seeds from the latest valid legacy record, ignoring older-shape rows, and keeps its timestamp", async () => {
@@ -294,6 +294,33 @@ describe("HPP shadow report", () => {
   });
 });
 
+describe("RDP observation shape (production regression, #89)", () => {
+  // RDP Observation rows carry no measurementId; it is page metadata. Every
+  // production shadow run from 3 to 13 November 2026 held as identity_mismatch.
+  const rdpRow = (value, observedAt) => {
+    const { measurementId, ...rest } = row(value, observedAt);
+    return { ...rest, quality: "Unchecked", ingestedAt: observedAt.toISOString(), sourceReference: "x", revision: 1 };
+  };
+
+  it("evaluates rows that omit measurementId when the page metadata carries it", async () => {
+    const t = setup();
+    const getObservations = jest.fn(async () => ({ meta: { measurementId: "ea-colwick-level", pageIntegrity: "verified" }, data: [rdpRow(2.2, at(-4))] }));
+    const service = createHppShadowService({ db: t.fake.db, getClient: async () => ({ getObservations }) });
+    expect(await service.runOnce({ now: NOW })).toMatchObject({ action: "transition", persisted: true });
+    expect(t.transitions()[0]).toMatchObject({ open: false, level: 2.2 });
+  });
+
+  it.each([
+    ["page metadata for another measurement", { pageIntegrity: "verified", measurementId: "ea-shardlow-level", rows: [row(1, at(-4))] }],
+    ["no identity on page or row", { pageIntegrity: "verified", rows: [{ ...row(1, at(-4)), measurementId: undefined }] }],
+    ["a row naming another measurement", { pageIntegrity: "verified", measurementId: "ea-colwick-level", rows: [row(1, at(-4), { measurementId: "ea-shardlow-level" })] }],
+  ])("still holds on %s", async (_label, evidence) => {
+    const t = setup();
+    t.setEvidence(evidence);
+    expect(await t.run()).toMatchObject({ action: "hold", reason: "identity_mismatch" });
+  });
+});
+
 describe("RDP evidence reader (web RDP client)", () => {
   const page = (data, meta = {}) => ({ meta: { measurementId: "ea-colwick-level", pageIntegrity: "verified", ...meta }, data });
   const readerWith = (getObservations, options = {}) => createRdpEvidenceReader({ getClient: async () => ({ getObservations }), ...options });
@@ -302,7 +329,7 @@ describe("RDP evidence reader (web RDP client)", () => {
     const getObservations = jest.fn(async () => page([row(1, at(-5))]));
     const getClient = jest.fn(async () => ({ getObservations }));
     const read = createRdpEvidenceReader({ getClient });
-    expect(await read(NOW)).toEqual({ pageIntegrity: "verified", rows: [row(1, at(-5))] });
+    expect(await read(NOW)).toEqual({ pageIntegrity: "verified", measurementId: "ea-colwick-level", rows: [row(1, at(-5))] });
     await read(at(15));
     expect(getClient).toHaveBeenCalledTimes(1);
     expect(getObservations).toHaveBeenNthCalledWith(1, "ea-colwick-level", { from: at(-120).toISOString(), to: NOW.toISOString(), limit: 65 });

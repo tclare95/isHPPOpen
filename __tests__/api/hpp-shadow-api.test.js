@@ -1,3 +1,4 @@
+/** @jest-environment node */
 jest.mock("../../libs/services/hppShadowCronService");
 
 const { getServerSession } = require("next-auth");
@@ -60,5 +61,18 @@ describe("HPP shadow admin report route", () => {
     const res = await adminRoute.GET();
     expect(res.status).toBe(200);
     expect((await res.json()).data).toEqual({ mode: "shadow", status: "ok" });
+  });
+
+  test("downloads the acceptance timeline as CSV when asked", async () => {
+    getServerSession.mockResolvedValue({ user: { email: "admin@test.com" } });
+    getHppShadowReport.mockResolvedValue({
+      mode: "shadow", status: "ok", generatedAt: "2026-11-13T12:00:00.000Z",
+      acceptance: { checks: [{ id: "evidence_window", status: "pending", detail: "0.0 of 48 hours" }], pairing: { pairs: [], unpairedLegacy: [], unpairedShadow: [] }, gaps: [], closureDays: [] },
+    });
+    const res = await adminRoute.GET({ nextUrl: new URL("https://example.test/api/admin/hpp-shadow?format=csv") });
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Content-Type")).toContain("text/csv");
+    expect(res.headers.get("Content-Disposition")).toContain("hpp-shadow-acceptance-2026-11-13.csv");
+    expect(await res.text()).toContain("check,evidence_window,pending,,,,,0.0 of 48 hours");
   });
 });

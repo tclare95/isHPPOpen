@@ -44,8 +44,22 @@ export function nextHealth(previous = {}, { now, action, reason, assessment, sou
     gaps = [...gaps, { from: previous.holdSince, to: at, reason: previous.holdReason ?? null, runs: previous.consecutiveHolds ?? 0 }]
       .slice(-MAX_GAPS);
   }
+  const ageMs = eligible ? now.getTime() - Date.parse(assessment.observedAt) : null;
+  const ages = previous.observationAges ?? {};
+  const bucket = ageMs === null ? null : ageMs <= 15 * 60 * 1000 ? "upTo15m" : "upTo30m";
   return {
     runs: (previous.runs ?? 0) + 1,
+    // Pre-existing state predates this field; its first hold began at the first run.
+    firstRunAt: previous.firstRunAt ?? previous.holdSince ?? previous.lastRunAt ?? at,
+    // The shadow evidence window starts at the first run that could evaluate.
+    firstEligibleAt: previous.firstEligibleAt ?? (eligible ? at : null),
+    eligibleRuns: (previous.eligibleRuns ?? 0) + (eligible ? 1 : 0),
+    // Measured lag distribution of eligible evidence; stale evidence is a hold.
+    observationAges: bucket ? { ...ages, [bucket]: (ages[bucket] ?? 0) + 1 } : ages,
+    maxObservationAgeMs: Math.max(previous.maxObservationAgeMs ?? 0, ageMs ?? 0) || null,
+    holdReasonCounts: holding && reason
+      ? { ...previous.holdReasonCounts, [reason]: (previous.holdReasonCounts?.[reason] ?? 0) + 1 }
+      : previous.holdReasonCounts ?? {},
     lastRunAt: at,
     lastAction: action,
     lastReason: reason ?? null,
@@ -53,7 +67,7 @@ export function nextHealth(previous = {}, { now, action, reason, assessment, sou
     lastObservedAt: assessment?.observedAt ?? previous.lastObservedAt ?? null,
     lastEligibleAt: eligible ? at : previous.lastEligibleAt ?? null,
     // Measured source lag at evaluation, for the 30-minute freshness review.
-    lastObservationAgeMs: eligible ? now.getTime() - Date.parse(assessment.observedAt) : previous.lastObservationAgeMs ?? null,
+    lastObservationAgeMs: eligible ? ageMs : previous.lastObservationAgeMs ?? null,
     lastLevel: eligible ? assessment.level : previous.lastLevel ?? null,
     holdSince: holding ? previous.holdSince ?? at : null,
     holdReason: holding ? reason ?? null : null,

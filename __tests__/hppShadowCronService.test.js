@@ -73,7 +73,7 @@ describe("HPP shadow cron in Production", () => {
     const callsBefore = fake.calls.length;
     const report = await getHppShadowReport({ env: PRODUCTION, now: NOW, create });
     expect(report).toMatchObject({ mode: "shadow", status: "ok", authoritative: false, comparison: { matches: true } });
-    expect(fake.calls.slice(callsBefore).every((call) => ["find", "findOne"].includes(call.op))).toBe(true);
+    expect(fake.calls.slice(callsBefore).every((call) => ["find", "findOne", "countDocuments"].includes(call.op))).toBe(true);
   });
 });
 

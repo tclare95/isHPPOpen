@@ -14,6 +14,54 @@ Evidence is at the authenticated `/api/admin/hpp-shadow`. The legacy scraper
 is still the only `openIndicator` writer, and `/api/hppstatus` and HPP alerts
 still read `openIndicator`. There is no authoritative mode.
 
+## Production shadow evidence (reviewed 13 November 2026)
+
+- `HPP_STATUS_SOURCE` is set for Vercel Production only. The cron ran 955 of
+  ~956 expected 15-minute runs from 3 November 13:07Z to 13 November 11:52Z,
+  with no lost lease races (`revision` = 2 × runs).
+- **Every run held as `identity_mismatch`.** RDP `Observation` rows do not
+  carry `measurementId` (it is page `meta`), but the rule required it on every
+  row. No observation was ever evaluated: the state is still the legacy seed
+  (`open`, basis 2026-03-15T19:52:22Z), there are no shadow transitions, and
+  `firstEligibleAt` is unset. The evidence window has **not started**. The fix
+  (rows inherit the page's `measurementId`; a mismatch on either still holds)
+  starts it at the first eligible run after deployment.
+- No Colwick crossing of 2.2 m has happened since the legacy record of
+  15 March (the last ≥2.2 m event ended 19:30Z that day). The legacy writer's
+  silence since then is correct, not a fault.
+- Historical legacy timestamps trail the RDP observation edge by 22–82 minutes
+  (EA publication plus scraper poll lag). Pairing therefore accepts a pair
+  when either the shadow's observation time or its evaluation time is within
+  30 minutes of the legacy timestamp, and reports both deltas.
+- `openIndicator` has 126 records and is unchanged; nothing in shadow wrote it.
+
+## Reading and exporting the evidence
+
+- `GET /api/admin/hpp-shadow` (signed in): the full report. Its
+  `acceptance` section evaluates every shadow criterion below as `pass`,
+  `fail`, `pending` (more time or a real crossing needed), `review` (a human
+  must explain it) or `info`, with `ready` and `blocking`. Missing crossings
+  are `pending`, never `fail`.
+- `GET /api/admin/hpp-shadow?format=csv`: the acceptance timeline (checks,
+  transition pairs, legacy-only and shadow-only transitions, holds, closure
+  day differences) as a CSV download for #89.
+- `npm run hpp:shadow-report [-- --summary | --csv]`: the same report built
+  directly from Mongo with read-only queries, for terminals and agents.
+
+| Check | Meaning |
+| --- | --- |
+| `evidence_window` | Hours since `firstEligibleAt`; passes at 48 (owner decision, 13 November 2026, replacing 14 days). |
+| `crossings_both_directions` | At least one closing and one opening shadow transition; otherwise record a waiver on #89. |
+| `contiguous_sequence` | Transitions are 1..n and the state has adopted n. |
+| `gaps_explained` | No hold longer than 2 hours, or with a review-class reason (`identity_mismatch`, `conflict`, `rule_mismatch`, `orphaned_transition`, `sequence_conflict`), inside the window. Holds that ended before the window are `preEvidence`. |
+| `no_unresolved_review_holds` | Not currently holding on `orphaned_transition` or `sequence_conflict`. |
+| `current_status_agrees` | Shadow and legacy `currentStatus` agree (pending within 30 minutes of a crossing). |
+| `transitions_paired` | Every legacy change since the window start pairs with one shadow transition of the same direction. |
+| `closure_days_within_1` | 7/28/182/365-day counts differ by at most one day. |
+| `run_cadence` | Runs are at least 95% of the 15-minute schedule since the first run. |
+| `source_age` | Last and maximum observation age, distribution (≤15 min, ≤30 min) and stale-hold count. |
+| `no_shadow_side_effects` | `openIndicator` count and latest record, to compare with scraper logs. |
+
 ## Pieces (`libs/hpp/`)
 
 | Module | Role |
@@ -25,11 +73,13 @@ still read `openIndicator`. There is no authoritative mode.
 | `hppEvidence.js` | Bounded 2-hour Colwick read through the web's RDP client (`createRdpClient`), with a 10-second deadline. |
 | `hppShadowStore.js` | Reads `openIndicator`; writes only `hppShadowState` and `hppShadowTransitions`. |
 | `hppShadowService.js` | `createHppShadowService({ db })` → `runOnce()`, `report()`. |
+| `hppAcceptance.js` | Pure acceptance checks, transition pairing, gap classification and CSV export. |
 
 ## Behaviour
 
-- **Evidence.** Only a verified RDP page whose rows carry the exact measurement
-  ID, unit, datum, provider measure and source is eligible. The newest
+- **Evidence.** Only a verified RDP page for the exact measurement ID (page
+  `meta`, or the row when a row carries one), whose rows carry the exact unit,
+  datum, provider measure and source, is eligible. The newest
   observation must be no more than 30 minutes old and no more than 5 minutes in
   the future. The web RDP client rejects unverified or mismatched pages itself,
   so those cases surface as `source_unavailable` with
@@ -90,7 +140,8 @@ How the scheduling slice handles these constraints:
 
 All of these must hold before an authoritative writer is enabled:
 
-1. **Shadow evidence.** At least 14 consecutive days of production shadow runs,
+1. **Shadow evidence.** At least 48 hours of eligible production shadow runs
+   (shortened from 14 days by the owner on 13 November 2026),
    including at least one real crossing in each direction or an explicitly
    recorded waiver. Over that period:
    - `continuity.contiguous` is true

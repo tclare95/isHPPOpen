@@ -36,21 +36,21 @@ const SOURCE_NAME = "river-data-platform-cso";
 const LEGACY_ID = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/;
 
 let client = null;
-function getClient() {
+export function getClient() {
   client ??= createRdpClient();
   return client;
 }
 
 // In-process coalescing on top of the cross-request data cache: concurrent misses share one read.
 const inflight = new Map();
-function coalesce(key, read) {
+export function coalesce(key, read) {
   if (inflight.has(key)) return inflight.get(key);
   const promise = Promise.resolve().then(read).finally(() => inflight.delete(key));
   inflight.set(key, promise);
   return promise;
 }
 
-function withDeadline(promise, ms) {
+export function withDeadline(promise, ms) {
   let timer;
   const deadline = new Promise((_, reject) => {
     timer = setTimeout(() => reject(new RdpError("TIMEOUT")), ms);
@@ -58,7 +58,7 @@ function withDeadline(promise, ms) {
   return Promise.race([promise, deadline]).finally(() => clearTimeout(timer));
 }
 
-function errorCode(error) {
+export function errorCode(error) {
   return error instanceof RdpError ? error.code : "UNEXPECTED_ERROR";
 }
 
@@ -106,7 +106,7 @@ const readCachedEvents = unstable_cache(async (id, from, to) => {
   return { events, coverage, truncated: true };
 }, ["rdp-cso-events-v1"], { revalidate: 900, tags: ["rdp-cso"] });
 
-const readCatalogue = () => coalesce("catalogue", readCachedCatalogue);
+export const readCatalogue = () => coalesce("catalogue", readCachedCatalogue);
 const readStatusBatch = (ids) => coalesce(`status:${ids.join(",")}`, () => readCachedStatus(ids));
 const readEvents = (id, from, to) => coalesce(`events:${id}:${from}:${to}`, () => readCachedEvents(id, from, to));
 const readHealth = (id) => coalesce(`health:${id}`, () => readCachedHealth(id));
@@ -188,7 +188,7 @@ export function classifyRdpLocation(legacyId, { identity, status, events }, { no
   return unknown(events.truncated ? "events_truncated" : "not_spilling_no_recent_event");
 }
 
-async function mapLimit(items, limit, task) {
+export async function mapLimit(items, limit, task) {
   const results = new Array(items.length);
   let next = 0;
   await Promise.all(Array.from({ length: Math.min(limit, items.length) }, async () => {

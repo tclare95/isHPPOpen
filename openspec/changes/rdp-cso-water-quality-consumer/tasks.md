@@ -9,8 +9,8 @@ All tasks unchecked. Implementation/release approvals are separate from this doc
 - [x] (offline fixtures; live evidence pending the production caller grant) Exercise stale/offline/contradictory, selection mismatch, missing row, changed end, ongoing carry-in, ambiguous hold, incomplete coverage, API 403/404/429/503 and cursor/archive error; guard request budgets/cache.
 
 ## Slice B — optional history (#121): separate feature release
-- [ ] Add optional event chronology/drill-down or comparison on existing water-quality page; distinguish current, recent, historical imported and uncertain evidence.
-- [ ] Show coverage gaps, carry-in/out, revisions, unknown vs no reported event, source attribution and method.
+- [x] Add optional event chronology/drill-down or comparison on existing water-quality page; distinguish current, recent, historical imported and uncertain evidence. ([RDP-CSO-HISTORY-121](../../../docs/RDP-CSO-HISTORY-121.md); `RDP_CSO_HISTORY`)
+- [x] Show coverage gaps, carry-in/out, revisions, unknown vs no reported event, source attribution and method.
 - [ ] Show duration/count aggregates only with observed denominator and meaningful uncertainty; do not equate EDM 12/24 annual counts with raw intervals.
 - [ ] Compare event-derived activity against legacy density without replacing thresholds/alerts.
 

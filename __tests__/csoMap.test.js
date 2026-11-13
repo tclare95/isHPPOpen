@@ -79,8 +79,8 @@ describe('WaterQualityMap', () => {
       const onShowHistory = jest.fn();
       render(<WaterQualityMap locations={confirmed} relatedLocations={relatedLocations} membership={membership} health={{ state: 'fresh' }} now={now} onShowHistory={onShowHistory} />);
       expect(screen.getAllByTestId('marker')).toHaveLength(2);
-      expect(screen.getByText(/Upstream outfalls: River Data Platform reviewed set hpp-upstream-outfalls \(version bb422e98d78e, 592 confirmed\); outfall data Severn Trent Water/)).toBeInTheDocument();
-      fireEvent.click(screen.getByLabelText(/may be upstream but are not confirmed \(2 with current or recent activity\)/));
+      expect(screen.getByText('Upstream outfalls: River Data Platform set hpp-upstream-outfalls (bb422e98d78e, 592 confirmed). Data: Severn Trent Water.')).toBeInTheDocument();
+      fireEvent.click(screen.getByLabelText('Show unconfirmed upstream outfalls (2 active or recent)'));
       expect(screen.getAllByTestId('marker')).toHaveLength(4);
       expect(screen.getByText('Possibly upstream: river link not confirmed')).toBeInTheDocument();
       expect(screen.getByText('In the catchment: river link unresolved')).toBeInTheDocument();
@@ -95,12 +95,12 @@ describe('WaterQualityMap', () => {
     it('says the membership is unavailable rather than showing another list', () => {
       render(<WaterQualityMap locations={[]} membership={{ source: 'rdp', state: 'unavailable' }} health={{ state: 'unavailable', cso: { available: false } }} now={now} />);
       expect(screen.getByText('No CSO location data is available.')).toBeInTheDocument();
-      expect(screen.getByText(/reviewed upstream outfall list from River Data Platform is unavailable/)).toBeInTheDocument();
+      expect(screen.getByText(/Upstream outfall list unavailable/)).toBeInTheDocument();
     });
 
     it('shows no membership note or toggle for the legacy list', () => {
       render(<WaterQualityMap locations={locations} membership={{ source: 'legacy', basis: 'sewage-map-cso-ids', count: 3 }} health={{ state: 'fresh' }} now={now} />);
-      expect(screen.queryByText(/River Data Platform reviewed set/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/River Data Platform set/)).not.toBeInTheDocument();
       expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
     });
   });

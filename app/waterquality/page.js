@@ -49,7 +49,10 @@ export default function WaterQualityPage() {
   const { data: levelData, error: levelError, isPending: levelPending } = useFetch('/api/levels', SWR_15_MINUTES);
   const current = summaryData?.waterQualityData ?? null;
   const counts = current?.statusSummary || {};
-  const unavailable = Number(counts.offline || 0) + Number(counts.unknown || 0);
+  // A fresh "not spilling" report with no recent provider-reported spill is not unavailable data, but RDP coverage is
+  // unverified, so it is still never presented as clear (#114: most of the 592 RDP members are in this state).
+  const noRecentSpill = (current?.locations ?? []).filter((location) => location.statusReason === 'not_spilling_no_recent_event').length;
+  const unavailable = Math.max(0, Number(counts.offline || 0) + Number(counts.unknown || 0) - noRecentSpill);
   // RDP reported no usable CSO status at all (#68): never present the counts as zero spills.
   const csoStatusUnavailable = current?.health?.cso?.available === false;
   const densityRows = Array.isArray(densityData) ? densityData : [];
@@ -88,6 +91,7 @@ export default function WaterQualityPage() {
             <Col md={4}><SummaryCard value={counts.currentlySpilling ?? '—'} label="Currently spilling" detail="Upstream locations reporting an active spill." /></Col>
             <Col md={4}><SummaryCard value={counts.recentlyStopped48h ?? '—'} label="Stopped in 48 hours" detail="The latest spill has ended, but its contents may still be travelling downstream." /></Col>
             <Col md={4}><SummaryCard value={unavailable} label="Status unavailable" detail="Locations with offline, stale, missing or unrecognised status data." /></Col>
+            {noRecentSpill ? <Col xs={12}><p className="small water-quality-muted mb-0">{noRecentSpill} other upstream location{noRecentSpill === 1 ? '' : 's'}: not spilling, no spill in the last 48 hours.</p></Col> : null}
           </Row>
         )}
 

@@ -38,6 +38,23 @@ describe('WaterQualityPage', () => {
     expect(screen.getByTestId('catchment')).toBeInTheDocument();
   });
 
+  it('counts fresh not-spilling reports separately from unavailable status, without calling them clear (#114)', () => {
+    const locations = [
+      { id: 'A', status: 'active', statusReason: 'spilling' },
+      { id: 'B', status: 'offline', statusReason: 'offline' },
+      { id: 'C', status: 'unknown', statusReason: 'stale' },
+      ...['D', 'E', 'F'].map((id) => ({ id, status: 'unknown', statusReason: 'not_spilling_no_recent_event' })),
+    ];
+    useFetch.mockImplementation((path) => ({
+      data: path === '/api/waterquality' ? { waterQualityData: { statusSummary: { currentlySpilling: 1, recentlyStopped48h: 0, offline: 1, unknown: 4 }, locations, health: { state: 'fresh' } } }
+        : path === '/api/levels' ? { level_data: [] } : [],
+      error: undefined, isPending: false,
+    }));
+    render(<WaterQualityPage />);
+    expect(screen.getByText('Status unavailable').previousSibling).toHaveTextContent('2');
+    expect(screen.getByText('3 other upstream locations: not spilling, no spill in the last 48 hours.')).toBeInTheDocument();
+  });
+
   it('reports current CSO status as unavailable instead of showing zero spills when RDP has no usable status', () => {
     useFetch.mockImplementation((path) => ({
       data: path === '/api/waterquality' ? { waterQualityData: { ScrapeTimestamp: '2026-08-31T12:00:00Z',

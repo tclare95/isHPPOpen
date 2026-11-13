@@ -91,7 +91,7 @@ export default function WaterQualityMap({ locations = [], relatedLocations = nul
       </div>
       {relatedCounts ? (
         <Form.Check type="switch" id="cso-map-related" className="small mb-2" checked={showRelated} onChange={(e) => setShowRelated(e.target.checked)}
-          label={`Also show outfalls that may be upstream but are not confirmed (${relatedActivity} with current or recent activity)`} />
+          label={`Show unconfirmed upstream outfalls (${relatedActivity} active or recent)`} />
       ) : null}
       {!plotted.length && !hasRiverGeometry ? <p className="water-quality-muted">No locations match this time window.</p> : (
         <MapContainer center={center} zoom={9} preferCanvas className="cso-map" aria-label="Upstream CSO activity map">

@@ -59,8 +59,9 @@ Each step is a separate, explicit production action with its own approval. Do no
    explicitly `enabled`. No behaviour change.
 3. **Shadow and parity:** follow [RDP-CSO-120 shadow activation](RDP-CSO-120.md#shadow-activation-procedure):
    - set `RDP_CSO_SOURCE=shadow` for Production;
-   - observe for at least 7 days, including a wet-weather spill;
-   - write up the parity review in #120 and get approval.
+   - observe for at least 48 hours, and until at least one member spill has been seen to start and stop;
+   - write up the parity review in #120 and get approval. The bar is the same story (spilling vs not, the same
+     spills), not exact timing; see [step 5 there](RDP-CSO-120.md#shadow-activation-procedure).
 4. **Activate RDP reads:** set `RDP_CSO_SOURCE=rdp` for Production and redeploy. On `/api/waterquality`, verify:
    - `health.source = river-data-platform-cso`;
    - `health.cso.origin = rdp` and `health.cso.available = true`;
@@ -68,7 +69,8 @@ Each step is a separate, explicit production action with its own approval. Do no
 
    On `/api/waterquality/cso?ids=…`, verify the legacy record shape. Verify that alerts and the homepage density tile
    are unchanged.
-5. **Scraper release 2:** set `CSO_COLLECTION: "disabled"`. Precondition: step 4 has been verified for at least 24 h.
+5. **Scraper release 2:** set `CSO_COLLECTION: "disabled"`. Precondition: step 4 has been verified for at least 72 h,
+   with the admin report still comparing RDP against legacy and showing no new unexplained disagreement.
    Verify:
    - no new `csoData` records;
    - no Severn Trent ArcGIS requests;

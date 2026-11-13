@@ -23,7 +23,7 @@ still read `openIndicator`. There is no authoritative mode.
   carry `measurementId` (it is page `meta`), but the rule required it on every
   row. No observation was ever evaluated: the state is still the legacy seed
   (`open`, basis 2026-03-15T19:52:22Z), there are no shadow transitions, and
-  `firstEligibleAt` is unset. The 14-day window has **not started**. The fix
+  `firstEligibleAt` is unset. The evidence window has **not started**. The fix
   (rows inherit the page's `measurementId`; a mismatch on either still holds)
   starts it at the first eligible run after deployment.
 - No Colwick crossing of 2.2 m has happened since the legacy record of
@@ -50,7 +50,7 @@ still read `openIndicator`. There is no authoritative mode.
 
 | Check | Meaning |
 | --- | --- |
-| `evidence_window` | Days since `firstEligibleAt`; passes at 14. |
+| `evidence_window` | Hours since `firstEligibleAt`; passes at 48 (owner decision, 13 November 2026, replacing 14 days). |
 | `crossings_both_directions` | At least one closing and one opening shadow transition; otherwise record a waiver on #89. |
 | `contiguous_sequence` | Transitions are 1..n and the state has adopted n. |
 | `gaps_explained` | No hold longer than 2 hours, or with a review-class reason (`identity_mismatch`, `conflict`, `rule_mismatch`, `orphaned_transition`, `sequence_conflict`), inside the window. Holds that ended before the window are `preEvidence`. |
@@ -140,7 +140,8 @@ How the scheduling slice handles these constraints:
 
 All of these must hold before an authoritative writer is enabled:
 
-1. **Shadow evidence.** At least 14 consecutive days of production shadow runs,
+1. **Shadow evidence.** At least 48 hours of eligible production shadow runs
+   (shortened from 14 days by the owner on 13 November 2026),
    including at least one real crossing in each direction or an explicitly
    recorded waiver. Over that period:
    - `continuity.contiguous` is true

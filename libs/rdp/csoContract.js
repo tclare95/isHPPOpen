@@ -101,7 +101,8 @@ export function parseCsoCatalogue(payload) {
   const catalogues = payload.meta.catalogues.map((entry) => {
     check(object(entry) && text(entry.provider, 80) && text(entry.sourceId, 80));
     return { provider: entry.provider, sourceId: entry.sourceId, state: typeof entry.state === "string" ? entry.state : null,
-      version: typeof entry.version === "string" ? entry.version : null };
+      version: typeof entry.version === "string" ? entry.version : null,
+      attribution: typeof entry.attribution === "string" && entry.attribution.length <= 500 ? entry.attribution : null };
   });
   return { assets, total: payload.meta.total, catalogues, nextCursor: payload.meta.nextCursor, retrievedAt: time(payload.meta.retrievedAt) };
 }
@@ -167,6 +168,84 @@ export function parseCsoEvents(payload, id) {
     from: time(payload.meta.from),
     to: time(payload.meta.to),
     requestAsOf: time(payload.meta.requestAsOf),
+    nextCursor: payload.meta.nextCursor,
+  };
+}
+
+// ---- Single event and its revisions (#121) ----
+export const CSO_CHANGE_REASONS = ["created", "completed", "start_corrected", "end_corrected", "end_not_reported", "operator_resolved",
+  "historical_imported"];
+const RECONCILIATIONS = ["automatic", "operator_resolved"];
+
+export function assertCsoEventId(id) {
+  if (typeof id !== "string" || !EVENT_ID.test(id)) throw new RdpError("INVALID_QUERY");
+  return id;
+}
+
+function parseInterval(value) {
+  check(object(value) && LIFECYCLES.includes(value.status));
+  const startedAt = time(value.startedAt);
+  const endedAt = nullableTime(value.endedAt);
+  check(endedAt === null || endedAt >= startedAt);
+  if (value.status === "ongoing") check(endedAt === null);
+  return { startedAt, endedAt, endNoLaterThan: nullableTime(value.endNoLaterThan), status: value.status };
+}
+
+function parseHold(value) {
+  check(object(value) && text(value.claimId, 200) && text(value.reason, 200));
+  return { claimId: value.claimId, fetchedAt: time(value.fetchedAt), reason: value.reason };
+}
+
+function parseHolds(value, max) {
+  check(Array.isArray(value) && value.length <= max);
+  return value.map(parseHold);
+}
+
+export function parseCsoEvent(payload, eventId) {
+  check(object(payload) && object(payload.data) && object(payload.meta));
+  const { data } = payload;
+  check(object(data.event) && data.event.eventId === eventId && text(data.event.assetId, 200) && CSO_ASSET_ID.test(data.event.assetId));
+  const event = { assetId: data.event.assetId, ...parseEvent(data.event, data.event.assetId) };
+  const current = data.currentRevision;
+  check(object(current) && Number.isInteger(current.revision) && current.revision >= 1 && CSO_CHANGE_REASONS.includes(current.changeReason) &&
+    text(current.claimId, 200) && RECONCILIATIONS.includes(current.reconciliation));
+  const archive = data.archive;
+  check(object(archive) && typeof archive.archived === "boolean" && (archive.generation === null || nonNegativeInteger(archive.generation)));
+  return {
+    event,
+    updatedAt: time(data.updatedAt),
+    currentRevision: { revision: current.revision, changeReason: current.changeReason, recordedAt: time(current.recordedAt),
+      sourceFetchedAt: time(current.sourceFetchedAt), reconciliation: current.reconciliation },
+    openHolds: parseHolds(data.openHolds, 16),
+    archive: { archived: archive.archived, generation: archive.generation },
+    retrievedAt: time(payload.meta.retrievedAt),
+  };
+}
+
+// Immutable material revisions, oldest first. Claim IDs are operational references and are not kept.
+export function parseCsoRevisions(payload, eventId) {
+  check(object(payload) && Array.isArray(payload.data) && payload.data.length <= 200 && object(payload.meta) &&
+    payload.meta.eventId === eventId && text(payload.meta.assetId, 200) && CSO_ASSET_ID.test(payload.meta.assetId) &&
+    Number.isInteger(payload.meta.currentRevision) && payload.meta.currentRevision >= 1 && cursor(payload.meta.nextCursor));
+  const revisions = payload.data.map((row) => {
+    check(object(row) && Number.isInteger(row.revision) && row.revision >= 1 && text(row.changeReason, 80) &&
+      RECONCILIATIONS.includes(row.reconciliation));
+    return {
+      revision: row.revision,
+      recordedAt: time(row.recordedAt),
+      changeReason: row.changeReason,
+      sourceFetchedAt: time(row.sourceFetchedAt),
+      reconciliation: row.reconciliation,
+      current: parseInterval(row.current),
+      previous: row.previous === null ? null : parseInterval(row.previous),
+    };
+  });
+  revisions.forEach((row, index) => check(index === 0 || row.revision > revisions[index - 1].revision));
+  return {
+    revisions,
+    assetId: payload.meta.assetId,
+    currentRevision: payload.meta.currentRevision,
+    openHolds: parseHolds(payload.meta.openHolds, 64),
     nextCursor: payload.meta.nextCursor,
   };
 }

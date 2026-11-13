@@ -146,6 +146,20 @@ color: #8D918D;
 .cso-marker--active { background: #c82333; }
 .cso-marker--recent { background: #52636e; border-radius: 0.4rem; }
 
+.cso-event-list { display: grid; gap: 0.5rem; }
+.cso-event { border: 1px solid rgba(130, 205, 239, 0.2); border-left-width: 4px; border-radius: 0.6rem; padding: 0.6rem 0.75rem; background: rgba(255, 255, 255, 0.03); }
+.cso-event--ongoing { border-left-color: #dc3545; }
+.cso-event--completed { border-left-color: #6c757d; }
+.cso-event--end_not_reported, .cso-event--unresolved { border-left-color: #ffc107; border-left-style: dashed; }
+.cso-event__summary { display: grid; gap: 0.3rem; width: 100%; padding: 0; color: inherit; text-align: left; background: none; border: 0; }
+.cso-event__summary:focus-visible { outline: 2px solid #0dcaf0; outline-offset: 4px; border-radius: 0.25rem; }
+.cso-event__place { font-weight: 650; overflow-wrap: anywhere; }
+.cso-event__times { color: #bdc8cf; }
+.cso-event-detail dd, .cso-event-detail dt { overflow-wrap: anywhere; }
+.cso-revisions { padding-left: 1.2rem; }
+.cso-revisions li + li { margin-top: 0.4rem; }
+.cso-history-filter { min-width: 0; max-width: 100%; }
+
 .water-quality-page .accordion-item {
   overflow: hidden;
   border-color: rgba(190, 220, 234, 0.45);

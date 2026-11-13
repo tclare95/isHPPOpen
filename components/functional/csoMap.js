@@ -11,6 +11,7 @@ const Marker = dynamic(() => import('react-leaflet').then((mod) => mod.Marker), 
 const Popup = dynamic(() => import('react-leaflet').then((mod) => mod.Popup), { ssr: false });
 const GeoJSON = dynamic(() => import('react-leaflet').then((mod) => mod.GeoJSON), { ssr: false });
 const MarkerClusterGroup = dynamic(() => import('react-leaflet-cluster').then((mod) => mod.default), { ssr: false });
+const MapFocus = dynamic(() => import('./csoMapFocus'), { ssr: false });
 const center = [52.9458, -1.0907];
 const WINDOWS = [{ label: 'Current', hours: 0 }, { label: '6 hours', hours: 6 }, { label: '24 hours', hours: 24 }, { label: '48 hours', hours: 48 }];
 
@@ -29,7 +30,9 @@ function formatDuration(minutes) {
   return hours ? `${hours} hr ${minutes % 60} min` : `${minutes} min`;
 }
 
-export default function WaterQualityMap({ locations = [], health, isPending = false, error = null, now = new Date(), riverTrace = null }) {
+const STATUS_BADGE = { active: ['danger', 'Currently spilling'], recent: ['warning', 'Stopped recently'] };
+
+export default function WaterQualityMap({ locations = [], health, isPending = false, error = null, now = new Date(), riverTrace = null, focusId = null, onShowHistory = null }) {
   const [windowHours, setWindowHours] = useState(6);
   const [icons, setIcons] = useState({ active: null, recent: null });
   useEffect(() => {
@@ -45,11 +48,12 @@ export default function WaterQualityMap({ locations = [], health, isPending = fa
     const latitude = Number(location?.coordinates?.y);
     const longitude = Number(location?.coordinates?.x);
     if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return false;
-    if (location.status === 'active') return true;
+    if (location.status === 'active' || location.id === focusId) return true;
     if (location.status !== 'recent' || windowHours === 0) return false;
     const ended = validDate(location.latestEventEnd);
     return ended && ended >= new Date(now.getTime() - windowHours * 60 * 60 * 1000);
-  }), [locations, now, windowHours]);
+  }), [locations, now, windowHours, focusId]);
+  const focused = filtered.find((location) => location.id === focusId) ?? null;
 
   if (isPending) return <p>Loading map data…</p>;
   if (error) return <p>Unable to load map data right now.</p>;
@@ -71,6 +75,7 @@ export default function WaterQualityMap({ locations = [], health, isPending = fa
             data={riverTrace} attribution="River network and catchment: OpenRiversNetwork"
             filter={(feature) => feature.geometry.type !== 'Point'}
             style={(feature) => feature.properties.kind === 'catchment' ? { color: '#a78bfa', weight: 1, fillOpacity: 0.08 } : { color: '#0dcaf0', weight: 3, opacity: 0.75 }} /> : null}
+          {focused ? <MapFocus latitude={focused.coordinates.y} longitude={focused.coordinates.x} /> : null}
           <MarkerClusterGroup chunkedLoading>
             {filtered.map((location) => (
               <Marker key={location.id} position={[location.coordinates.y, location.coordinates.x]} icon={icons[location.status] || undefined}>
@@ -78,11 +83,12 @@ export default function WaterQualityMap({ locations = [], health, isPending = fa
                   <div>
                     <strong>{location.receivingWaterCourse || `CSO ${location.id}`}</strong><br />
                     <small>{location.id}</small><br />
-                    <Badge bg={location.status === 'active' ? 'danger' : 'warning'}>{location.status === 'active' ? 'Currently spilling' : 'Stopped recently'}</Badge><br />
+                    <Badge bg={(STATUS_BADGE[location.status] ?? ['secondary'])[0]}>{(STATUS_BADGE[location.status] ?? [null, 'Selected from spill history'])[1]}</Badge><br />
                     Spill start: {formatTimestamp(location.latestEventStart)}<br />
                     Spill end: {location.status === 'active' ? 'Ongoing' : formatTimestamp(location.latestEventEnd)}<br />
                     Duration: {formatDuration(location.eventDurationMinutes)}<br />
                     <small>Last checked: {formatTimestamp(location.observedAt)}</small>
+                    {onShowHistory ? <><br /><Button size="sm" variant="link" className="p-0" onClick={() => onShowHistory(location.id)}>Spill history for this outfall</Button></> : null}
                   </div>
                 </Popup>
               </Marker>
@@ -102,4 +108,6 @@ WaterQualityMap.propTypes = {
   error: PropTypes.object,
   now: PropTypes.instanceOf(Date),
   riverTrace: PropTypes.object,
+  focusId: PropTypes.string,
+  onShowHistory: PropTypes.func,
 };

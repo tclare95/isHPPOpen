@@ -159,3 +159,24 @@ test("CSO bodies are size-bounded before parsing", async () => {
   await expect(createRdpClient(preview).listCsoOutfalls()).rejects.toMatchObject({ code: "RESULT_TOO_LARGE" });
   expect(global.fetch).toHaveBeenCalledTimes(1);
 });
+
+test("event detail and revisions are bounded, id-validated reads", async () => {
+  const id = "cse_" + "a".repeat(24);
+  global.fetch.mockResolvedValueOnce(json({ data: { event: event("SVT01157", { revision: 2 }), updatedAt: "2026-11-12T09:00:00Z",
+    currentRevision: { revision: 2, changeReason: "end_corrected", recordedAt: "2026-11-12T09:00:00Z", claimId: "c", sourceFetchedAt: "2026-11-12T08:59:00Z", reconciliation: "automatic" },
+    openHolds: [], archive: { archived: true, generation: 1 } }, meta: { retrievedAt: "2026-11-12T11:59:00Z" } }));
+  const detail = await createRdpClient(preview).getCsoEvent(id);
+  expect(requested().pathname).toBe(`/staging/v1/cso/events/${id}`);
+  expect(detail).toMatchObject({ event: { assetId: ST("SVT01157"), revision: 2 }, archive: { archived: true, generation: 1 } });
+
+  global.fetch.mockResolvedValueOnce(json({ data: [], meta: { eventId: id, assetId: ST("SVT01157"), currentRevision: 2, openHolds: [], nextCursor: CURSOR } }));
+  const revisions = await createRdpClient(preview).getCsoEventRevisions(id, { limit: 50 });
+  expect(requested(1).pathname).toBe(`/staging/v1/cso/events/${id}/revisions`);
+  expect(Object.fromEntries(requested(1).searchParams)).toEqual({ limit: "50" });
+  expect(revisions.nextCursor).toBe(CURSOR);
+
+  expect(() => createRdpClient(preview).getCsoEvent("cse_../x")).toThrow("INVALID_QUERY");
+  expect(() => createRdpClient(preview).getCsoEventRevisions(id, { limit: 201 })).toThrow("INVALID_QUERY");
+  global.fetch.mockResolvedValueOnce(json({ error: { code: "EVENT_NOT_FOUND", message: "x" }, requestId: "r" }, 404));
+  await expect(createRdpClient(preview).getCsoEvent(id)).rejects.toMatchObject({ code: "EVENT_NOT_FOUND" });
+});

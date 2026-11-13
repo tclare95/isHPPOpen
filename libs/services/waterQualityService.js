@@ -247,3 +247,21 @@ export async function getPublicCsoDetailsById(id) {
   if (!result[id]) throw new HttpError(404, 'CSO data not found');
   return result[id];
 }
+
+// ---- RDP_CSO_HISTORY (#121): recorded event history section, independent of RDP_CSO_SOURCE ----
+// Off unless exactly `on`. Never read by the indicator, density or alert evaluation.
+export function isCsoHistoryEnabled(env = process.env) {
+  return env.RDP_CSO_HISTORY === 'on';
+}
+
+export async function getPublicCsoEventHistory(windowKey) {
+  if (!isCsoHistoryEnabled()) return { enabled: false };
+  const { getCsoEventHistory } = await import('../rdp/csoHistory');
+  return { enabled: true, ...(await getCsoEventHistory(windowKey)) };
+}
+
+export async function getPublicCsoEventDetail(eventId) {
+  if (!isCsoHistoryEnabled()) throw new HttpError(404, 'Event history is not enabled');
+  const { getCsoEventDetail } = await import('../rdp/csoHistory');
+  return getCsoEventDetail(eventId);
+}

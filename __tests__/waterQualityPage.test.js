@@ -11,6 +11,7 @@ jest.mock('next/dynamic', () => (loader) => {
   return ({ data }) => <div data-testid="density-chart">{data.length}</div>;
 });
 jest.mock('../components/functional/vomitfactor', () => () => <div data-testid="indicator" />);
+jest.mock('../components/functional/csoEventHistory', () => ({ onShowOnMap }) => <button type="button" data-testid="history" onClick={() => onShowOnMap('A')}>history</button>);
 
 describe('WaterQualityPage', () => {
   it('fetches each resource once and shares the result with its sections', () => {

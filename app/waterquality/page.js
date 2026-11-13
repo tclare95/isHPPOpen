@@ -12,6 +12,7 @@ import PropTypes from 'prop-types';
 import SourceHealthBadge from '../../components/functional/sourceHealthBadge';
 import WaterQualityIndicator from '../../components/functional/vomitfactor';
 import RiverContext from '../../components/functional/riverContext';
+import CsoEventHistory from '../../components/functional/csoEventHistory';
 import useFetch from '../../libs/useFetch';
 import { SWR_15_MINUTES } from '../../libs/dataFreshness';
 
@@ -23,6 +24,10 @@ function formatUpdated(value) {
   return date && !Number.isNaN(date.getTime()) ? date.toLocaleString() : 'Unavailable';
 }
 
+function scrollToSection(id) {
+  document.getElementById(id)?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+}
+
 function SummaryCard({ value, label, detail }) {
   return <Card className="water-quality-stat h-100"><Card.Body><div className="water-quality-stat__value">{value}</div><Card.Title as="h3">{label}</Card.Title><Card.Text>{detail}</Card.Text></Card.Body></Card>;
 }
@@ -32,6 +37,8 @@ SummaryCard.propTypes = { value: PropTypes.oneOfType([PropTypes.string, PropType
 export default function WaterQualityPage() {
   const [chartHours, setChartHours] = useState(120);
   const [riverDirection, setRiverDirection] = useState('off');
+  const [historyOutfallId, setHistoryOutfallId] = useState('');
+  const [mapFocusId, setMapFocusId] = useState(null);
   const { data: riverData, error: riverError, isPending: riverPending } = useFetch(
     riverDirection === 'off' ? null : `/api/waterquality/river?direction=${riverDirection}`,
     { revalidateOnFocus: false, revalidateOnReconnect: false, shouldRetryOnError: false });
@@ -80,9 +87,12 @@ export default function WaterQualityPage() {
         )}
 
         <Row className="g-4 mb-4">
-          <Col lg={6}><section className="water-quality-panel h-100"><h2>Upstream activity map</h2><p className="water-quality-muted">Current spills and recently stopped events that can contribute downstream.</p><RiverContext direction={riverDirection} onDirectionChange={setRiverDirection} context={riverData} error={riverError} isPending={riverPending} /><WaterQualityMap locations={current?.locations || []} health={current?.health} isPending={summaryPending} error={summaryError} riverTrace={riverTrace} /></section></Col>
+          <Col lg={6}><section className="water-quality-panel h-100" id="cso-map-panel"><h2>Upstream activity map</h2><p className="water-quality-muted">Current spills and recently stopped events that can contribute downstream.</p><RiverContext direction={riverDirection} onDirectionChange={setRiverDirection} context={riverData} error={riverError} isPending={riverPending} /><WaterQualityMap locations={current?.locations || []} health={current?.health} isPending={summaryPending} error={summaryError} riverTrace={riverTrace} focusId={mapFocusId} onShowHistory={(id) => { setHistoryOutfallId(id); scrollToSection('cso-history'); }} /></section></Col>
           <Col lg={6}><section className="water-quality-panel h-100"><h2>Activity over time</h2><p className="water-quality-muted">Hourly upstream CSO activity density with the indicator reference levels.</p><CsoChart data={densityRows} error={densityError} isPending={densityPending} hours={chartHours} onHoursChange={setChartHours} /></section></Col>
         </Row>
+
+        <CsoEventHistory selectedOutfallId={historyOutfallId} onSelectOutfall={setHistoryOutfallId}
+          onShowOnMap={(id) => { setMapFocusId(id); scrollToSection('cso-map-panel'); }} />
 
         <Accordion className="mb-4">
           <Accordion.Item eventKey="0">

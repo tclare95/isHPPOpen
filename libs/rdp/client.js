@@ -9,7 +9,8 @@ import { getCanonicalMeasurement } from "./measurements.js";
 import { RdpError } from "./errors.js";
 import { parseRiverLocation, parseRiverTrace, riverCoordinates, riverSamplePath, readRiverJson } from "./river.js";
 import {
-  assertCsoAssetId, assertCsoCursor, isCsoTimestamp, parseCsoCatalogue, parseCsoEvents, parseCsoHealth, parseCsoStatus,
+  assertCsoAssetId, assertCsoCursor, assertCsoEventId, isCsoTimestamp, parseCsoCatalogue, parseCsoEvent, parseCsoEvents, parseCsoHealth,
+  parseCsoRevisions, parseCsoStatus,
 } from "./csoContract.js";
 
 export const CSO_STATUS_BATCH_LIMIT = 20;
@@ -18,7 +19,7 @@ export const CSO_EVENTS_MAX_WINDOW_MS = 366 * 86400000;
 const API_CODES = new Set([
   "VALIDATION_ERROR", "MEASUREMENT_NOT_FOUND", "INVALID_CURSOR", "CURSOR_EXPIRED",
   "CURSOR_STALE", "ARCHIVE_INTEGRITY", "STORAGE_UNAVAILABLE", "QUERY_TIMEOUT", "FORBIDDEN", "NOT_FOUND",
-  "RESULT_TOO_LARGE", "RELEASE_NOT_AVAILABLE", "DATA_INTEGRITY", "ASSET_NOT_FOUND",
+  "RESULT_TOO_LARGE", "RELEASE_NOT_AVAILABLE", "DATA_INTEGRITY", "ASSET_NOT_FOUND", "EVENT_NOT_FOUND",
 ]);
 const RETRY_CODES = new Set(["THROTTLED", "UPSTREAM_ERROR", "STORAGE_UNAVAILABLE", "QUERY_TIMEOUT", "NETWORK_ERROR"]);
 
@@ -156,6 +157,17 @@ export function createRdpClient(env = process.env) {
           !Number.isInteger(limit) || limit < 1 || limit > 500) throw new RdpError("INVALID_QUERY");
       return request(`/v1/cso/outfalls/${id}/events`,
         { from, to, limit: String(limit), ...(cursor === undefined ? {} : { cursor }) }, (body) => parseCsoEvents(body, id), true);
+    },
+    getCsoEvent(eventId) {
+      assertCsoEventId(eventId);
+      return request(`/v1/cso/events/${eventId}`, {}, (body) => parseCsoEvent(body, eventId), true);
+    },
+    getCsoEventRevisions(eventId, { limit = 50, cursor } = {}) {
+      assertCsoEventId(eventId);
+      assertCsoCursor(cursor);
+      if (!Number.isInteger(limit) || limit < 1 || limit > 200) throw new RdpError("INVALID_QUERY");
+      return request(`/v1/cso/events/${eventId}/revisions`, { limit: String(limit), ...(cursor === undefined ? {} : { cursor }) },
+        (body) => parseCsoRevisions(body, eventId), true);
     },
     getCsoHealth(id) {
       assertCsoAssetId(id);

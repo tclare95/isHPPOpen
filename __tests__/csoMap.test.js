@@ -49,4 +49,14 @@ describe('WaterQualityMap', () => {
     expect(screen.getAllByTestId('marker')).toHaveLength(1);
     expect(screen.queryByText('RECENT')).not.toBeInTheDocument();
   });
+
+  it('plots an outfall selected from the spill history and links back to it', () => {
+    const onShowHistory = jest.fn();
+    const idle = { id: 'IDLE', status: 'unknown', coordinates: { x: -1.1, y: 52.95 }, receivingWaterCourse: 'River Leen' };
+    render(<WaterQualityMap locations={[...locations, idle]} health={{ state: 'fresh' }} now={now} focusId="IDLE" onShowHistory={onShowHistory} />);
+    expect(screen.getAllByTestId('marker')).toHaveLength(3);
+    expect(screen.getByText('Selected from spill history')).toBeInTheDocument();
+    fireEvent.click(screen.getAllByRole('button', { name: 'Spill history for this outfall' })[2]);
+    expect(onShowHistory).toHaveBeenCalledWith('IDLE');
+  });
 });

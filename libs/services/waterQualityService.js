@@ -103,13 +103,19 @@ async function readLatestSummary(db) {
   return db.collection('waterQuality').find().sort({ scrape_timestamp: -1 }).limit(1).next();
 }
 
-// The HPP membership list stays the legacy Node-written `CSO_IDs` (#120 keeps membership on legacy).
+// The legacy HPP membership: the Node-written, Sewage Map-derived `CSO_IDs`. With RDP_CSO_MEMBERSHIP=rdp the public
+// map, status and history use the reviewed RDP relationship set instead (#114, `libs/rdp/csoMembership.js`).
 export function getSummaryMembership(latest) {
   return uniqueIds(latest?.water_quality?.CSO_IDs);
 }
 
-// Shared by the legacy and RDP-backed paths so both emit exactly the same public snapshot shape.
-export function assembleWaterQualitySnapshot(latest, locations, now, health) {
+export function legacyMembership(latest) {
+  return { source: 'legacy', basis: 'sewage-map-cso-ids', count: getSummaryMembership(latest).length };
+}
+
+// Shared by the legacy and RDP-backed paths so both emit exactly the same public snapshot shape. `csoIds` and
+// `membership` describe an RDP membership (#114); density fields always stay the legacy summary's.
+export function assembleWaterQualitySnapshot(latest, locations, now, health, { csoIds, membership } = {}) {
   const waterQuality = latest.water_quality || {};
   const recentCutoff = new Date(now.getTime() - RECENT_EVENT_HOURS * HOURS_TO_MS);
   const count = (status) => locations.filter((location) => location.status === status).length;
@@ -120,7 +126,7 @@ export function assembleWaterQualitySnapshot(latest, locations, now, health) {
     WaterQuality: {
       NumberUpstreamCSOs: Number(waterQuality.number_upstream_CSOs) || 0,
       NumberCSOsPerKm2: Number(waterQuality.number_CSOs_per_km2) || 0,
-      CSOIds: getSummaryMembership(latest),
+      CSOIds: csoIds ?? getSummaryMembership(latest),
       CSOActiveTime: activeHoursWithinWindow(activeLocations, now, recentCutoff),
     },
     ActiveCSOCount: activeLocations.length,
@@ -133,6 +139,7 @@ export function assembleWaterQualitySnapshot(latest, locations, now, health) {
     },
     locations,
     health,
+    membership: membership ?? legacyMembership(latest),
   };
 }
 
@@ -275,12 +282,40 @@ function resolveCsoMode() {
   return mode ?? 'legacy';
 }
 
+// ---- RDP_CSO_MEMBERSHIP (#114): which outfalls are upstream, independent of RDP_CSO_SOURCE ----
+// `legacy` (default): Sewage Map-derived `CSO_IDs`. `rdp`: the approved, pinned RDP relationship set. It applies to the
+// event history in every source mode, and to the map/status when RDP supplies status (RDP_CSO_SOURCE=rdp): legacy
+// `csoData` collection only covers the legacy IDs. Never read by density, the indicator, thresholds or alerts.
+const CSO_MEMBERSHIP_MODES = ['legacy', 'rdp'];
+
+export function getCsoMembershipMode(env = process.env) {
+  const mode = env.RDP_CSO_MEMBERSHIP ?? 'legacy';
+  return CSO_MEMBERSHIP_MODES.includes(mode) ? mode : null;
+}
+
+function resolveMembershipMode() {
+  const mode = getCsoMembershipMode();
+  if (mode === null) createRequestLogger({ method: 'GET' }, 'rdp/cso-membership').error('Invalid RDP_CSO_MEMBERSHIP; using legacy membership');
+  return mode ?? 'legacy';
+}
+
 export async function getPublicWaterQualitySnapshot() {
   const mode = resolveCsoMode();
-  if (mode === 'legacy') return getLatestWaterQualitySnapshot();
-  // Loaded only outside legacy so the default path never touches the server-only RDP client.
-  const { getRdpWaterQualitySnapshot, getShadowWaterQualitySnapshot } = await import('../rdp/csoSource');
-  return mode === 'rdp' ? getRdpWaterQualitySnapshot() : getShadowWaterQualitySnapshot();
+  const membership = resolveMembershipMode();
+  if (mode === 'rdp' && membership === 'rdp') {
+    const { getRdpMembershipWaterQualitySnapshot } = await import('../rdp/csoMembership');
+    return getRdpMembershipWaterQualitySnapshot();
+  }
+  let snapshot;
+  if (mode === 'legacy') snapshot = await getLatestWaterQualitySnapshot();
+  else {
+    // Loaded only outside legacy so the default path never touches the server-only RDP client.
+    const { getRdpWaterQualitySnapshot, getShadowWaterQualitySnapshot } = await import('../rdp/csoSource');
+    snapshot = await (mode === 'rdp' ? getRdpWaterQualitySnapshot() : getShadowWaterQualitySnapshot());
+  }
+  // RDP membership requested but status is legacy: say so rather than presenting the legacy population as RDP's.
+  if (snapshot && membership === 'rdp') snapshot.membership = { ...snapshot.membership, requested: 'rdp', reason: 'status_source_not_rdp' };
+  return snapshot;
 }
 
 export async function getPublicCsoDetailsByIds(ids) {
@@ -305,10 +340,18 @@ export function isCsoHistoryEnabled(env = process.env) {
   return env.RDP_CSO_HISTORY === 'on';
 }
 
-export async function getPublicCsoEventHistory(windowKey) {
+export async function getPublicCsoEventHistory(windowKey, { outfall } = {}) {
   if (!isCsoHistoryEnabled()) return { enabled: false };
-  const { getCsoEventHistory } = await import('../rdp/csoHistory');
-  return { enabled: true, ...(await getCsoEventHistory(windowKey)) };
+  const { getCsoEventHistory, limitHistoryEvents } = await import('../rdp/csoHistory');
+  let history;
+  if (resolveMembershipMode() === 'rdp') {
+    const { getMembershipEventHistory } = await import('../rdp/csoMembership');
+    history = await getMembershipEventHistory(windowKey);
+  } else {
+    history = await getCsoEventHistory(windowKey);
+    history = { ...history, membership: { source: 'legacy', basis: 'sewage-map-cso-ids', count: history.outfalls.length } };
+  }
+  return { enabled: true, ...limitHistoryEvents(history, outfall) };
 }
 
 // ---- RDP_CSO_CATCHMENT (#114): optional whole-catchment monitoring section ----
@@ -325,6 +368,10 @@ export async function getPublicCsoCatchmentMonitoring(setKey) {
 
 export async function getPublicCsoEventDetail(eventId) {
   if (!isCsoHistoryEnabled()) throw new HttpError(404, 'Event history is not enabled');
+  if (resolveMembershipMode() === 'rdp') {
+    const { getMembershipEventDetail } = await import('../rdp/csoMembership');
+    return getMembershipEventDetail(eventId);
+  }
   const { getCsoEventDetail } = await import('../rdp/csoHistory');
   return getCsoEventDetail(eventId);
 }

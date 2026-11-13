@@ -145,6 +145,9 @@ color: #8D918D;
 .cso-marker { display: grid; place-items: center; border: 3px solid white; border-radius: 50%; color: white; font-weight: 900; box-shadow: 0 2px 8px rgba(0,0,0,.45); }
 .cso-marker--active { background: #c82333; }
 .cso-marker--recent { background: #52636e; border-radius: 0.4rem; }
+/* Not confirmed upstream (#114 RDP candidate / catchment-only): dashed and translucent, never the primary style. */
+.cso-marker--possible { border-style: dashed; opacity: 0.75; }
+.legend-possible { display: inline-grid; place-items: center; width: 1.25rem; height: 1.25rem; margin-left: 0.35rem; border: 2px dashed white; border-radius: 50%; color: white; font-weight: 800; }
 
 .cso-event-list { display: grid; gap: 0.5rem; }
 .cso-event { border: 1px solid rgba(130, 205, 239, 0.2); border-left-width: 4px; border-radius: 0.6rem; padding: 0.6rem 0.75rem; background: rgba(255, 255, 255, 0.03); }

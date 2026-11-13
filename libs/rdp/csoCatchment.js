@@ -85,8 +85,9 @@ function compactItem({ status, events }, page) {
       sourceAgeSeconds: status.sourceAgeSeconds, fetchedAt: status.fetchedAt,
     },
     events: events && {
-      events: events.events.map(({ eventId, startedAt, endedAt, endNoLaterThan, lifecycle, boundaryProvenance, reconciliation }) =>
-        ({ eventId, startedAt, endedAt, endNoLaterThan, lifecycle, boundaryProvenance, reconciliation })),
+      // Revision, hold and tier are kept so the event history (#114 membership) can describe set-read events too.
+      events: events.events.map(({ eventId, startedAt, endedAt, endNoLaterThan, lifecycle, boundaryProvenance, reconciliation, revision, heldClaims, tier }) =>
+        ({ eventId, startedAt, endedAt, endNoLaterThan, lifecycle, boundaryProvenance, reconciliation, revision, heldClaims, tier })),
       coverage: events.coverage,
       truncated: events.truncated,
     },
@@ -149,7 +150,7 @@ async function readCompleteWalk(set, hours) {
   if (!result.complete) throw new IncompleteWalk(result);
   return result;
 }
-const readCachedWalk = unstable_cache(readCompleteWalk, ["rdp-cso-set-activity-v1"], { revalidate: CATCHMENT_CACHE_SECONDS, tags: ["rdp-cso"] });
+const readCachedWalk = unstable_cache(readCompleteWalk, ["rdp-cso-set-activity-v2"], { revalidate: CATCHMENT_CACHE_SECONDS, tags: ["rdp-cso"] });
 
 // Concurrent misses in one instance share one walk.
 export const readSetActivity = (set, hours = CATCHMENT_WINDOW_HOURS) => coalesce(`set-activity:${set}:${hours}`,

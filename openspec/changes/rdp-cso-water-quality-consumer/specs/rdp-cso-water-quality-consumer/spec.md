@@ -41,5 +41,13 @@
 - **WHEN** the legacy CSO collection is retired **THEN** the legacy application makes no direct provider CSO status requests, writes no new per-outfall status records, and keeps existing records and archives; the mixed-duty Node schedule and its other outputs continue.
 - **WHEN** a retirement step is rolled back **THEN** the previous source can be restored without replaying historical events or sending duplicate notifications.
 
+### R8. Reviewed RDP upstream membership (#114)
+- **WHEN** RDP membership is selected **THEN** the public map, status counts and event history use the approved, published RDP relationship set's confirmed scope as the HPP population, not the Sewage Map-derived runtime list.
+- **WHEN** a relationship set is read **THEN** it is accepted only at the explicitly pinned version, network release and catalogue versions and with an approved review, after its identities, membership and scope counts are checked to agree; any other set is refused rather than partly used.
+- **WHEN** membership cannot be read or is refused **THEN** the population is reported as unknown (no members, no counts) and never falls back to another list.
+- **WHEN** candidate or catchment-only relationships exist **THEN** they stay separately labelled from confirmed members, never enter the primary counts, and ambiguous, excluded or unlocatable assets are never presented as members.
+- **WHEN** status or events are needed for a large membership **THEN** they come from bounded, cached whole-set reads; any member not read is reported as not read, never as clear or as having no events.
+- **WHEN** membership changes source **THEN** the legacy activity density, its chart, calibrated thresholds and alerts are unchanged, and the change is reversible by configuration alone.
+
 ## Non-goals
 No new dashboard/map, platform risk engine, invented upstream matching, automatic polling selection, replacement 48h formula by convenience, publication of anonymous RDP reads, implementation or production changes from this spec.

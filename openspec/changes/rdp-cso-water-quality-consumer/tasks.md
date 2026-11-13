@@ -20,7 +20,8 @@ All tasks unchecked. Implementation/release approvals are separate from this doc
 - [ ] Keep one canonical provider event writer: RDP canonical events, Mongo remains legacy only until reader transition and controlled retirement.
 
 ## Slice D — distinct membership/metric/alert and writer decisions (#114/#68)
-- [ ] RDP #64 supplies reviewed HPP upstream relationship artifact; isHPPOpen accepts actual selected set and coverage.
+- [x] RDP #64 supplies reviewed HPP upstream relationship artifact; isHPPOpen accepts actual selected set and coverage. ([RDP-CSO-MEMBERSHIP-114](../../../docs/RDP-CSO-MEMBERSHIP-114.md); `RDP_CSO_MEMBERSHIP`, pinned `bb422e98…`)
+- [ ] Separately approved: `RDP_CSO_MEMBERSHIP=rdp` in Production after the caller grant and published relationships index are verified.
 - [ ] Prove legacy dynamic 48h, co-location occupancy, D8 drainage-area denominator and calibration-year risk/alert transition parity or version/recalibrate with explicit acceptance.
 - [ ] Approve Sewage Map runtime lookup retirement **separately**; do not emit fresh zeros for missing data.
 - [ ] Obtain separately approved risk/alert switch and protect subscription/rearm/delivery continuity.

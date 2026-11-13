@@ -14,7 +14,7 @@ describe('CSO event history routes (#121)', () => {
   test('defaults to 24 hours and is CDN-cacheable when complete', async () => {
     getPublicCsoEventHistory.mockResolvedValue(available);
     const res = await getHistory(request());
-    expect(getPublicCsoEventHistory).toHaveBeenCalledWith('24h');
+    expect(getPublicCsoEventHistory).toHaveBeenCalledWith('24h', { outfall: undefined });
     expect(res.status).toBe(200);
     expect((await res.json()).data).toEqual(available);
     expect(res.headers['Cache-Control']).toBe('public, s-maxage=300, stale-while-revalidate=600');
@@ -27,7 +27,13 @@ describe('CSO event history routes (#121)', () => {
       expect(res.status).toBe(200);
       expect(res.headers['Cache-Control']).toBe('public, s-maxage=60');
     }
-    expect(getPublicCsoEventHistory).toHaveBeenLastCalledWith('7d');
+    expect(getPublicCsoEventHistory).toHaveBeenLastCalledWith('7d', { outfall: undefined });
+  });
+
+  test('passes one outfall through for a server-side filter (#114)', async () => {
+    getPublicCsoEventHistory.mockResolvedValue(available);
+    await getHistory(request('window=7d&outfall=SVT01294'));
+    expect(getPublicCsoEventHistory).toHaveBeenCalledWith('7d', { outfall: 'SVT01294' });
   });
 
   test('rejects an unsupported window', async () => {

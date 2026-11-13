@@ -17,7 +17,8 @@ import { createRdpClient, CSO_STATUS_BATCH_LIMIT } from "./client.js";
 import { RdpError } from "./errors.js";
 
 // RDP CSO consumer adapter (#120). Server-only: the browser only ever sees the existing public shapes.
-// Membership stays the legacy `CSO_IDs` list; RDP supplies identity, current status and event details.
+// With RDP_CSO_MEMBERSHIP=legacy (default) membership is the legacy `CSO_IDs` list and RDP supplies identity, current
+// status and event details. RDP_CSO_MEMBERSHIP=rdp uses `csoMembership.js` instead (#114).
 
 export const CSO_PROVIDER = "severn-trent"; // The legacy membership is Severn Trent ArcGIS `Id`s only.
 export const CSO_TIME_ALIGNMENT_SECONDS = 15 * 60; // One RDP status poll: source reports this close are comparable.
@@ -399,12 +400,15 @@ export async function getCsoShadowReport(now = new Date()) {
 // once the legacy collection is retired: every member is `unknown` with `statusReason: "rdp_unavailable"`,
 // the spilling/recent counts are `null` (not counted, never 0) and health is `unavailable`. The response
 // still succeeds so the route cache replaces the previous snapshot instead of keeping it as current.
-export function buildUnavailableRdpSnapshot(latest, now, rdpError) {
-  const locations = getSummaryMembership(latest).map((id) => ({ id, status: "unknown", coordinates: null, receivingWaterCourse: null,
+// `members` (RDP membership, #114) replaces the legacy `CSO_IDs` population; each entry's extra fields are kept.
+export function buildUnavailableRdpSnapshot(latest, now, rdpError, { members, membership } = {}) {
+  const population = members ?? getSummaryMembership(latest).map((id) => ({ id }));
+  const locations = population.map((member) => ({ coordinates: null, receivingWaterCourse: null, ...member, status: "unknown",
     latestEventStart: null, latestEventEnd: null, eventDurationMinutes: null, observedAt: null, sourceUpdatedAt: null, statusReason: "rdp_unavailable" }));
   const health = { ...buildLegacyWaterQualityHealth(latest, now, { unavailable: true }), source: SOURCE_NAME,
     cso: { origin: "rdp", available: false, rdpError, partial: false, unknown: locations.length } };
-  const snapshot = assembleWaterQualitySnapshot(latest, locations, now, health);
+  const snapshot = assembleWaterQualitySnapshot(latest, locations, now, health,
+    members ? { csoIds: locations.map((location) => location.id), membership } : {});
   return {
     ...snapshot,
     WaterQuality: { ...snapshot.WaterQuality, CSOActiveTime: null },

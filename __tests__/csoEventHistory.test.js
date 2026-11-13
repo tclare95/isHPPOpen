@@ -104,7 +104,18 @@ describe('CsoEventHistory', () => {
     expect(onSelectOutfall).toHaveBeenCalledWith('');
     rerender(<CsoEventHistory selectedOutfallId="" onSelectOutfall={onSelectOutfall} />);
     fireEvent.click(screen.getByRole('button', { name: '7 days' }));
-    expect(useFetch).toHaveBeenLastCalledWith('/api/waterquality/cso/events?window=7d', expect.any(Object));
+    expect(useFetch).toHaveBeenCalledWith('/api/waterquality/cso/events?window=7d', expect.any(Object));
+    expect(useFetch).toHaveBeenCalledWith('/api/waterquality/cso/events?window=24h&outfall=SVT2', expect.any(Object));
+  });
+
+  it('lists only outfalls with events for a large RDP membership and names its source', () => {
+    const many = Array.from({ length: 30 }, (_, i) => outfall(`Q${i}`, { eventCount: 0 }));
+    mockFetch({ data: history({ outfalls: [outfall('SVT1', { eventCount: 2 }), outfall('SVT2', { eventCount: 1 }), ...many],
+      membership: { source: 'rdp', state: 'available', relationshipSet: 'hpp-upstream-outfalls', version: 'bb422e98d78ee1bc', scopes: [{ name: 'confirmed', count: 592 }] } }) });
+    render(<CsoEventHistory />);
+    const select = screen.getByLabelText('Outfall');
+    expect(within(select).getAllByRole('option').map((option) => option.textContent)).toEqual(['All monitored outfalls', 'River SVT1 (SVT1) (2)', 'River SVT2 (SVT2) (1)']);
+    expect(screen.getByText(/reviewed set hpp-upstream-outfalls \(version bb422e98d78e, 592 confirmed\)/)).toBeInTheDocument();
   });
 
   it('says the service is unavailable rather than showing an empty history', () => {
@@ -137,6 +148,15 @@ describe('evidenceMessages', () => {
     expect(text).toMatch(/could not be loaded for 1 outfall;/);
     expect(text).toMatch(/oldest events in this period are missing/);
     expect(text).toMatch(/2 of 5 upstream outfalls have event history; the other 2 are not monitored/);
+  });
+
+  it('reports outfalls that were not read separately from unmonitored ones (#114)', () => {
+    const counts = { members: 50, monitored: 50, read: 40, failed: 0, notRead: 10, notMonitored: 0, unmapped: 0 };
+    const text = texts(history({ window: { key: '30d', hours: 720 }, readPolicy: { limit: 40, prioritisedBy: 'events_last_7d' },
+      evidence: evidence({ outfalls: counts }), eventTotals: { total: 400, returned: 250, truncated: true } }));
+    expect(text).toMatch(/read for 40 of 50 upstream outfalls, those with spills in the last 7 days first\. The other 10 were not read/);
+    expect(text).not.toMatch(/not monitored for events yet/);
+    expect(text).toMatch(/Showing the newest 250 of 400 recorded events\. Choose an outfall/);
   });
 
   it('formats long durations compactly', () => {

@@ -18,6 +18,8 @@ export const CSO_HISTORY_WINDOWS = Object.freeze({
   "30d": { hours: 720, bucketMinutes: 60 },
 });
 export const CSO_HISTORY_MAX_OUTFALLS = 20;
+// Events returned in one response, newest first, after the optional outfall filter. The total is always reported.
+export const CSO_HISTORY_MAX_EVENTS = 250;
 export const CSO_HISTORY_PAGE_LIMIT = 200;
 export const CSO_HISTORY_MAX_PAGES = 3;
 export const CSO_HISTORY_DEADLINE_MS = 15000;
@@ -76,7 +78,7 @@ const readCachedEventPages = unstable_cache(readEventPagesUncached, ["rdp-cso-hi
 const readCachedEvent = unstable_cache((eventId) => getClient().getCsoEvent(eventId), ["rdp-cso-event-v1"], { revalidate: 300, tags: ["rdp-cso"] });
 const readCachedRevisions = unstable_cache(readRevisionsUncached, ["rdp-cso-revisions-v1"], { revalidate: 300, tags: ["rdp-cso"] });
 
-const readEventPages = (assetId, from, to) => coalesce(`history:${assetId}:${from}:${to}`, () => readCachedEventPages(assetId, from, to));
+export const readEventPages = (assetId, from, to) => coalesce(`history:${assetId}:${from}:${to}`, () => readCachedEventPages(assetId, from, to));
 const readEvent = (eventId) => coalesce(`event:${eventId}`, () => readCachedEvent(eventId));
 const readRevisions = (eventId) => coalesce(`revisions:${eventId}`, () => readCachedRevisions(eventId));
 
@@ -139,7 +141,7 @@ export function describeEvent(event, { from, asOf }) {
   };
 }
 
-function outfallSummary(legacyId, identity) {
+export function outfallSummary(legacyId, identity) {
   const asset = identity?.asset ?? null;
   return {
     id: legacyId,
@@ -289,9 +291,17 @@ function describeRevision(row) {
   };
 }
 
+// Legacy membership (`CSO_IDs`) resolver for event detail: the member whose canonical asset is `assetId`.
+async function resolveLegacyMember(assetId, catalogue) {
+  const legacyIds = await readMembership();
+  const identities = resolveCsoIdentities(legacyIds, catalogue.assets);
+  const member = legacyIds.find((id) => identities.get(id).assetId === assetId);
+  return member ? outfallSummary(member, identities.get(member)) : null;
+}
+
 // One event, with every material revision kept visible. Restricted to the HPP membership so the route is not
-// a general RDP proxy.
-export async function getCsoEventDetail(eventId) {
+// a general RDP proxy. `resolveMember(assetId, catalogue)` returns the member's outfall summary, or null.
+export async function getCsoEventDetail(eventId, { resolveMember = resolveLegacyMember } = {}) {
   try {
     assertCsoEventId(eventId);
   } catch {
@@ -306,12 +316,9 @@ export async function getCsoEventDetail(eventId) {
     if (error instanceof RdpError && (error.code === "EVENT_NOT_FOUND" || error.code === "NOT_FOUND")) throw new HttpError(404, "Event not found");
     throw new HttpError(503, "Event history temporarily unavailable");
   }
-  const legacyIds = await readMembership();
-  const identities = resolveCsoIdentities(legacyIds, catalogue.assets);
-  const member = legacyIds.find((id) => identities.get(id).assetId === detail.event.assetId);
-  if (!member || revisions.assetId !== detail.event.assetId) throw new HttpError(404, "Event not found");
-
-  const outfall = outfallSummary(member, identities.get(member));
+  const outfall = revisions.assetId === detail.event.assetId ? await resolveMember(detail.event.assetId, catalogue) : null;
+  if (!outfall) throw new HttpError(404, "Event not found");
+  const member = outfall.id;
   const history = revisions.revisions.map(describeRevision);
   const imported = history.some((row) => row.changeReason === "historical_imported");
   return {
@@ -333,4 +340,17 @@ export async function getCsoEventDetail(eventId) {
     },
     retrievedAt: detail.retrievedAt,
   };
+}
+
+// Applied to every history response (legacy or RDP membership). `outfall` narrows the list server-side, so the newest-N
+// cap never hides a selected outfall's events. The full count is always reported.
+export function limitHistoryEvents(history, outfall) {
+  if (!Array.isArray(history.events)) return history;
+  if (outfall !== undefined && outfall !== null && !history.outfalls.some((entry) => entry.id === outfall)) {
+    throw new HttpError(400, "outfall must be an upstream member in this view");
+  }
+  const matching = outfall ? history.events.filter((event) => event.outfallId === outfall) : history.events;
+  const events = matching.slice(0, CSO_HISTORY_MAX_EVENTS);
+  return { ...history, events, outfallFilter: outfall ?? null,
+    eventTotals: { total: matching.length, returned: events.length, truncated: matching.length > events.length } };
 }

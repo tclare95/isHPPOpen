@@ -9,6 +9,7 @@ import { getCanonicalMeasurement } from "./measurements.js";
 import { RdpError } from "./errors.js";
 import { assertRelationshipSetId, parseRelationshipSet } from "./relationshipContract.js";
 import { parseRiverLocation, parseRiverTrace, riverCoordinates, riverSamplePath, readRiverJson } from "./river.js";
+import { assertRiverImpactQuery, parseRiverImpact, RIVER_IMPACT_MAX_BYTES } from "./riverImpact.js";
 import {
   assertCsoAssetId, assertCsoCursor, assertCsoEventId, assertCsoSetName, isCsoTimestamp, parseCsoCatalogue, parseCsoEvent, parseCsoEvents,
   parseCsoHealth, parseCsoRevisions, parseCsoSetActivity, parseCsoStatus, CSO_SET_ACTIVITY_MAX_ITEMS,
@@ -21,7 +22,7 @@ const API_CODES = new Set([
   "VALIDATION_ERROR", "MEASUREMENT_NOT_FOUND", "INVALID_CURSOR", "CURSOR_EXPIRED",
   "CURSOR_STALE", "ARCHIVE_INTEGRITY", "STORAGE_UNAVAILABLE", "QUERY_TIMEOUT", "FORBIDDEN", "NOT_FOUND",
   "RESULT_TOO_LARGE", "RELEASE_NOT_AVAILABLE", "DATA_INTEGRITY", "ASSET_NOT_FOUND", "EVENT_NOT_FOUND", "SET_NOT_FOUND",
-  "RELATIONSHIPS_NOT_PUBLISHED",
+  "RELATIONSHIPS_NOT_PUBLISHED", "IMPACT_NOT_CONFIGURED", "SET_NOT_APPROVED", "CSO_UNAVAILABLE",
 ]);
 const RETRY_CODES = new Set(["THROTTLED", "UPSTREAM_ERROR", "STORAGE_UNAVAILABLE", "QUERY_TIMEOUT", "NETWORK_ERROR"]);
 
@@ -114,7 +115,10 @@ export function createRdpClient(env = process.env) {
           const response = await fetch(url.toString(), { method: "GET", headers: signed.headers,
             cache: "no-store", redirect: "error", signal: controller.signal });
           let body;
-          try { body = bounded && response.ok ? await readRiverJson(response) : await response.json(); } catch (error) {
+          // `bounded` is true (the shared river cap) or an explicit byte cap for a larger bounded body.
+          try {
+            body = bounded && response.ok ? await readRiverJson(response, typeof bounded === "number" ? bounded : undefined) : await response.json();
+          } catch (error) {
             if (error instanceof RdpError) throw error;
             if (response.ok) throw new RdpError("RESPONSE_CONTRACT_ERROR");
           }
@@ -189,6 +193,11 @@ export function createRdpClient(env = process.env) {
     getRiverRelationships(set) {
       assertRelationshipSetId(set);
       return request(`/v1/river/relationships/${set}`, {}, (body) => parseRelationshipSet(body, set), true);
+    },
+    // Live status-aware downstream impact for one reviewed relationship set (RDP caches it per 5-minute bucket).
+    getRiverImpact(set, { hours = 48 } = {}) {
+      assertRiverImpactQuery(set, hours);
+      return request(`/v1/river/impact/${set}`, { hours: String(hours) }, (body) => parseRiverImpact(body, set, hours), RIVER_IMPACT_MAX_BYTES);
     },
     locateRiver(point) {
       return request("/v1/river/locate", riverCoordinates(point), parseRiverLocation, true);

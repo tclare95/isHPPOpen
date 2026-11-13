@@ -147,6 +147,12 @@ color: #8D918D;
 .cso-marker--recent { background: #52636e; border-radius: 0.4rem; }
 /* Not confirmed upstream (#114 RDP candidate / catchment-only): dashed and translucent, never the primary style. */
 .cso-marker--possible { border-style: dashed; opacity: 0.75; }
+/* Reported downstream spill impact overlay: line swatches matching the drawn reach styles. */
+.legend-impact { display: inline-block; width: 1.4rem; height: 0; margin: 0 0.3rem 0.2rem 0.5rem; vertical-align: middle; border-top: 4px solid; }
+.legend-impact--active { border-top-color: #dc3545; }
+.legend-impact--unresolved { border-top: 3px dashed #fd7e14; }
+.legend-impact--recent { border-top-color: #ffc107; border-top-width: 3px; }
+.cso-impact-selected { border-left: 3px solid #0dcaf0; padding-left: 0.5rem; }
 .legend-possible { display: inline-grid; place-items: center; width: 1.25rem; height: 1.25rem; margin-left: 0.35rem; border: 2px dashed white; border-radius: 50%; color: white; font-weight: 800; }
 
 .cso-event-list { display: grid; gap: 0.5rem; }

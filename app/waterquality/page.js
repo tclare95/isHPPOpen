@@ -7,6 +7,7 @@ import Accordion from 'react-bootstrap/Accordion';
 import Card from 'react-bootstrap/Card';
 import Col from 'react-bootstrap/Col';
 import Container from 'react-bootstrap/Container';
+import Form from 'react-bootstrap/Form';
 import Row from 'react-bootstrap/Row';
 import PropTypes from 'prop-types';
 import SourceHealthBadge from '../../components/functional/sourceHealthBadge';
@@ -44,6 +45,13 @@ export default function WaterQualityPage() {
     riverDirection === 'off' ? null : `/api/waterquality/river?direction=${riverDirection}`,
     { revalidateOnFocus: false, revalidateOnReconnect: false, shouldRetryOnError: false });
   const riverTrace = !riverError && riverData?.direction === riverDirection ? riverData.trace : null;
+  // Optional overlay, fetched only when switched on and refreshed every 5 minutes (RDP's own refresh interval) so the
+  // drawn routes follow source events. A failure or a disabled overlay leaves the rest of the map unchanged.
+  const [impactOn, setImpactOn] = useState(false);
+  const { data: impactData, error: impactFetchError, isPending: impactPending } = useFetch(
+    impactOn ? '/api/waterquality/river/impact' : null,
+    { refreshInterval: 300000, revalidateOnFocus: false, revalidateOnReconnect: false, shouldRetryOnError: false });
+  const impactError = impactFetchError ?? (impactData && !impactData.enabled ? new Error('Downstream impact is not enabled') : null);
   const { data: summaryData, error: summaryError, isPending: summaryPending } = useFetch('/api/waterquality', SWR_15_MINUTES);
   const { data: densityData, error: densityError, isPending: densityPending } = useFetch('/api/waterquality/csodensity?hours=120', SWR_15_MINUTES);
   const { data: levelData, error: levelError, isPending: levelPending } = useFetch('/api/levels', SWR_15_MINUTES);
@@ -96,7 +104,11 @@ export default function WaterQualityPage() {
         )}
 
         <Row className="g-4 mb-4">
-          <Col lg={6}><section className="water-quality-panel h-100" id="cso-map-panel"><h2>Upstream activity map</h2><p className="water-quality-muted">Current spills and recently stopped events that can contribute downstream.</p><RiverContext direction={riverDirection} onDirectionChange={setRiverDirection} context={riverData} error={riverError} isPending={riverPending} /><WaterQualityMap locations={current?.locations || []} relatedLocations={current?.relatedLocations ?? null} membership={current?.membership ?? null} health={current?.health} isPending={summaryPending} error={summaryError} riverTrace={riverTrace} focusId={mapFocusId} onShowHistory={(id) => { setHistoryOutfallId(id); scrollToSection('cso-history'); }} /></section></Col>
+          <Col lg={6}><section className="water-quality-panel h-100" id="cso-map-panel"><h2>Upstream activity map</h2><p className="water-quality-muted">Current spills and recently stopped events that can contribute downstream.</p><RiverContext direction={riverDirection} onDirectionChange={setRiverDirection} context={riverData} error={riverError} isPending={riverPending} />
+            <Form.Check type="switch" id="cso-impact-toggle" className="small mb-2" checked={impactOn} onChange={(e) => setImpactOn(e.target.checked)}
+              label="Reported downstream spill impact" />
+            <WaterQualityMap locations={current?.locations || []} relatedLocations={current?.relatedLocations ?? null} membership={current?.membership ?? null} health={current?.health} isPending={summaryPending} error={summaryError} riverTrace={riverTrace} focusId={mapFocusId} onShowHistory={(id) => { setHistoryOutfallId(id); scrollToSection('cso-history'); }}
+              impactEnabled={impactOn} impact={impactData?.enabled ? impactData.impact : null} impactPending={impactOn && impactPending} impactError={impactOn ? impactError : null} /></section></Col>
           <Col lg={6}><section className="water-quality-panel h-100"><h2>Activity over time</h2><p className="water-quality-muted">Hourly upstream CSO activity density with the indicator reference levels.</p><CsoChart data={densityRows} error={densityError} isPending={densityPending} hours={chartHours} onHoursChange={setChartHours} /></section></Col>
         </Row>
 

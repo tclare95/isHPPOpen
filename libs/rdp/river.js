@@ -20,7 +20,7 @@ function match(value) {
 }
 
 // Count decoded bytes, including chunked/gzipped HTTP bodies, before JSON parsing.
-export async function readRiverJson(response) {
+export async function readRiverJson(response, maxBytes = RIVER_MAX_BYTES) {
   const reader = response.body?.getReader();
   if (!reader) throw new RdpError("RESPONSE_CONTRACT_ERROR");
   const chunks = [];
@@ -30,7 +30,7 @@ export async function readRiverJson(response) {
       const { done, value } = await reader.read();
       if (done) break;
       size += value.byteLength;
-      if (size > RIVER_MAX_BYTES) throw new RdpError("RESULT_TOO_LARGE", 413);
+      if (size > maxBytes) throw new RdpError("RESULT_TOO_LARGE", 413);
       chunks.push(value);
     }
     return JSON.parse(Buffer.concat(chunks).toString("utf8"));

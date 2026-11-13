@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 import { fireEvent, render, screen } from '@testing-library/react';
 import WaterQualityMap from '../components/functional/csoMap';
+import { compactImpact } from '../testUtils/rdpImpactFixtures';
 
 jest.mock('leaflet', () => ({ divIcon: (config) => config }));
 jest.mock('next/dynamic', () => (loader) => {
@@ -10,7 +11,9 @@ jest.mock('next/dynamic', () => (loader) => {
   if (source.includes('react-leaflet-cluster')) return ({ children }) => <div data-testid="cluster">{children}</div>;
   if (source.includes('mod.Marker')) return ({ children }) => <div data-testid="marker">{children}</div>;
   if (source.includes('mod.Popup')) return ({ children }) => <div>{children}</div>;
-  if (source.includes('mod.GeoJSON')) return ({ data }) => <div data-testid="river-layer">{data.riverTracer.kind}</div>;
+  if (source.includes('mod.GeoJSON')) return ({ data, style }) => (data.riverTracer ? <div data-testid="river-layer">{data.riverTracer.kind}</div> : (
+    <div data-testid="impact-layer">{data.features.map((f) => <span key={f.properties.reachId} data-testid="impact-reach"
+      data-reach={f.properties.reachId} data-weight={style(f).weight} data-color={style(f).color} />)}</div>));
   return ({ children }) => <div>{children}</div>;
 });
 
@@ -109,5 +112,59 @@ describe('WaterQualityMap', () => {
     render(<WaterQualityMap locations={[{ id: 'A', status: 'unknown', coordinates: null }]} health={{ state: 'unavailable', cso: { available: false } }} now={now} />);
     expect(screen.getByText(/Current status is unavailable\. No location is labelled as currently spilling or as clear/)).toBeInTheDocument();
     expect(screen.queryByText(/No stale location is labelled/)).not.toBeInTheDocument();
+  });
+
+  describe('reported downstream spill impact overlay', () => {
+    const spilling = [{ id: 'SVT00001', status: 'active', coordinates: { x: -1.2, y: 52.9 }, receivingWaterCourse: 'River Leen', latestEventStart: '2026-08-31T10:00:00Z', observedAt: '2026-08-31T11:55:00Z' }];
+    const weights = () => Object.fromEntries(screen.getAllByTestId('impact-reach').map((el) => [el.dataset.reach, Number(el.dataset.weight)]));
+
+    it('draws reported spills downstream routes with the connectivity caveat and the unknown count', () => {
+      render(<WaterQualityMap locations={spilling} health={{ state: 'fresh' }} now={now} impactEnabled impact={compactImpact()} />);
+      expect(screen.getAllByTestId('impact-reach')).toHaveLength(2);
+      expect(screen.getByText(/do not show pollution concentration, how long it takes to travel, or whether the water is safe/)).toBeInTheDocument();
+      expect(screen.getByText(/1 upstream outfalls have no usable current status; their routes are not drawn, and they are not assumed clear/)).toBeInTheDocument();
+      expect(screen.getByRole('option', { name: /SVT00001: Currently spilling/ })).toBeInTheDocument();
+    });
+
+    it('highlights one selected spill downstream connections and links to its event history', () => {
+      const onShowHistory = jest.fn();
+      render(<WaterQualityMap locations={spilling} health={{ state: 'fresh' }} now={now} impactEnabled impact={compactImpact()} onShowHistory={onShowHistory} />);
+      const before = weights();
+      fireEvent.change(screen.getByLabelText(/Highlight one reported spill/), { target: { value: 'severn-trent:storm-overflow-activity:SVT00002' } });
+      const after = weights();
+      expect(after['3']).toBeGreaterThan(before['3']);
+      expect(after['1']).toBeLessThan(before['1']);
+      expect(screen.getByText(/Spill cse_000000000000000000000002/)).toBeInTheDocument();
+      expect(screen.getByText(/incomplete: the mapped network ends or branches before the sea/)).toBeInTheDocument();
+      fireEvent.click(screen.getAllByRole('button', { name: 'Spill history for this outfall' }).at(-1));
+      expect(onShowHistory).toHaveBeenLastCalledWith('SVT00002');
+    });
+
+    it('selects a route from an existing CSO marker', () => {
+      render(<WaterQualityMap locations={spilling} health={{ state: 'fresh' }} now={now} impactEnabled impact={compactImpact()} />);
+      fireEvent.click(screen.getByRole('button', { name: 'Show downstream route' }));
+      expect(screen.getByLabelText(/Highlight one reported spill/)).toHaveValue('severn-trent:storm-overflow-activity:SVT00001');
+      expect(weights()['1']).toBeGreaterThan(weights()['3']);
+    });
+
+    it('leaves the map working normally when the overlay is off, loading or unavailable', () => {
+      const { rerender } = render(<WaterQualityMap locations={locations} health={{ state: 'fresh' }} now={now} />);
+      expect(screen.getAllByTestId('marker')).toHaveLength(2);
+      expect(screen.queryByTestId('impact-layer')).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Show downstream route' })).not.toBeInTheDocument();
+      rerender(<WaterQualityMap locations={locations} health={{ state: 'fresh' }} now={now} impactEnabled impactPending />);
+      expect(screen.getByText('Loading downstream spill impact…')).toBeInTheDocument();
+      rerender(<WaterQualityMap locations={locations} health={{ state: 'fresh' }} now={now} impactEnabled impact={compactImpact()} impactError={new Error('503')} />);
+      expect(screen.getAllByTestId('marker')).toHaveLength(2);
+      expect(screen.queryByTestId('impact-layer')).not.toBeInTheDocument();
+      expect(screen.getByText(/Downstream spill impact is unavailable right now. The rest of the map is unaffected/)).toBeInTheDocument();
+    });
+
+    it('says when no reported spill has a drawable route rather than drawing nothing silently', () => {
+      const empty = { ...compactImpact(), outfalls: [], reaches: { type: 'FeatureCollection', features: [] }, counts: { active: 0, unresolved: 0, recent: 0, unknown: 4, 'no-reported-discharge': 10 } };
+      render(<WaterQualityMap locations={locations} health={{ state: 'fresh' }} now={now} impactEnabled impact={empty} />);
+      expect(screen.getByText(/No reported spill in the last 48 hours has a drawable downstream route/)).toBeInTheDocument();
+      expect(screen.getByText(/4 upstream outfalls have no usable current status/)).toBeInTheDocument();
+    });
   });
 });

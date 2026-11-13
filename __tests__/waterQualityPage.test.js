@@ -30,10 +30,15 @@ describe('WaterQualityPage', () => {
     expect(screen.queryByText(/HPP paddling guidance/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Fresh monitors/i)).not.toBeInTheDocument();
     expect(screen.getByText(/contents may still be travelling downstream/i)).toBeInTheDocument();
-    expect(useFetch).toHaveBeenCalledTimes(4);
-    expect(useFetch.mock.calls.map(([path]) => path)).toEqual([null, '/api/waterquality', '/api/waterquality/csodensity?hours=120', '/api/levels']);
+    // The river context and the downstream impact overlay are both off (null) until a visitor asks for them.
+    expect(useFetch).toHaveBeenCalledTimes(5);
+    expect(useFetch.mock.calls.map(([path]) => path)).toEqual([null, null, '/api/waterquality', '/api/waterquality/csodensity?hours=120', '/api/levels']);
     fireEvent.change(screen.getByLabelText('Explore the river at Holme Pierrepont'), { target: { value: 'downstream' } });
     expect(useFetch).toHaveBeenCalledWith('/api/waterquality/river?direction=downstream', expect.objectContaining({ shouldRetryOnError: false }));
+    fireEvent.click(screen.getByLabelText('Reported downstream spill impact'));
+    // Refreshed on RDP's 5-minute interval so routes follow source events; no retry storm and no focus refetch.
+    expect(useFetch).toHaveBeenCalledWith('/api/waterquality/river/impact',
+      expect.objectContaining({ refreshInterval: 300000, shouldRetryOnError: false, revalidateOnFocus: false }));
     expect(screen.getByTestId('indicator')).toBeInTheDocument();
     expect(screen.getByTestId('catchment')).toBeInTheDocument();
   });

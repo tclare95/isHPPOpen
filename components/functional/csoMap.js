@@ -6,6 +6,7 @@ import ButtonGroup from 'react-bootstrap/ButtonGroup';
 import Form from 'react-bootstrap/Form';
 import PropTypes from 'prop-types';
 import { membershipText } from '../../libs/csoMembershipText';
+import { contributorsOf, ImpactPanel, impactReachStyle } from './csoImpactOverlay';
 
 const MapContainer = dynamic(() => import('react-leaflet').then((mod) => mod.MapContainer), { ssr: false });
 const TileLayer = dynamic(() => import('react-leaflet').then((mod) => mod.TileLayer), { ssr: false });
@@ -50,9 +51,17 @@ function inWindow(location, windowHours, now, focusId) {
   return Boolean(ended && ended >= new Date(now.getTime() - windowHours * 60 * 60 * 1000));
 }
 
-export default function WaterQualityMap({ locations = [], relatedLocations = null, membership = null, health, isPending = false, error = null, now = new Date(), riverTrace = null, focusId = null, onShowHistory = null }) {
+export default function WaterQualityMap({ locations = [], relatedLocations = null, membership = null, health, isPending = false, error = null, now = new Date(), riverTrace = null, focusId = null, onShowHistory = null,
+  impactEnabled = false, impact = null, impactPending = false, impactError = null }) {
   const [windowHours, setWindowHours] = useState(6);
   const [showRelated, setShowRelated] = useState(false);
+  const [impactId, setImpactId] = useState('');
+  // The overlay is optional: without it (off, loading, failed) the map behaves exactly as before.
+  const overlay = impactEnabled && !impactError ? impact : null;
+  const impactOutfalls = overlay?.outfalls ?? [];
+  const selectedImpact = impactOutfalls.find((outfall) => outfall.assetId === impactId) ?? null;
+  const impactFor = (location) => impactOutfalls.find((outfall) => outfall.assetId === location.assetId || outfall.externalId === location.id) ?? null;
+  const hasImpact = Boolean(overlay?.reaches?.features?.length);
   const [icons, setIcons] = useState({});
   useEffect(() => {
     let cancelled = false;
@@ -78,7 +87,9 @@ export default function WaterQualityMap({ locations = [], relatedLocations = nul
   if (isPending) return <p>Loading map data…</p>;
   if (error) return <p>Unable to load map data right now.</p>;
   const hasRiverGeometry = Boolean(riverTrace?.features?.length);
-  if (!locations.length && !hasRiverGeometry) return <><p>No CSO location data is available.</p>{membershipNote ? <p className="small water-quality-muted mb-0">{membershipNote}</p> : null}</>;
+  const impactPanel = impactEnabled ? <ImpactPanel impact={impactError ? null : impact} isPending={impactPending} error={impactError}
+    selectedId={selectedImpact ? impactId : ''} onSelect={setImpactId} onShowHistory={onShowHistory} /> : null;
+  if (!locations.length && !hasRiverGeometry && !hasImpact) return <><p>No CSO location data is available.</p>{membershipNote ? <p className="small water-quality-muted mb-0">{membershipNote}</p> : null}{impactPanel}</>;
   return (
     <div>
       {health?.cso?.available === false ? <div className="alert alert-warning py-2">Current status is unavailable. No location is labelled as currently spilling or as clear.</div>
@@ -93,14 +104,22 @@ export default function WaterQualityMap({ locations = [], relatedLocations = nul
         <Form.Check type="switch" id="cso-map-related" className="small mb-2" checked={showRelated} onChange={(e) => setShowRelated(e.target.checked)}
           label={`Show unconfirmed upstream outfalls (${relatedActivity} active or recent)`} />
       ) : null}
-      {!plotted.length && !hasRiverGeometry ? <p className="water-quality-muted">No locations match this time window.</p> : (
+      {!plotted.length && !hasRiverGeometry && !hasImpact ? <p className="water-quality-muted">No locations match this time window.</p> : (
         <MapContainer center={center} zoom={9} preferCanvas className="cso-map" aria-label="Upstream CSO activity map">
           <TileLayer attribution='&copy; OpenStreetMap contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
           {hasRiverGeometry ? <GeoJSON key={`${riverTrace.riverTracer.releaseVersion}-${riverTrace.riverTracer.kind}`}
             data={riverTrace} attribution="River network and catchment: OpenRiversNetwork"
             filter={(feature) => feature.geometry.type !== 'Point'}
             style={(feature) => feature.properties.kind === 'catchment' ? { color: '#a78bfa', weight: 1, fillOpacity: 0.08 } : { color: '#0dcaf0', weight: 3, opacity: 0.75 }} /> : null}
-          {focused ? <MapFocus latitude={focused.coordinates.y} longitude={focused.coordinates.x} /> : null}
+          {hasImpact ? <GeoJSON key={`impact-${overlay.asOf}-${impactId}`} data={overlay.reaches}
+            attribution="Downstream impact: River Data Platform; river network: OpenRiversNetwork"
+            style={(feature) => impactReachStyle(feature, selectedImpact ? impactId : '')}
+            onEachFeature={(feature, layer) => layer.on?.('click', () => {
+              const ids = contributorsOf(feature);
+              setImpactId((current) => (ids.includes(current) ? current : ids[0] ?? ''));
+            })} /> : null}
+          {selectedImpact ? <MapFocus latitude={selectedImpact.coordinates[1]} longitude={selectedImpact.coordinates[0]} />
+            : focused ? <MapFocus latitude={focused.coordinates.y} longitude={focused.coordinates.x} /> : null}
           <MarkerClusterGroup chunkedLoading>
             {plotted.map((location) => (
               <Marker key={location.assetId ?? location.id} position={[location.coordinates.y, location.coordinates.x]} icon={markerIcon(location)}>
@@ -115,6 +134,7 @@ export default function WaterQualityMap({ locations = [], relatedLocations = nul
                     Duration: {formatDuration(location.eventDurationMinutes)}<br />
                     <small>Last checked: {formatTimestamp(location.observedAt)}</small>
                     {onShowHistory && !isPossible(location) ? <><br /><Button size="sm" variant="link" className="p-0" onClick={() => onShowHistory(location.id)}>Spill history for this outfall</Button></> : null}
+                    {impactFor(location)?.routed ? <><br /><Button size="sm" variant="link" className="p-0" onClick={() => setImpactId(impactFor(location).assetId)}>Show downstream route</Button></> : null}
                   </div>
                 </Popup>
               </Marker>
@@ -124,6 +144,7 @@ export default function WaterQualityMap({ locations = [], relatedLocations = nul
       )}
       <p className="small water-quality-muted mt-2 mb-0">Showing {filtered.length} locations{related.length ? ` and ${related.length} not confirmed upstream` : ''}. Locations with offline, stale or unknown status are counted above but are not plotted.</p>
       {membershipNote ? <p className="small water-quality-muted mt-1 mb-0">{membershipNote}</p> : null}
+      {impactPanel}
     </div>
   );
 }
@@ -139,4 +160,8 @@ WaterQualityMap.propTypes = {
   riverTrace: PropTypes.object,
   focusId: PropTypes.string,
   onShowHistory: PropTypes.func,
+  impactEnabled: PropTypes.bool,
+  impact: PropTypes.shape({ asOf: PropTypes.string, outfalls: PropTypes.array, reaches: PropTypes.object }),
+  impactPending: PropTypes.bool,
+  impactError: PropTypes.object,
 };

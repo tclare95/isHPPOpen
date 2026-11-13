@@ -1,8 +1,10 @@
-// One non-authoritative HPP evaluation against injected ports (#89).
+// One HPP evaluation against injected ports (#89).
 //
-// No Mongo, RDP, AWS or Next imports: hppShadowService.js composes a store
-// and an evidence reader. Nothing here writes
-// openIndicator, alert state or notifications.
+// No Mongo, RDP, AWS or Next imports. hppShadowService.js composes it with
+// the shadow store (hppShadow* collections only); hppAuthoritativeService.js
+// composes it with the authoritative store, whose transitions are
+// openIndicator records, plus a writer `guard`. The decision, lease, retry
+// and transition identity logic is the same in both modes.
 //
 // Single writer: a run first claims a lease on the state document by
 // compare-and-set on `revision`; an overlapping run exits without writing.
@@ -101,12 +103,15 @@ async function readAssessment(readEvidence, now, rule) {
  * Evaluate once. Ports:
  * - store: loadState, insertState, compareAndSet(expectedRevision, fields),
  *   findTransition(id), insertTransition(doc) → boolean, latestLegacyRecord.
- * - readEvidence(now) → `{ pageIntegrity, rows }`; may throw `{ code }`.
+ * - readEvidence(now) → `{ pageIntegrity, measurementId, rows }`; may throw `{ code }`.
+ * - guard({ state, now }) → hold reason or null (optional). Checked once the
+ *   lease is held and again immediately before a transition is inserted, so
+ *   a writer that loses ownership mid-run records nothing.
  *
  * Returns `{ action, reason, persisted, ... }`. Store errors propagate; an
  * unreleased lease simply expires.
  */
-export async function runHppShadowEvaluation({ store, readEvidence, now = new Date(), rule = HPP_RULE_V1, runId }) {
+export async function runHppEvaluation({ store, readEvidence, guard, now = new Date(), rule = HPP_RULE_V1, runId }) {
   let state = await loadOrSeedState(store, rule);
   if (!state) return { action: "hold", reason: HOLD_REASONS.NO_ESTABLISHED_STATE, persisted: false };
 
@@ -136,6 +141,8 @@ export async function runHppShadowEvaluation({ store, readEvidence, now = new Da
   };
 
   if (state.ruleId !== rule.ruleId) return finish({ action: "hold", reason: RUN_HOLD_REASONS.RULE_MISMATCH });
+  const blocked = guard ? await guard({ state, now }) : null;
+  if (blocked) return finish({ action: "hold", reason: blocked });
 
   // Adopt a transition recorded by a run that stopped before committing state.
   const pending = await store.findTransition(transitionId(rule.ruleId, state.sequence + 1));
@@ -153,6 +160,9 @@ export async function runHppShadowEvaluation({ store, readEvidence, now = new Da
     return finish({ action: result.action, reason: result.reason, assessment, sourceError }, { ...state, ...result.state });
   }
 
+  const blockedWrite = guard ? await guard({ state, now }) : null;
+  if (blockedWrite) return finish({ action: "hold", reason: blockedWrite, assessment });
+
   const doc = toTransitionDocument(result.transition, { sequence: state.sequence + 1, previous: state });
   let recorded = doc;
   if (!(await store.insertTransition(doc))) {
@@ -164,3 +174,6 @@ export async function runHppShadowEvaluation({ store, readEvidence, now = new Da
   }
   return finish({ action: "transition", assessment, transitionId: recorded._id }, stateAfterTransition(state, recorded));
 }
+
+/** The shadow evaluation: the same run without a writer guard. */
+export const runHppShadowEvaluation = (options) => runHppEvaluation({ ...options, guard: undefined });

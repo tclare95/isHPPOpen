@@ -6,7 +6,7 @@ import { createRequestLogger } from "../../../../../libs/api/logger";
 import { runHppShadowCron } from "../../../../../libs/services/hppShadowCronService";
 
 export const dynamic = "force-dynamic";
-// Must stay below the shadow run's 5-minute lease (LEASE_MS).
+// Must stay below the 5-minute run lease (LEASE_MS) and the writer fence (APP_FENCE_MS).
 export const maxDuration = 60;
 
 export async function GET(request) {
@@ -15,11 +15,11 @@ export async function GET(request) {
   try {
     assertCronAuthorized(request);
     const data = await runHppShadowCron({ runId: randomUUID() });
-    logger.info("Ran HPP shadow evaluation", data);
+    logger.info("Ran HPP evaluation", data);
     return sendRouteSuccess(data);
   } catch (error) {
     const { statusCode, message } = mapApiError(error);
-    logger.error("Error in HPP shadow run", error);
+    logger.error("Error in HPP run", error);
     return sendRouteError(statusCode, message);
   }
 }

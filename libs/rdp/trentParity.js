@@ -3,6 +3,7 @@ import { buildMeasureSnapshot } from "../services/trentWeirsService";
 import { isSeriesFresh } from "./trentSeries.js";
 
 const MAX_MISMATCH_SAMPLES = 3;
+const MAX_GAP_SAMPLES = 3;
 
 // Equal within binary representation of the same source decimal; no tolerance beyond that.
 function sameValue(a, b) {
@@ -11,6 +12,12 @@ function sameValue(a, b) {
 
 function byTime(readings) {
   return new Map(readings.map((reading) => [Date.parse(reading.dateTime), reading.value]));
+}
+
+// Repeated instants (for example the scraper keeping both `…T17:30Z` and `…T17:30:00Z`) collapse
+// in the map, so they are counted separately instead of surfacing as an unexplained `matched` shortfall.
+function duplicateCount(readings) {
+  return readings.length - new Set(readings.map((reading) => Date.parse(reading.dateTime))).size;
 }
 
 function freshness(readings, now) {
@@ -31,6 +38,9 @@ export function compareTrentSeries({ key, measureType, legacyReadings = [], rdpR
     mismatchSamples: [],
     missingInRdp: 0,
     missingInLegacy: 0,
+    gapSamples: { missingInRdp: [], missingInLegacy: [] },
+    legacyDuplicates: duplicateCount(legacyReadings),
+    rdpDuplicates: duplicateCount(rdpReadings),
     legacyNewest: legacyReadings[0]?.dateTime ?? null,
     rdpNewest: rdpReadings[0]?.dateTime ?? null,
     latestLagSeconds: null,
@@ -50,7 +60,10 @@ export function compareTrentSeries({ key, measureType, legacyReadings = [], rdpR
 
   for (const [time, value] of legacy) {
     if (!rdp.has(time)) {
-      if (inOverlap(time)) report.missingInRdp++;
+      if (inOverlap(time)) {
+        report.missingInRdp++;
+        if (report.gapSamples.missingInRdp.length < MAX_GAP_SAMPLES) report.gapSamples.missingInRdp.push(new Date(time).toISOString());
+      }
       continue;
     }
     report.matched++;
@@ -62,7 +75,10 @@ export function compareTrentSeries({ key, measureType, legacyReadings = [], rdpR
     }
   }
   for (const time of rdp.keys()) {
-    if (!legacy.has(time) && inOverlap(time)) report.missingInLegacy++;
+    if (!legacy.has(time) && inOverlap(time)) {
+      report.missingInLegacy++;
+      if (report.gapSamples.missingInLegacy.length < MAX_GAP_SAMPLES) report.gapSamples.missingInLegacy.push(new Date(time).toISOString());
+    }
   }
 
   // Positive lag: RDP's newest observation is behind legacy's.
@@ -77,9 +93,13 @@ export function compareTrentSeries({ key, measureType, legacyReadings = [], rdpR
       legacySnapshot.rateOfChangeDay === rdpSnapshot.rateOfChangeDay,
   };
 
+  // Rates are derived by index, so duplicates or gaps shift them; `rate_mismatch` is only reported
+  // when every other fact agrees, and `lag` only when the newest observations really differ.
   report.status = report.valueMismatches > 0 ? "value_mismatch" :
+    report.legacyDuplicates > 0 || report.rdpDuplicates > 0 ? "duplicate_instants" :
     report.matched === 0 ? "no_overlap" :
     report.missingInRdp > 0 || report.missingInLegacy > 0 ? "gaps" :
-    !report.rates.match || report.latestLagSeconds !== 0 ? "lag" : "match";
+    report.latestLagSeconds !== 0 ? "lag" :
+    !report.rates.match ? "rate_mismatch" : "match";
   return report;
 }

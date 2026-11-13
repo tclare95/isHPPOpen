@@ -15,6 +15,16 @@ export function buildOperationalHealth({ source, generatedAt = null, fetchedAt =
   return { source, generatedAt: generatedDate?.toISOString() ?? null, fetchedAt: fetchedDate.toISOString(), ageSeconds, state };
 }
 
+// A cached response keeps the state computed when it was generated (up to the 900s route cache plus
+// stale-while-revalidate). When `generatedAt` is the observed time, re-check it at display time so an
+// observation older than the freshness limit is never shown as fresh or acceptable fallback.
+export function getDisplayedHealthState(health, now = Date.now(), staleAfterMs = OPERATIONAL_STALE_MS) {
+  if (!health) return null;
+  if (health.state !== "fresh" && health.state !== "fallback") return health.state;
+  const observed = validDate(health.generatedAt);
+  return observed && now - observed.getTime() > staleAfterMs ? "stale" : health.state;
+}
+
 export function getNewestTimestamp(...values) {
   const dates = values.flat().map(validDate).filter(Boolean);
   return dates.length ? new Date(Math.max(...dates.map((date) => date.getTime()))).toISOString() : null;

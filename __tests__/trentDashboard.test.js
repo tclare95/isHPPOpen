@@ -140,6 +140,20 @@ describe("TrentDashboard", () => {
     expect(screen.getAllByTestId("chart").length).toBeGreaterThan(1);
   });
 
+  test("a cached fresh health badge is shown as stale once its observation is over 30 minutes old", () => {
+    const observedAt = new Date(Date.now() - 31 * 60 * 1000).toISOString();
+    mockUseFetch.mockReturnValue({
+      data: { ...buildSnapshot(), health: { source: "river-data-platform-trent", generatedAt: observedAt, state: "fresh", ageSeconds: 0 } },
+      error: undefined,
+      isPending: false,
+    });
+
+    render(<TrentDashboard />);
+
+    expect(screen.getByText("Data may be stale")).toBeInTheDocument();
+    expect(screen.queryByText("Updated")).not.toBeInTheDocument();
+  });
+
   test("supports chart view changes, station toggles, and overview hiding", async () => {
     const user = userEvent.setup();
     render(<TrentDashboard initialViewMode="combined" />);

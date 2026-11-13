@@ -295,6 +295,23 @@ describe("shadow mode", () => {
     });
   });
 
+  // Production shadow 2026-11-07..12: `lag` with 0s lag and ~360/480 matched. The scraper had kept
+  // gauge-page `…T17:30Z` beside flood-API `…T17:30:00Z` for the same instants.
+  test("scraper duplicate spellings of one instant are classified, not reported as lag", async () => {
+    const rows = levelReadings();
+    const shortSpelling = rows.slice(0, 119).map((row) => ({ ...row, reading_date: row.reading_date.replace(":00Z", "Z") }));
+    const merged = [...shortSpelling, ...rows].sort((a, b) => Date.parse(b.reading_date) - Date.parse(a.reading_date)).slice(0, 480);
+    s3Behaviour = s3Payload({ level_readings: merged, level_source: "gauge-page-fallback" });
+
+    const snapshot = await getLatestLevelsSnapshot();
+
+    expect(snapshot.level_data).toEqual(merged);
+    expect(loggedJson(logs.log, "RDP levels shadow comparison ").series).toMatchObject({
+      status: "duplicate_instants", matched: 361, legacyDuplicates: 119, rdpDuplicates: 0, valueMismatches: 0, missingInRdp: 0, latestLagSeconds: 0,
+    });
+    expect(validateLegacyLevels(merged)).toBeNull();
+  });
+
   test("an RDP failure is recorded without affecting the legacy response", async () => {
     rdpBehaviour = new RdpError("THROTTLED", 429);
     const snapshot = await getLatestLevelsSnapshot();

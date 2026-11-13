@@ -98,7 +98,7 @@ export default function TrentDashboard({ initialViewMode = "level" }) {
                 <Badge bg="secondary">{selectionCount} selected</Badge>
               </Stack>
               <div className="text-secondary small">Pick gauges here, then review the comparison workspace below.</div>
-              <div className="text-secondary small">Set email alerts for any gauge, HPP status, or water quality. <a className="text-info" href="/alerts">Open Alerts Centre</a><SourceHealthBadge health={data?.health} /></div>
+              <div className="text-secondary small">Set email alerts for any gauge, HPP status, or water quality. <a className="text-info" href="/alerts">Open Alerts Centre</a><SourceHealthBadge health={data?.health} observedAge /></div>
             </div>
           </Col>
         </Row>

@@ -95,7 +95,7 @@ so merge any pending PR first and record that deployment as the baseline.
 
 1. Change only this value: `vercel env update RDP_LEVELS_SOURCE production` → `rdp` (it stays sensitive).
    No other variable changes.
-2. Redeploy the same commit: `vercel redeploy <baseline deployment URL> --target production`. Record the new
+2. Re-list Production deployments, then redeploy the newest `main` build: `vercel redeploy <current Production deployment> --target production`. Record the new
    deployment ID, its commit and READY.
 3. Verify after the build has prerendered:
    - `/api/levels` → `health.source = river-data-platform-levels` and `health.observed.origin = rdp`
@@ -105,9 +105,30 @@ so merge any pending PR first and record that deployment as the baseline.
    - `Cache-Control`/ISR behaviour is unchanged
    - logs show only `rdp/levels` "display degraded" lines that are explained by staleness
    - `/api/trentweirs` and alerts are unchanged
-4. Roll back by setting `RDP_LEVELS_SOURCE=shadow` (the previous value) and redeploying, or immediately with
-   `vercel rollback <baseline deployment ID>`. A rollback stops Git pushes from being assigned to Production
-   until it is undone or promoted. Expect up to ~900 s of cached rdp responses plus up to 900 s of data cache.
+4. Roll back by setting `RDP_LEVELS_SOURCE=shadow` (the previous value) and redeploying the current Production
+   deployment. Use `vercel rollback` only as an emergency stop: it also reverts any later code or other flags,
+   and it stops Git pushes from being assigned to Production until it is undone or promoted. Expect up to ~900 s of cached rdp responses plus up to 900 s of data cache.
+
+**Performed on 2026-11-13, with owner approval for "levels rdp + Trent shadow" in one redeploy:**
+
+| Item | Value |
+| --- | --- |
+| Baseline (rollback target) | `dpl_4AcHYTLdWqhUYjS8t7BoTZK5nqar`, `c7a404d`, levels `shadow`, Trent absent (legacy), alerts `shadow` |
+| Changes | `RDP_LEVELS_SOURCE` `shadow` → `rdp` (`vercel env update`, sensitive); `RDP_TRENT_SOURCE=shadow` added (sensitive). Production only. Nothing else changed. |
+| Release | `vercel redeploy dpl_4AcH… --target production` → `dpl_7iANfmcFFte9KRD48pNhoKCqkv2C`, same commit `c7a404d`, READY ~09:30Z, aliased `ishppopen.co.uk` |
+| `/api/levels` (09:30Z, prerender) | `health.source = river-data-platform-levels`, `observed.origin = rdp`. It reported `stale` (1,817 s: the newest EA reading, 09:00Z, was 30 min old; legacy Trent was equally stale). 480 strictly descending `…:00Z` rows, **480/480 equal to direct EA**. `forecast_data` has 145 rows, and `health.forecast` is derived from the scraper `model_date` 09:22:23Z (`fresh`). Static `○ 15m` ISR (`X-Vercel-Cache: PRERENDER`) unchanged. |
+| `/api/trentweirs` | still legacy (`environment-agency-trent`), as intended for shadow |
+| **Overlap incident** | The #124 merge's Git deployment `dpl_7hUDJdYvii1nrrx9EDXypAtqUgqj` (`20d105a`) was created at 09:29:08Z, while this redeploy of `c7a404d` was being started (09:29:20Z). The redeploy took the alias 12 s later and served **pre-#124 code until 09:34:10Z (~5 min)**. The #121 session caught it and redeployed `20d105a`. Lesson: re-list Production deployments *immediately* before a CLI redeploy, and redeploy the newest `main` build, never a recorded baseline that may be stale. |
+| Current Production | `dpl_EL3ZdkMGrCGAnUEbv9VtxX3Hfn8c` (`20d105a`, 09:34:10Z) with `RDP_LEVELS_SOURCE=rdp`, `RDP_TRENT_SOURCE=shadow`, `RDP_GAUGE_ALERTS_SOURCE` unchanged (`shadow`) and #121's `RDP_CSO_HISTORY=on`. #124 changed `libs/rdp/client.js` only additively (CSO event routes). `/api/levels` re-verified as `rdp`. |
+| Rollback | Restore `RDP_LEVELS_SOURCE=shadow` and/or remove `RDP_TRENT_SOURCE`, then `vercel redeploy` the **current** Production deployment. **Do not use `vercel rollback`**: older deployments carry their own env snapshots and older code, so it would revert #124 and `RDP_CSO_HISTORY` too. |
+
+**First Production Trent shadow comparison** (`dpl_EL3Z`, 2026-11-13 09:51Z): all six series compared, **0 value
+mismatches, 0 gaps** (667–669 exact-timestamp matches each), but **RDP is 900–1,800 s behind direct EA on every
+series**. Colwick, Clifton Bridge and Kegworth are 900 s behind; Shardlow level/flow and Church Wilne are 1,800 s.
+Legacy Trent reads EA directly, while RDP sees a reading only after its 15-minute collector tick plus the 900 s
+display history cache. Observed levels showed 0 s lag because the scraper legacy has the same collector-style
+delay. This is one sample, not a review. If it persists, `rdp` mode will often find RDP non-fresh and fall back
+to legacy EA per series, so the 48 h review must quantify median lag and fallback rate before step 3.
 
 ### Step 2: Trent dashboard (blocked until a Production shadow passes)
 

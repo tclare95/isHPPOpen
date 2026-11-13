@@ -64,9 +64,9 @@ function pagesOf(items, { size = 100, total = items.length, ...options } = {}) {
   return pages;
 }
 
-function mockMongo({ observations = [], status = [], fail = false } = {}) {
-  const chain = (rows) => ({ sort: () => ({ limit: () => ({ toArray: async () => { if (fail) throw new Error("mongo down"); return rows; } }) }) });
-  const collections = { waterQuality: { find: jest.fn(() => chain(observations)) }, csoData: { find: jest.fn(() => chain(status)) } };
+function mockMongo({ observations = [], status = [], fail = false, failStatus = false } = {}) {
+  const chain = (rows, failing) => ({ sort: () => ({ limit: () => ({ toArray: async () => { if (failing) throw new Error("mongo down"); return rows; } }) }) });
+  const collections = { waterQuality: { find: jest.fn(() => chain(observations, fail)) }, csoData: { find: jest.fn(() => chain(status, fail || failStatus)) } };
   connectToDatabase.mockResolvedValue({ db: { collection: jest.fn((name) => collections[name]) } });
   return collections;
 }
@@ -334,6 +334,7 @@ describe("comparison with legacy density and status history", () => {
     expect(comparison.rows[1].rdp.spillingOutfalls).toEqual({ lower: 0, upper: 0 });
     // 10:14: A both spilling, B RDP end unreported. 11:15: A neither.
     expect(comparison.memberAgreement).toEqual({ bothSpilling: 1, legacyOnly: 0, rdpOnly: 0, neither: 1, rdpUncertain: 1, notComparable: 0 });
+    expect(comparison.legacyStatusHistory).toEqual({ state: "available", records: 3 });
     expect(comparison.legacyThresholds).toMatchObject({ elevated: 0.0105, high: 0.0258, appliesTo: "legacy number_CSOs_per_km2 only" });
   });
 
@@ -367,6 +368,20 @@ describe("comparison with legacy density and status history", () => {
       statusHistory: [{ id: "A", scrapedAt: "2026-11-12T10:00:00.000Z", status: 1 }] });
     expect(result.rows[0].members).toMatchObject({ reporting: 0, spilling: 0 });
     expect(result.memberAgreement.notComparable).toBe(1);
+  });
+
+  test("legacy per-outfall status history is optional: failed or retired, the density comparison still runs", async () => {
+    const observations = [observation("2026-11-12T10:14:00Z")];
+    for (const [options, state] of [[{ failStatus: true }, "unavailable"], [{ status: [] }, "none"]]) {
+      __resetRdpCsoStateForTests();
+      clearDataCache();
+      rdp = fakeClient({ pages: [parse(setActivityResponse([setActivityItem("A")]))], assets: [asset("A")] });
+      mockMongo({ observations, ...options });
+      const { state: sectionState, comparison } = await getCatchmentMonitoring();
+      expect(sectionState).toBe("available");
+      expect(comparison).toMatchObject({ state: "available", observations: 1, legacyStatusHistory: { state, records: 0 }, memberAgreement: null });
+      expect(comparison.rows[0]).toMatchObject({ legacy: { numberCSOsPerKm2: 0.012, numberUpstreamCSOs: 3 }, members: { listed: 2, reporting: null, spilling: null } });
+    }
   });
 
   test("a legacy history failure leaves the monitoring summary intact", async () => {

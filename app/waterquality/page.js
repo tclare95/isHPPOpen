@@ -50,6 +50,8 @@ export default function WaterQualityPage() {
   const current = summaryData?.waterQualityData ?? null;
   const counts = current?.statusSummary || {};
   const unavailable = Number(counts.offline || 0) + Number(counts.unknown || 0);
+  // RDP reported no usable CSO status at all (#68): never present the counts as zero spills.
+  const csoStatusUnavailable = current?.health?.cso?.available === false;
   const densityRows = Array.isArray(densityData) ? densityData : [];
   const levels = levelData?.level_data || [];
 
@@ -79,7 +81,9 @@ export default function WaterQualityPage() {
           </Card.Body>
         </Card>
 
-        {summaryPending ? <p>Loading current CSO status…</p> : summaryError ? <div className="alert alert-danger">Current CSO status is unavailable. Historical activity may still be shown below.</div> : (
+        {summaryPending ? <p>Loading current CSO status…</p> : summaryError ? <div className="alert alert-danger">Current CSO status is unavailable. Historical activity may still be shown below.</div> : csoStatusUnavailable ? (
+          <div className="alert alert-warning mb-4" role="status">Current CSO status is temporarily unavailable. No upstream location is shown as spilling or as clear until it can be checked again. Historical activity may still be shown below.</div>
+        ) : (
           <Row className="g-3 mb-4">
             <Col md={4}><SummaryCard value={counts.currentlySpilling ?? '—'} label="Currently spilling" detail="Upstream locations reporting an active spill." /></Col>
             <Col md={4}><SummaryCard value={counts.recentlyStopped48h ?? '—'} label="Stopped in 48 hours" detail="The latest spill has ended, but its contents may still be travelling downstream." /></Col>

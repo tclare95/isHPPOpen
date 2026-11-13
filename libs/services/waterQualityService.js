@@ -140,8 +140,8 @@ export function buildLegacyWaterQualityHealth(latest, now, options = {}) {
   return buildOperationalHealth({ source: 'mongodb-water-quality', generatedAt: latest.scrape_timestamp, fetchedAt: now, ...options });
 }
 
-// Legacy (Mongo `waterQuality` + `csoData`) snapshot. Alert evaluation and operational health call this
-// directly, so it never depends on RDP_CSO_SOURCE.
+// Legacy (Mongo `waterQuality` + `csoData`) snapshot: the `legacy` mode, shadow comparison and admin
+// diagnostics only. It never depends on RDP_CSO_SOURCE.
 export async function getLatestWaterQualitySnapshot(now = new Date()) {
   const { db } = await connectToDatabase();
   const latest = await readLatestSummary(db);
@@ -159,6 +159,15 @@ export async function getLatestWaterQualitySnapshot(now = new Date()) {
 export async function getLatestWaterQualitySummary() {
   const { db } = await connectToDatabase();
   return readLatestSummary(db);
+}
+
+// Summary identity and freshness only, with the same health as the legacy snapshot (#68 CSO retirement).
+// Alert evaluation and operational health use only these fields, so they never read `csoData` and keep
+// working in every RDP_CSO_SOURCE mode after the legacy CSO collection stops.
+export async function getLatestWaterQualitySummaryHealth(now = new Date()) {
+  const latest = await getLatestWaterQualitySummary();
+  if (!latest) return null;
+  return { Id: latest.id ?? null, ScrapeTimestamp: latest.scrape_timestamp ?? null, health: buildLegacyWaterQualityHealth(latest, now) };
 }
 
 function bucketDensityRows(rows, intervalMinutes) {
@@ -252,7 +261,7 @@ export async function getCsoDetailsById(id) {
 }
 
 // ---- RDP_CSO_SOURCE (#120): public water-quality routes only ----
-// Alert evaluation and operational health keep calling the legacy functions above directly.
+// Alert evaluation and operational health call getLatestWaterQualitySummaryHealth() in every mode.
 const CSO_SOURCE_MODES = ['legacy', 'shadow', 'rdp'];
 
 export function getCsoSourceMode(env = process.env) {

@@ -22,9 +22,9 @@ The variable is read independently of `RDP_TRENT_SOURCE`, `RDP_LEVELS_SOURCE` an
 
 Callers that are **not** switched:
 
-- `colwickAlertsService` and `/api/admin/operational-health` call `getLatestWaterQualitySnapshot()`,
-  which stays legacy-only in every mode. Alerts therefore keep exactly their current inputs (density
-  plus summary freshness).
+- `colwickAlertsService` and `/api/admin/operational-health` call `getLatestWaterQualitySummaryHealth()`
+  (summary freshness only, no `csoData` read, #68) in every mode. Alerts therefore keep exactly their current
+  inputs (density plus summary freshness).
 - `/api/waterquality/csodensity` and the homepage density tile read Mongo `waterQuality` as before.
 
 ## Code map
@@ -132,9 +132,10 @@ Other limits in this mode:
 membership summary's `scrape_timestamp`, so a stale membership shows as `stale`. It also carries
 `cso: { origin: "rdp", partial, unknown }`.
 
-If the catalogue read fails, or every status batch fails, the **whole** legacy snapshot is served instead.
-In that case health has `state: "fallback"` and `cso: { origin: "legacy", rdpError }`. Sources are never
-mixed per location.
+If the catalogue read fails, or every status batch fails, current status is reported as **unavailable**
+(superseded by [#68](RDP-CSO-RETIREMENT-68.md)): every member is `unknown` with `statusReason: "rdp_unavailable"`,
+spill/recent counts are `null`, health has `state: "unavailable"` and `cso: { origin: "rdp", available: false, rdpError }`.
+Nothing falls back to Mongo `csoData`, and sources are never mixed per location.
 
 ### Request budget and caching
 
@@ -203,7 +204,9 @@ Each step is a separate, explicit action.
    - Record `notSelectedForPolling`. Legacy members that RDP does not poll show as `no_observations`.
 3. **Enable shadow:** set `RDP_CSO_SOURCE=shadow` for **Production only** in Vercel, then redeploy. Vercel
    environment changes apply to new deployments. Public output is unchanged by construction.
-4. **Observe for at least 7 days**, including at least one wet-weather spill:
+4. **Observe for at least 48 hours, and until at least one member spill has been seen to start and stop**
+   (owner decision, 2026-11-13; replaces the original 7 days). Comparison continues after step 6, because the
+   admin report works in every mode while legacy collection still runs:
    - search the runtime logs for `RDP CSO shadow comparison`;
    - capture the admin report at least daily and during spills.
 
@@ -213,8 +216,13 @@ Each step is a separate, explicit action.
    - `unknown` reasons;
    - read failures (403, 429, 503, timeouts);
    - coverage gaps.
-5. **Parity review:** write up the evidence in #120. For every mismatch, explain which source was right.
-   Then get explicit approval before step 6.
+5. **Parity review:** write up the evidence in #120, then get explicit approval before step 6. The bar is
+   whether RDP tells the same story, not exact timestamp agreement:
+   - spilling vs not spilling agrees, apart from mismatches with a plausible explanation (for example
+     source lag around a transition or a legacy poll that missed a short spill);
+   - the same spills appear in both, with broadly consistent start and end times. Differences of a poll or
+     two are expected and are not blockers;
+   - no `identity_missing` or `identity_ambiguous` members, and no sustained read failures (403s, timeouts).
 6. **(Gated, not authorised by this PR)** Set `RDP_CSO_SOURCE=rdp` and redeploy. Check `/api/waterquality`:
    - `health.source` is `river-data-platform-cso` and `health.cso.origin` is `rdp`;
    - counts and markers match the latest admin report.

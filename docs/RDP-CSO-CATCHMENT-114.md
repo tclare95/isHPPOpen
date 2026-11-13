@@ -122,7 +122,7 @@ RDP window. RDP's evidence is evaluated at that same instant:
 | --- | --- | --- |
 | Existing density | legacy `number_CSOs_per_km2` | the value the chart, thresholds and alerts use, unchanged |
 | Existing upstream count | legacy `number_upstream_CSOs` | Sewage Map occupied D8 cells |
-| Existing list: spilling / reporting | legacy `CSO_IDs` at that observation × `csoData` `Status` scraped ≤ 30 min before (≤ 5 min after) | like-for-like member check |
+| Existing list: spilling / reporting | legacy `CSO_IDs` at that observation × `csoData` `Status` scraped ≤ 30 min before (≤ 5 min after) | like-for-like member check; optional (#68): `—` with `legacyStatusHistory.state` `none`/`unavailable` once legacy collection stops, while density rows remain |
 | RDP outfalls collected | outfalls whose RDP coverage spans the instant (no gap, within 45 min of the last poll) | "Not collected" before RDP collection began |
 | RDP spilling outfalls | lower: ongoing or provider-reported interval contains the instant; upper: also events whose end was never reported, up to `endNoLaterThan` | shown `lower–upper` when they differ |
 | RDP spilling locations | distinct locations of the lower set | not occupied cells |

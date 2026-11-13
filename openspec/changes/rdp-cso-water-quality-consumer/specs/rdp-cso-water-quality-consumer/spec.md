@@ -33,5 +33,13 @@
 - **WHEN** membership/density or alerts are proposed for cutover **THEN** require separate approvals and compare history, thresholds, existing subscription state, rearm and delivery idempotency.
 - **WHEN** retiring Node/SQS/Mongo writes **THEN** confirm remaining consumers, history/retention and exactly one authoritative writer for each persisted output; disable the mixed-duty Node schedule last.
 
+### R7. RDP as the normal current-status source and legacy CSO collection retirement (#68)
+- **WHEN** RDP is the selected current CSO source **THEN** the public water-quality status, counts, markers and per-outfall details are built from RDP evidence over the existing HPP membership, keep their existing shapes and source timestamps, and do not read the legacy per-outfall status snapshots.
+- **WHEN** RDP is the selected source and no usable status can be read **THEN** the public result says current status is unavailable: no location is presented as spilling, recently stopped or clear, spill/recent counts are not reported as zero, and nothing falls back to a legacy snapshot that may no longer be updated.
+- **WHEN** the legacy per-outfall status history is missing, empty or unreadable **THEN** optional comparisons that use it still present the remaining evidence and report the per-outfall comparison as unavailable; its absence is never a reason to keep legacy provider polling.
+- **WHEN** water-quality alerts and operational health are evaluated **THEN** they use only the density and membership-summary freshness they already depend on, in every source mode, so retiring legacy CSO collection does not change their outcomes.
+- **WHEN** the legacy CSO collection is retired **THEN** the legacy application makes no direct provider CSO status requests, writes no new per-outfall status records, and keeps existing records and archives; the mixed-duty Node schedule and its other outputs continue.
+- **WHEN** a retirement step is rolled back **THEN** the previous source can be restored without replaying historical events or sending duplicate notifications.
+
 ## Non-goals
 No new dashboard/map, platform risk engine, invented upstream matching, automatic polling selection, replacement 48h formula by convenience, publication of anonymous RDP reads, implementation or production changes from this spec.

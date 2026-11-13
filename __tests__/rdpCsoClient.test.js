@@ -7,6 +7,7 @@ import { RIVER_MAX_BYTES } from "../libs/rdp/river";
 import {
   ST, CURSOR, asset, catalogue, status, statusResponse, event, eventsResponse, healthResponse, setActivityItem, setActivityResponse,
 } from "../testUtils/rdpCsoFixtures";
+import { relationshipSet, svt } from "../testUtils/rdpRelationshipFixtures";
 
 jest.mock("server-only", () => ({}));
 jest.mock("@vercel/oidc", () => ({ getVercelOidcToken: jest.fn() }));
@@ -217,5 +218,38 @@ describe("set activity (ADR-002 D3)", () => {
     global.fetch.mockResolvedValue(json({ error: { code: "SET_NOT_FOUND", message: "x" }, requestId: "r" }, 404));
     await expect(createRdpClient(preview).getCsoSetActivity("hpp-catchment")).rejects.toMatchObject({ code: "SET_NOT_FOUND", status: 404 });
     expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("published upstream-outfall relationship set (#114, ADR-002 D5)", () => {
+  test("signs one bounded GET and returns the validated compact set", async () => {
+    global.fetch.mockResolvedValue(json(relationshipSet({ confirmed: svt(2), candidate: svt(1, 10) })));
+    const set = await createRdpClient(preview).getRiverRelationships("hpp-upstream-outfalls");
+    expect(requested().pathname).toBe("/staging/v1/river/relationships/hpp-upstream-outfalls");
+    expect([...requested().searchParams]).toEqual([]);
+    expect(global.fetch.mock.calls[0][1].headers.authorization).toMatch(/^AWS4-HMAC-SHA256 /);
+    expect(set).toMatchObject({ setId: "hpp-upstream-outfalls", review: { approval: "approved" }, scopes: { confirmed: { count: 2 }, network: { count: 3 } } });
+    expect(set.members).toHaveLength(3);
+  });
+
+  test.each([["../cso/outfalls"], ["Bad Set"], [""]])("rejects set %j before any request", (name) => {
+    expect(() => createRdpClient(preview).getRiverRelationships(name)).toThrow("INVALID_QUERY");
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  test.each([["RELATIONSHIPS_NOT_PUBLISHED"], ["SET_NOT_FOUND"]])("maps %s (404) without retrying", async (code) => {
+    global.fetch.mockResolvedValue(json({ error: { code, message: "x" }, requestId: "r" }, 404));
+    await expect(createRdpClient(preview).getRiverRelationships("hpp-upstream-outfalls")).rejects.toMatchObject({ code, status: 404 });
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  test("a set that is not the one requested is a contract error", async () => {
+    global.fetch.mockResolvedValue(json(relationshipSet({ setId: "dove-egginton" })));
+    await expect(createRdpClient(preview).getRiverRelationships("hpp-upstream-outfalls")).rejects.toMatchObject({ code: "RESPONSE_CONTRACT_ERROR" });
+  });
+
+  test("a body over the River size bound is refused", async () => {
+    global.fetch.mockResolvedValue(new Response("x".repeat(RIVER_MAX_BYTES + 1), { status: 200 }));
+    await expect(createRdpClient(preview).getRiverRelationships("hpp-upstream-outfalls")).rejects.toMatchObject({ code: "RESULT_TOO_LARGE" });
   });
 });

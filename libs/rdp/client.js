@@ -7,6 +7,7 @@ import { setTimeout as delay } from "node:timers/promises";
 import { getRdpConfig } from "./config.js";
 import { getCanonicalMeasurement } from "./measurements.js";
 import { RdpError } from "./errors.js";
+import { assertRelationshipSetId, parseRelationshipSet } from "./relationshipContract.js";
 import { parseRiverLocation, parseRiverTrace, riverCoordinates, riverSamplePath, readRiverJson } from "./river.js";
 import {
   assertCsoAssetId, assertCsoCursor, assertCsoEventId, assertCsoSetName, isCsoTimestamp, parseCsoCatalogue, parseCsoEvent, parseCsoEvents,
@@ -20,6 +21,7 @@ const API_CODES = new Set([
   "VALIDATION_ERROR", "MEASUREMENT_NOT_FOUND", "INVALID_CURSOR", "CURSOR_EXPIRED",
   "CURSOR_STALE", "ARCHIVE_INTEGRITY", "STORAGE_UNAVAILABLE", "QUERY_TIMEOUT", "FORBIDDEN", "NOT_FOUND",
   "RESULT_TOO_LARGE", "RELEASE_NOT_AVAILABLE", "DATA_INTEGRITY", "ASSET_NOT_FOUND", "EVENT_NOT_FOUND", "SET_NOT_FOUND",
+  "RELATIONSHIPS_NOT_PUBLISHED",
 ]);
 const RETRY_CODES = new Set(["THROTTLED", "UPSTREAM_ERROR", "STORAGE_UNAVAILABLE", "QUERY_TIMEOUT", "NETWORK_ERROR"]);
 
@@ -182,6 +184,11 @@ export function createRdpClient(env = process.env) {
     getCsoHealth(id) {
       assertCsoAssetId(id);
       return request(`/v1/cso/outfalls/${id}/health`, {}, (body) => parseCsoHealth(body, id), true);
+    },
+    // A published, RDP-verified upstream-outfall relationship set (ADR-002 D5). Bounded body; strict validation.
+    getRiverRelationships(set) {
+      assertRelationshipSetId(set);
+      return request(`/v1/river/relationships/${set}`, {}, (body) => parseRelationshipSet(body, set), true);
     },
     locateRiver(point) {
       return request("/v1/river/locate", riverCoordinates(point), parseRiverLocation, true);

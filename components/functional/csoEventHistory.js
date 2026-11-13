@@ -5,6 +5,7 @@ import ButtonGroup from 'react-bootstrap/ButtonGroup';
 import Form from 'react-bootstrap/Form';
 import PropTypes from 'prop-types';
 import useFetch from '../../libs/useFetch';
+import { membershipText } from '../../libs/csoMembershipText';
 
 // Recorded upstream spills from RDP's canonical event history (#121). Purely descriptive: it never changes
 // the indicator, density chart or alerts, and an empty list is only described as far as coverage allows.
@@ -157,8 +158,18 @@ export function evidenceMessages(history) {
   }
   if (counts.failed > 0) messages.push({ tone: 'warning', text: `History could not be loaded for ${counts.failed} outfall${counts.failed === 1 ? '' : 's'}; their events are missing from this list.` });
   if (evidence.truncated) messages.push({ tone: 'warning', text: 'Some outfalls had more events than can be shown here; the oldest events in this period are missing.' });
-  const unmonitored = counts.notMonitored + counts.unmapped + counts.notRead;
+  // Not read is not the same as not monitored: those outfalls may have events that this list does not include.
+  if (counts.notRead > 0) {
+    const policy = history.readPolicy;
+    messages.push({ tone: 'warning', text: policy?.limit
+      ? `History for this period was read for ${counts.members - counts.notRead} of ${counts.members} upstream outfalls${policy.prioritisedBy === 'events_last_7d' ? ', those with spills in the last 7 days first' : ''}. The other ${counts.notRead} were not read, so any events they had are missing from this list.`
+      : `History was not read for ${counts.notRead} upstream outfall${counts.notRead === 1 ? '' : 's'}; any events they had are missing from this list.` });
+  }
+  const unmonitored = counts.notMonitored + counts.unmapped;
   if (unmonitored > 0) messages.push({ tone: 'secondary', text: `${counts.read} of ${counts.members} upstream outfalls have event history; the other ${unmonitored} ${unmonitored === 1 ? 'is' : 'are'} not monitored for events yet.` });
+  if (history.eventTotals?.truncated) {
+    messages.push({ tone: 'secondary', text: `Showing the newest ${history.eventTotals.returned} of ${history.eventTotals.total} recorded events. Choose an outfall to see all of its events.` });
+  }
   return messages;
 }
 
@@ -169,12 +180,18 @@ export default function CsoEventHistory({ selectedOutfallId = '', onSelectOutfal
   const { data, error, isPending } = useFetch(`/api/waterquality/cso/events?window=${windowKey}`, FETCH_OPTIONS);
   const outfalls = useMemo(() => new Map((data?.outfalls ?? []).map((outfall) => [outfall.id, outfall])), [data]);
   const readable = useMemo(() => (data?.outfalls ?? []).filter((outfall) => outfall.state === 'read'), [data]);
+  const filter = outfalls.get(selectedOutfallId)?.state === 'read' ? selectedOutfallId : '';
+  // One outfall's events are read server-side, so the newest-events cap never hides them (#114 larger membership).
+  const { data: filteredData } = useFetch(filter ? `/api/waterquality/cso/events?window=${windowKey}&outfall=${encodeURIComponent(filter)}` : null, FETCH_OPTIONS);
+  // A large membership lists only outfalls with events (plus the selected one); the rest are summarised in the messages.
+  const options = useMemo(() => readable.filter((outfall) => !Number.isFinite(outfall.eventCount) || outfall.eventCount > 0 || outfall.id === filter),
+    [readable, filter]);
 
   if (data && data.enabled === false) return null;
 
-  const filter = outfalls.get(selectedOutfallId)?.state === 'read' ? selectedOutfallId : '';
-  const events = (data?.events ?? []).filter((event) => !filter || event.outfallId === filter);
+  const events = ((filter ? filteredData?.events : null) ?? data?.events ?? []).filter((event) => !filter || event.outfallId === filter);
   const available = data?.state === 'available';
+  const membershipNote = membershipText(data?.membership);
 
   return (
     <section className="water-quality-panel mb-4" aria-labelledby="cso-history-heading" id="cso-history">
@@ -187,12 +204,12 @@ export default function CsoEventHistory({ selectedOutfallId = '', onSelectOutfal
               onClick={() => { setWindowKey(option.key); setOpenEventId(null); }}>{option.label}</Button>
           ))}
         </ButtonGroup>
-        {readable.length > 1 ? (
+        {readable.length > 1 && options.length ? (
           <Form.Group controlId={filterId} className="cso-history-filter">
             <Form.Label className="small mb-1">Outfall</Form.Label>
             <Form.Select size="sm" value={filter} onChange={(e) => onSelectOutfall?.(e.target.value)}>
               <option value="">All monitored outfalls</option>
-              {readable.map((outfall) => <option key={outfall.id} value={outfall.id}>{outfallName(outfall, outfall.id)}</option>)}
+              {options.map((outfall) => <option key={outfall.id} value={outfall.id}>{outfallName(outfall, outfall.id)}{Number.isFinite(outfall.eventCount) ? ` (${outfall.eventCount})` : ''}</option>)}
             </Form.Select>
           </Form.Group>
         ) : null}
@@ -204,7 +221,7 @@ export default function CsoEventHistory({ selectedOutfallId = '', onSelectOutfal
       {available ? (
         <>
           <div role="status" aria-live="polite">
-            {evidenceMessages(data).map((message) => <div key={message.text} className={`alert alert-${message.tone} py-2 mb-2`}>{message.text}</div>)}
+            {evidenceMessages(filter && filteredData?.state === 'available' ? filteredData : data).map((message) => <div key={message.text} className={`alert alert-${message.tone} py-2 mb-2`}>{message.text}</div>)}
           </div>
           {filter && !events.length && data.events.length ? <p>No reported events for this outfall in the available data.</p> : null}
           {events.length ? (
@@ -236,6 +253,7 @@ export default function CsoEventHistory({ selectedOutfallId = '', onSelectOutfal
             Source: {data.sources?.length ? data.sources.map((source) => source.attribution || source.providerLabel).join('; ') : 'water company storm overflow reports'}, collected by River Data Platform about every 15 minutes.
             {' '}Times are as reported by the provider; an end time is never estimated. Earlier versions of an event stay in its revision history.
           </p>
+          {membershipNote ? <p className="small water-quality-muted mt-1 mb-0">{membershipNote}</p> : null}
         </>
       ) : null}
     </section>

@@ -14,6 +14,7 @@
     "test:coverage": "jest --coverage",
     "lint": "eslint .",
     "rdp:preview-smoke": "node --conditions=react-server scripts/rdp-preview-smoke.mjs",
+    "rdp:shadow-review": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/rdp-shadow-review.mjs",
     "db:indexes:water-quality": "node scripts/create-water-quality-indexes.mjs",
     "db:indexes:alerts": "node scripts/create-alert-indexes.mjs",
     "calibrate:water-quality": "node scripts/calibrate-water-quality.mjs",

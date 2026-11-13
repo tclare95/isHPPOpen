@@ -6,7 +6,7 @@ import { RDP_MEASUREMENTS } from "../libs/rdp/measurements";
 import { compareTrentSeries } from "../libs/rdp/trentParity";
 import { readTrentHistory, validateLegacySeries } from "../libs/rdp/trentSeries";
 import { __resetRdpTrentStateForTests, RDP_TRENT_READ_DEADLINE_MS } from "../libs/rdp/trentSource";
-import { buildOperationalHealth } from "../libs/operationalHealth";
+import { buildOperationalHealth, getDisplayedHealthState } from "../libs/operationalHealth";
 import {
   __resetTrentWeirsSnapshotCacheForTests,
   getLegacyTrentWeirsSnapshot,
@@ -250,6 +250,19 @@ describe("rdp display mode", () => {
     expect(snapshot.health.state).toBe("fallback");
   });
 
+  // Production 2026-11-12 23:52Z: Shardlow flow's newest EA reading was 38 min old, its peers 23 min.
+  test("an EA-lagging series makes the whole snapshot stale, never fresh, without a fallback flag", async () => {
+    const lag = 38 * 60 * 1000;
+    rdpBehaviour["4007-flow"] = rdpRows("4007-flow", { ageMs: lag });
+    legacyBehaviour["4007-flow"] = legacyItems("4007-flow", { ageMs: lag });
+
+    const snapshot = await getTrentWeirsSnapshot();
+
+    expect(seriesOf(snapshot)["4007-flow"]).toMatchObject({ origin: "rdp", state: "stale", ageSeconds: 2280 });
+    expect(seriesOf(snapshot)["4009-level"]).toMatchObject({ origin: "rdp", state: "fresh" });
+    expect(snapshot).toMatchObject({ fallback: false, partial: false, health: { state: "stale", ageSeconds: 2280 } });
+  });
+
   test("throws when no series is available so the route serves its empty unavailable payload", async () => {
     KEYS.forEach((key) => { rdpBehaviour[key] = new RdpError("NETWORK_ERROR"); legacyBehaviour[key] = "fail"; });
     await expect(getTrentWeirsSnapshot()).rejects.toMatchObject({ statusCode: 502 });
@@ -285,6 +298,19 @@ describe("shadow mode", () => {
     expect(loggedJson(logs.log, "RDP Trent shadow comparison ").series.every((entry) => entry.status === "rdp_error" && entry.rdpError === "ARCHIVE_INTEGRITY")).toBe(true);
   });
 
+  test("partial RDP publication is classified per series and never changes the legacy result", async () => {
+    ["4126-level", "4067-level", "4074-level"].forEach((key) => { rdpBehaviour[key] = []; });
+    rdpBehaviour["4007-flow"] = rdpRows("4007-flow", { count: 671, ageMs: STEP }).map((row, index, rows) => ({ ...row, value: valueAt("4007-flow", rows.length - index) }));
+
+    const snapshot = await getTrentWeirsSnapshot();
+
+    expect(snapshot.health).toMatchObject({ source: "environment-agency-trent", state: "fresh" });
+    const byKey = Object.fromEntries(loggedJson(logs.log, "RDP Trent shadow comparison ").series.map((entry) => [entry.key, entry]));
+    ["4126-level", "4067-level", "4074-level"].forEach((key) => expect(byKey[key]).toMatchObject({ status: "rdp_error", rdpError: "NO_OBSERVATIONS" }));
+    expect(byKey["4007-flow"]).toMatchObject({ status: "lag", matched: 671, valueMismatches: 0, latestLagSeconds: 900 });
+    expect(byKey["4009-level"]).toMatchObject({ status: "match" });
+  });
+
   test("a legacy failure still fails exactly as legacy does", async () => {
     KEYS.forEach((key) => { legacyBehaviour[key] = "fail"; });
     await expect(getTrentWeirsSnapshot()).rejects.toMatchObject({ statusCode: 502 });
@@ -316,6 +342,28 @@ describe("compareTrentSeries", () => {
     rdp[3] = { ...rdp[3], value: 1.192 };
     const report = compareTrentSeries({ key: "4009-level", measureType: "level", legacyReadings: legacyOf("4009-level"), rdpReadings: rdp, now });
     expect(report).toMatchObject({ status: "value_mismatch", valueMismatches: 1, mismatchSamples: [{ dateTime: "2026-10-24T09:15:00.000Z", legacy: 1.191, rdp: 1.192 }] });
+  });
+
+  test("repeated instants are counted and classified instead of surfacing as lag", () => {
+    const legacy = legacyOf("4009-level");
+    // The scraper keeps both spellings of one instant when merging its S3 baseline by string.
+    const doubled = [...legacy.slice(0, 3).map((reading) => ({ ...reading, dateTime: reading.dateTime.replace(":00Z", "Z") })), ...legacy]
+      .sort((a, b) => Date.parse(b.dateTime) - Date.parse(a.dateTime)).slice(0, 672);
+    const report = compareTrentSeries({ key: "4009-level", measureType: "level", legacyReadings: doubled, rdpReadings: rdpOf("4009-level", { count: 672 }), now });
+    expect(report).toMatchObject({ status: "duplicate_instants", legacyDuplicates: 3, rdpDuplicates: 0, matched: 669, valueMismatches: 0, missingInRdp: 0, latestLagSeconds: 0 });
+  });
+
+  test("a rate-only difference is not reported as lag when the newest observations agree", () => {
+    const rdp = rdpOf("4009-level", { count: 672 });
+    const legacy = legacyOf("4009-level").filter((_, index) => index !== 96 && index !== 97);
+    const report = compareTrentSeries({ key: "4009-level", measureType: "level", legacyReadings: legacy, rdpReadings: rdp.slice(0, 96), now });
+    expect(report).toMatchObject({ latestLagSeconds: 0, valueMismatches: 0, missingInRdp: 0, missingInLegacy: 0 });
+    expect(report.status).toBe("rate_mismatch");
+  });
+
+  test("gap samples name the missing observed instants", () => {
+    const report = compareTrentSeries({ key: "4009-level", measureType: "level", legacyReadings: legacyOf("4009-level"), rdpReadings: rdpOf("4009-level", { count: 672, skip: [4] }), now });
+    expect(report).toMatchObject({ status: "gaps", missingInRdp: 1, gapSamples: { missingInRdp: ["2026-10-24T09:00:00.000Z"], missingInLegacy: [] } });
   });
 
   test("missing sides and errors are classified", () => {
@@ -351,6 +399,16 @@ describe("operational health precedence", () => {
     expect(buildOperationalHealth({ source: "s", generatedAt: new Date(NOW - 31 * 60000), fetchedAt, fallback: true }).state).toBe("stale");
     expect(buildOperationalHealth({ source: "s", generatedAt: new Date(NOW - 10 * 60000), fetchedAt, fallback: true }).state).toBe("fallback");
     expect(buildOperationalHealth({ source: "s", unavailable: true, fallback: true }).state).toBe("unavailable");
+  });
+
+  test("display-time state never shows an observation older than 30 minutes as fresh or fallback", () => {
+    const at = (minutes) => new Date(NOW - minutes * 60000).toISOString();
+    expect(getDisplayedHealthState({ state: "fresh", generatedAt: at(29) }, NOW)).toBe("fresh");
+    expect(getDisplayedHealthState({ state: "fresh", generatedAt: at(31) }, NOW)).toBe("stale");
+    expect(getDisplayedHealthState({ state: "fallback", generatedAt: at(31) }, NOW)).toBe("stale");
+    expect(getDisplayedHealthState({ state: "unavailable", generatedAt: null }, NOW)).toBe("unavailable");
+    expect(getDisplayedHealthState({ state: "fresh", generatedAt: null }, NOW)).toBe("fresh");
+    expect(getDisplayedHealthState(null, NOW)).toBeNull();
   });
 
   test("legacy saved snapshot re-evaluates its health instead of keeping a fresh state", async () => {

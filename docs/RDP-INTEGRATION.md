@@ -59,7 +59,7 @@ Existing adapter work permits `legacy`, `shadow` and `rdp` modes, chosen **indep
 | RDP transport / authentication | [#51-A](RDP-CLIENT-51A.md) | First-party reads and credentials remain server-side, errors sanitized, separate stage/production caller identity. |
 | Historical conditions exploration | [historical conditions](HISTORICAL_RIVER_CONDITIONS.md) | UI and derived statistics are isHPPOpen features; history and provenance originate in the canonical source. |
 
-`legacy` leaves the consumer on the prior feed. `shadow` compares RDP without making it authoritative. `rdp` selects the RDP path subject to each adapter's verified acceptance/failure rules. **Actual deployed values, acceptance evidence and release state must be checked separately**; implementation and merged documentation do not imply a production cutover. Source modes may differ across displays and alerts.
+`legacy` leaves the consumer on the prior feed. `shadow` compares RDP without making it authoritative. `rdp` selects the RDP path subject to each adapter's verified acceptance/failure rules. **Actual deployed values, acceptance evidence and release state must be checked separately**; implementation and merged documentation do not imply a production cutover. Source modes may differ across displays and alerts. Observed Production modes, parity evidence and the display release/rollback record: [RDP-DISPLAY-ACTIVATION-51.md](RDP-DISPLAY-ACTIVATION-51.md).
 
 The existing [#51 consumer OpenSpec](../openspec/changes/unify-gauge-consumers/proposal.md) and [legacy retirement map](LEGACY_SCRAPER_RETIREMENT.md) govern source migrations and remaining scraper duties.
 

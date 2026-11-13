@@ -94,12 +94,18 @@ tolerance. It reports these separately:
 
 - `matched`, `valueMismatches` and up to 3 `mismatchSamples`
 - `missingInRdp` and `missingInLegacy`, counted only inside the overlapping window
-  so that window-edge differences are not counted as gaps
+  so that window-edge differences are not counted as gaps, with up to 3 `gapSamples` each
+- `legacyDuplicates` and `rdpDuplicates`: readings whose observed instant already appeared
+  (for example the scraper keeping both `…T17:30Z` and `…T17:30:00Z`)
 - `latestLagSeconds`, where a positive value means RDP is behind
 - freshness on each side, the `rdpError` code, and legacy versus RDP 1h/1d rates
 
 Status precedence is `rdp_error|rdp_missing|legacy_missing` → `value_mismatch`
-→ `no_overlap` → `gaps` → `lag` → `match`. Fetch-time differences are never
+→ `duplicate_instants` → `no_overlap` → `gaps` → `lag` (newest observations differ)
+→ `rate_mismatch` (rates differ although everything else agrees) → `match`.
+Before #51 activation review, `lag` also covered rate-only differences, so a
+duplicate-instant legacy series appeared as `lag` with `latestLagSeconds: 0`.
+Reviews use `npm run rdp:shadow-review` ([activation record](RDP-DISPLAY-ACTIVATION-51.md)). Fetch-time differences are never
 conflicts. The RDP side cannot reject, and a comparison failure logs a fixed line.
 A legacy failure is rethrown exactly as in legacy mode.
 

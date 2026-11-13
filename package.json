@@ -19,7 +19,8 @@
     "db:indexes:alerts": "node scripts/create-alert-indexes.mjs",
     "calibrate:water-quality": "node scripts/calibrate-water-quality.mjs",
     "history:fixtures": "node scripts/fetch-history-fixtures.mjs",
-    "hpp:shadow-report": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/hpp-shadow-report.mjs"
+    "hpp:shadow-report": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/hpp-shadow-report.mjs",
+    "hpp:writer": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/hpp-writer.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-sts": "3.1156.0",

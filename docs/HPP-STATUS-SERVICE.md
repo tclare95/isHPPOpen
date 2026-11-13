@@ -1,4 +1,4 @@
-# HPP status service (#89), shadow mode
+# HPP status service (#89): shadow and gated authoritative writer
 
 The HPP status service turns verified RDP Colwick observations into HPP
 open/closed state and transitions. It runs **inside the isHPPOpen Vercel app**,
@@ -6,13 +6,19 @@ so isHPPOpen remains the single "app": rules, state, history, public status
 and alerts are all in one place. RDP stays the canonical observation source
 and holds no HPP logic.
 
-**Status:** shadow scheduling is implemented. The cron
-`/api/internal/hpp/run` (at 7, 22, 37 and 52 minutes past each hour,
-`CRON_SECRET`) runs one evaluation when `HPP_STATUS_SOURCE=shadow` and
-`VERCEL_ENV=production`. It is a no-op otherwise, and `legacy` is the default.
-Evidence is at the authenticated `/api/admin/hpp-shadow`. The legacy scraper
-is still the only `openIndicator` writer, and `/api/hppstatus` and HPP alerts
-still read `openIndicator`. There is no authoritative mode.
+**Status:** shadow runs in Production. The cron `/api/internal/hpp/run`
+(at 7, 22, 37 and 52 minutes past each hour, `CRON_SECRET`) evaluates once
+when `HPP_STATUS_SOURCE` is `shadow` or `authoritative` and
+`VERCEL_ENV=production`. It does nothing otherwise, and `legacy` is the
+default. An authoritative writer is implemented but **inactive**. It writes
+`openIndicator` only when **both** of these hold:
+
+- `HPP_STATUS_SOURCE=authoritative`
+- the writer control document names the app, after an operator handover
+
+Today there is no control document, so the legacy scraper is the only
+`openIndicator` writer. `/api/hppstatus` and HPP alerts read `openIndicator`
+in every mode. Evidence is at the authenticated `/api/admin/hpp-shadow`.
 
 ## Production shadow evidence (reviewed 13 November 2026)
 
@@ -136,71 +142,152 @@ How the scheduling slice handles these constraints:
    60 seconds stays below the 5-minute lease. The report has its own admin
    route, so the operational-health contract is unchanged.
 
-## Proposed single-writer cutover acceptance criteria
+## Single-writer control (implemented, inactive)
 
-All of these must hold before an authoritative writer is enabled:
+| Piece | Role |
+| --- | --- |
+| `hppWriterControl.js` | Pure ownership rules: `appWriterStatus`, `legacyMayWrite`, fences. |
+| `hppHandover.js` | Pure handover plans: reconcile and reseed for `to-app`, and the reverse `to-legacy`. |
+| `hppAuthoritativeStore.js` | State in `hppStatusState`; transitions as `openIndicator` records; CAS `applyHandover`. |
+| `hppAuthoritativeService.js` | The shadow run, unchanged, plus a writer guard. |
+| `scripts/hpp-writer.mjs` | `npm run hpp:writer -- status`, `to-app --expect-latest <id> [--apply]`, `to-legacy [--apply]`. |
 
-1. **Shadow evidence.** At least 48 hours of eligible production shadow runs
-   (shortened from 14 days by the owner on 13 November 2026),
-   including at least one real crossing in each direction or an explicitly
-   recorded waiver. Over that period:
-   - `continuity.contiguous` is true
-   - every gap is explained
-   - no `orphaned_transition` or `sequence_conflict` hold is unresolved
-   - `comparison.currentStatus` agrees except within 30 minutes of a crossing
-   - every legacy transition pairs with one shadow transition within 30 minutes,
-     with no unpaired transitions on either side
-   - closure-day counts are within ±1 day, or each difference is explained
-2. **Zero authoritative side effects in shadow.** The `openIndicator` document
+- **One owner.** `hppWriterControl/openIndicator` holds `{ owner, epoch,
+  switchedAt, previousOwner, reconciled, legacyAck, history }`. If the
+  document is absent, legacy owns `openIndicator`, as before #89. The
+  scraper writes only while `legacyMayWrite` is true. The app writes only
+  while `appWriterStatus` allows it. Moving ownership needs `--apply` on the
+  CLI; deploys and environment variables never move it.
+- **Proof the old writer stopped.** Every scraper run acknowledges the
+  current epoch: `legacyAck { epoch, observedOwner, runStartedAt, wrote }`.
+  The app writes only once all of these are true:
+  - a scraper run that **started after** the switch saw `owner: app`
+  - that run wrote nothing
+  - `LEGACY_FENCE_MS` (5 minutes, longer than the scraper's 120-second
+    Lambda timeout) has passed
+
+  Until then the run holds as `writer_awaiting_legacy_stop`,
+  `writer_legacy_still_writing` or `writer_fence`.
+- **Reverse fence.** After `to-legacy`, the scraper resumes only
+  `APP_FENCE_MS` (5 minutes) after the switch. That is longer than the app
+  route's 60-second `maxDuration`. The app's guard also checks ownership
+  again immediately before inserting, so a run that loses ownership while it
+  reads RDP writes nothing.
+- **Second-writer detection.** Before deciding and before inserting, the
+  newest valid `openIndicator` record must be one the app expects: its seed,
+  its last transition, or a pending `sequence + 1`. Any other record means
+  another writer, and the run holds as `writer_foreign_write`. It also holds
+  as `writer_epoch_mismatch` when the state was seeded for another epoch.
+- **Records.** Each transition becomes `openIndicator`
+  `{ _id: "<ruleId>#<sequence>", timestamp: <observedAt Date>, value,
+  observedAt, evaluatedAt, level, ruleId, source, sequence, provenance:
+  "hpp-status-service" }`. A retried, overlapping or repeated insert collides
+  on the default `_id` index. An interrupted run's record is adopted on
+  retry. A lost acknowledgement counts as recorded. Readers use only
+  `timestamp`/`value`. The scraper reads the newest record's `value`, so it
+  stays compatible after a rollback.
+- **Reconciled seed.** `to-app` refuses (exit 2), and writes nothing, unless
+  all of these hold:
+  - the newest valid record is the `--expect-latest` id the operator read
+    from `status`
+  - shadow is not holding
+  - shadow evaluated within the last 45 minutes
+  - shadow agrees with that record's `value`
+
+  It then seeds `hppStatusState` from that record, keeping its timestamp as
+  the basis. It continues the sequence from any earlier activation, so ids
+  never repeat.
+- **Stale or missing evidence** holds the last-known status, exactly as in
+  shadow. No crossing is synthesised across a gap.
+- **`/api/hppstatus`, closure windows and alerts are unchanged.** They read
+  `openIndicator` through `getHppStatusSnapshot()`. The HPP alert evaluator
+  fires on `currentStatus` changes in that snapshot. The service sends no
+  email itself.
+- **Mode fallback.** With `authoritative` set but legacy still the owner,
+  the cron runs the shadow evaluation (`writer: legacy`). If the control
+  names the app but the mode is not `authoritative`, nobody writes. The
+  run summary then carries
+  `warning: control_names_app_but_mode_is_not_authoritative`. Always roll
+  back with `to-legacy`, never by changing the mode alone.
+
+## Cutover acceptance criteria
+
+All of these must hold before `to-app --apply`:
+
+1. **Shadow evidence.** `acceptance.ready` is true, or every blocking check
+   is explained on #89:
+   - at least 48 hours since `firstEligibleAt` (owner decision, 13 November
+     2026; previously 14 days)
+   - at least one real crossing in each direction, or a waiver recorded on
+     #89
+   - contiguous transitions
+   - every gap explained
+   - no unresolved `orphaned_transition` or `sequence_conflict`
+   - `currentStatus` agrees
+   - every legacy change paired
+   - closure days within ±1
+   - cadence at least 95%
+   - source age reviewed
+2. **Zero authoritative side effects in shadow.** The `openIndicator`
    count and latest record change only with legacy scraper writes. There are
-   no service-originated changes to alert subscription, progress or delivery
-   records, and no emails.
-3. **Source.** The `lastObservationAgeMs` distribution is reviewed against the
-   30-minute policy.
-4. **Writer change reviewed.** A separate PR adds an authoritative mode. It
-   writes `toOpenIndicatorRecord()` with `_id = transitionId`, so a retried
-   insert collides, keeps `{timestamp, value}` and adds only provenance fields.
-   It is selectable only by explicit environment configuration. The shadow
-   collections stay as an audit trail.
-5. **Ordered switch, one writer at every step:**
-   1. Disable the scraper's `updateOpenIndicator` call through the scraper's
-      release workflow. Confirm one scheduled run logs no `openIndicator`
-      insert.
-   2. Reconcile. The latest `openIndicator` record L must equal the service's
-      state. If not, stop. Seed authoritative state from L, keeping L's
-      timestamp.
-   3. Set the authoritative mode in Production and redeploy. Record the
-      deployment id and the previous deployment for rollback.
-   4. On the first runs, no record unless there is a real crossing.
-      `/api/hppstatus` keeps its shape and values. HPP alerts fire only on real
-      crossings; a few duplicate emails at the switch are an accepted risk.
-6. **Exactly one writer afterwards.** Scraper logs show no `openIndicator`
-   writes, and only the app's authoritative mode writes it.
+   no service-originated alert or email changes.
+3. **Scraper control-aware.** The scraper release that reads
+   `hppWriterControl` and writes `legacyAck` is deployed and verified. With
+   no control document present, it behaves exactly as before.
+4. **Cutover decision recorded on #89**, naming the operator and the
+   accepted duplicate-email risk.
 
-## Proposed rollback acceptance criteria
+## Cutover procedure (one writer at every step)
+
+1. Set `HPP_STATUS_SOURCE=authoritative` for Production and redeploy.
+   Record the deployment id and the previous one. Nothing changes:
+   ownership is still legacy, so the cron keeps running shadow
+   (`writer: legacy`).
+2. `npm run hpp:writer -- status`. Note `latestOpenIndicator.id`, and check
+   that `shadow` is fresh, not holding and agrees.
+3. `npm run hpp:writer -- to-app --expect-latest <id>`. This is a dry run:
+   review the plan. Then run it again with `--apply`. From this point nobody
+   writes until the scraper acknowledges, which takes at most one scraper
+   interval.
+4. Confirm the next scraper run logs that it skipped the write. `status`
+   then shows `legacyAck.epoch` equal to `control.epoch` with
+   `wrote: false`. After the 5-minute fence, `appWriter.allowed` is true.
+5. On the next app runs, the summary shows `authoritative: true` and
+   `action: none` unless there is a real crossing. `/api/hppstatus` keeps
+   its shape and values.
+6. Afterwards, exactly one writer: scraper logs show no `openIndicator`
+   inserts, and new records carry `provenance: hpp-status-service`.
+
+## Rollback
 
 Triggers include any of:
 
 - `run_overdue` for more than 1 hour
-- an unresolved hold for more than 2 hours while RDP has fresh data
-- a `currentStatus` disagreement that crossing timing does not explain
-- any write outside `openIndicator` and the shadow collections
+- a hold other than an expected writer or stale reason for more than 2 hours
+  while RDP is fresh
+- `writer_foreign_write`
+- an unexplained `currentStatus` disagreement
+- any write outside `openIndicator` and the HPP collections
 
-Ordered rollback, never two writers:
+Procedure:
 
-1. Stop the app writer. Either set the mode back to `shadow` or `legacy` and
-   redeploy, or instantly roll back to the recorded previous deployment.
-   Confirm a scheduled run makes no `openIndicator` insert.
-2. Re-enable the scraper writer through its release workflow. It reads the
-   latest `openIndicator` record's `value`, so app-written records with
-   additive fields are compatible.
-3. Records the app wrote stay as historical facts with their provenance. They
-   are never deleted, re-timed or rewritten.
+1. `npm run hpp:writer -- to-legacy`, then the same with `--apply`. The
+   app's next run holds as not-owner and falls back to shadow. The scraper
+   resumes 5 minutes after the switch. It reads the newest record's `value`,
+   so it writes only on a real change and does not duplicate the app's last
+   record.
+2. Optionally set `HPP_STATUS_SOURCE=shadow` and redeploy. A Vercel instant
+   rollback to a deployment without this code is also safe **after** step 1.
+   Never do either before step 1, because the scraper would stay stopped.
+3. Records the app wrote stay as historical facts with their provenance.
+   They are never deleted, re-timed or rewritten.
+4. Re-activation is the cutover procedure again from step 2. Sequence ids
+   continue, for example `#3` after `#2`.
 
-Acceptance for the rollback:
+Rollback acceptance:
 
-- At most one scheduled interval has no writer; status holds last-known
-  meanwhile.
+- No more than one scheduled interval without a writer. Status holds
+  last-known meanwhile.
 - No duplicate record for any crossing.
 - `/api/hppstatus` is unchanged in shape.
 - Alert delivery state changes only for real crossings.

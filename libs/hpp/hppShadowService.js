@@ -1,8 +1,8 @@
 // In-app HPP status service, shadow mode only (#89).
 //
 // Composes the Mongo shadow store and the RDP evidence reader inside the
-// isHPPOpen Vercel app. Nothing imports this yet: a scheduled route and its
-// off-by-default mode switch are a separately approved slice.
+// isHPPOpen Vercel app; scheduled by hppShadowCronService.js. Writes only the
+// hppShadow* collections.
 
 import { HPP_RULE_V1 } from "./hppDecision.js";
 import { createRdpEvidenceReader } from "./hppEvidence.js";

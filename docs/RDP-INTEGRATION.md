@@ -52,7 +52,7 @@ Existing adapter work permits `legacy`, `shadow` and `rdp` modes, chosen **indep
 | Consumer | Setting / evidence | Boundary |
 | --- | --- | --- |
 | Trent gauge display | `RDP_TRENT_SOURCE`, [#51-B](RDP-TRENT-51B.md) | Bounded RDP histories adapted to existing station order/unit/shape; display may use validated legacy fallback under its documented policy. |
-| Colwick observed levels | `RDP_LEVELS_SOURCE`, [#51-C](RDP-LEVELS-51C.md) | Migrates observed `level_data`, not the government's `forecast_data` in the old public snapshot. |
+| Colwick observed levels | `RDP_LEVELS_SOURCE`, [#51-C](RDP-LEVELS-51C.md) | Migrates observed `level_data`; the fallback is a bounded direct-EA read. The government forecast is retired and `forecast_data` is always empty ([#90](FORECAST-ML-PRIMARY-90.md)). |
 | Live gauge alerts | `RDP_GAUGE_ALERTS_SOURCE`, [#51-D](RDP-GAUGE-ALERTS-51D.md) | Alert-safe freshness, continuity and delivery handling. In RDP mode **do not automatically fall back** to legacy measurements for alerts. |
 | Current CSO status/events on `/waterquality` | `RDP_CSO_SOURCE`, [#120](RDP-CSO-120.md) | Legacy membership kept; RDP supplies identity, status and recent event ends. Alerts, density and `waterQualityIndicator.js` stay legacy in every mode. Production caller granted all seven `/v1/cso/*` routes (verified 2026-11-12). |
 | HPP upstream outfall membership on `/waterquality` | `RDP_CSO_MEMBERSHIP`, [#114](RDP-CSO-MEMBERSHIP-114.md) | Approved RDP relationship set (pinned `bb422e98…`, 592 confirmed) replaces Sewage Map `CSO_IDs` for map, status and history. Density, thresholds and alerts stay legacy. Default `legacy`. |

@@ -6,8 +6,8 @@ This document inventories the boundaries between independently released componen
 | --- | --- | --- | --- |
 | RDP (`eu-west-1`, independent stage/prod release) | Signed first-party `/v1/measurements*` catalogue/latest/observations/health; source identity, units, datum, observed timestamps, gaps and provenance | Server-only isHPPOpen client and #51 adapters | Verify published/collected distinction, availability/freshness, continuity, pagination and authorised caller. Existing site APIs and fallback/alert rules remain separately owned. |
 | Scraper (`eu-west-1`, 15-minute schedule) | MongoDB river/status/water-quality and CSO collections | Web services | Collection names, station identities, semantics and null/fallback behaviour must remain compatible. |
-| Scraper | Public S3 `levels/latest.json` via `S3_LEVELS_URL`, plus dated history | Web levels service | Preserve JSON shape, units, station IDs, timestamps, and freshness/fallback behaviour. |
-| Predictor (`eu-west-2`, hourly schedule) | S3 `forecasts/colwick_forecast.csv` via `S3_FORECAST_URL` | Web forecast APIs and alert evaluation | CSV headers and types, metres, UTC timestamps, 15-minute target spacing and 72-hour horizon. |
+| Scraper | Public S3 `levels/latest.json` plus dated history (while `LEGACY_RIVER_PUBLICATION=enabled`) | **None in the web app since #90**; unknown public readers | Being retired ([FORECAST-ML-PRIMARY-90](FORECAST-ML-PRIMARY-90.md)): no replacement publisher. Existing objects are kept, frozen at their last write. |
+| Predictor (`eu-west-2`, hourly schedule) | S3 `forecasts/colwick_forecast.csv` via `S3_FORECAST_URL` | Web forecast APIs and alert evaluation; the only primary forecast (#90) | CSV headers and types, metres, UTC timestamps, 15-minute target spacing and 72-hour horizon. |
 | Predictor | S3 forecast accuracy, stability, history and model-health CSV objects | Web forecast/health views | Preserve declared keys, column semantics and missing-data behaviour. |
 | Model training/promotion | S3 `models/xgb_colwick_horizon.pkl` | Predictor Lambda | Compatible serialized model and feature schema; model promotion is distinct from deploying code. |
 

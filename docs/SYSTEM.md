@@ -18,7 +18,7 @@ Use [shared contracts](CONTRACTS.md) for producer/consumer compatibility and [RD
 | Producer | Storage contract | Consumer |
 | --- | --- | --- |
 | RDP independently collected observations (release selection is stage-specific) | Authenticated AWS_IAM/SigV4 published measurement catalogue, latest/history/health | Trusted isHPPOpen server adapters; display, history, later alerts only under per-consumer source modes |
-| Scraper, eu-west-1, every 15 minutes | MongoDB status/river/CSO collections; public `levels/latest.json` and dated S3 history | Web services; `S3_LEVELS_URL` |
+| Scraper, eu-west-1, every 15 minutes | MongoDB status/river/CSO collections; public `levels/latest.json` and dated S3 history (being retired, #90) | Web Mongo services; the web app no longer reads `levels/latest.json` |
 | Predictor, eu-west-2, hourly | `ishppopen-data/forecasts/colwick_forecast.csv`; accuracy, stability, history and model-health CSVs | Web forecast APIs and Colwick alert evaluator; `S3_FORECAST_URL` |
 | Reviewed model training | `models/xgb_colwick_horizon.pkl` in S3 | Predictor Lambda |
 

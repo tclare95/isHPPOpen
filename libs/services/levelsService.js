@@ -1,35 +1,106 @@
+import "server-only";
 import { HttpError } from '../api/http';
-import { fetchWithOperationalRevalidate } from '../api/fetchWithRevalidate';
 import { createRequestLogger } from '../api/logger';
-import { buildOperationalHealth, getNewestTimestamp } from "../operationalHealth";
+import { buildOperationalHealth } from "../operationalHealth";
+import { getRdpMeasurement } from "../rdp/measurements.js";
+import { getSeriesAgeSeconds, isSeriesFresh, validateLegacySeries } from "../rdp/trentSeries.js";
+import { fetchLegacyMeasureItems } from "./trentWeirsService";
 
 const LEVELS_SOURCE_MODES = ["legacy", "shadow", "rdp"];
+
+// Matches the retired scraper snapshot's READINGS_LIMIT, so every mode serves the same 5-day `level_data` depth.
+export const LEVELS_READING_LIMIT = 480;
+export const EA_LEVELS_SOURCE = "environment-agency-levels";
+export const GOVERNMENT_FORECAST_SOURCE = "government-forecast";
+// One bounded direct-EA request. A slow EA response cannot hold /api/levels open beyond this.
+export const EA_LEVELS_READ_DEADLINE_MS = 8000;
+
+export const COLWICK_LEVEL = Object.freeze({
+  key: "4009-level",
+  stationId: 4009,
+  measureType: "level",
+  measure: getRdpMeasurement("4009-level"),
+});
 
 export function normalizeReadingsArray(value) {
   return Array.isArray(value) ? value : [];
 }
 
-// Raw scraper `levels/latest.json`: the legacy observed readings and the forecast travel together.
-export async function fetchLegacyLevelsPayload() {
-  const s3Url = process.env.S3_LEVELS_URL;
-  if (!s3Url) {
-    throw new HttpError(500, 'Levels URL not configured');
-  }
+// The government station-page forecast is retired (#90): `forecast_data` stays in the envelope,
+// always empty, and is never filled with the trent-predictor forecast (served by /api/s3forecast).
+export function buildGovernmentForecastHealth(now = new Date()) {
+  return { ...buildOperationalHealth({ source: GOVERNMENT_FORECAST_SOURCE, fetchedAt: now, unavailable: true }), reason: "retired" };
+}
 
-  const response = await fetchWithOperationalRevalidate(s3Url);
-  if (!response.ok) {
+function withDeadline(promise, ms) {
+  let timer;
+  const deadline = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error("EA_TIMEOUT")), ms);
+  });
+  return Promise.race([promise, deadline]).finally(() => clearTimeout(timer));
+}
+
+// Never rejects. One request for the exact `4009-level-stage-i-15_min-mASD` measure, sharing the
+// Trent dashboard's URL and 900s fetch cache; the whole series is rejected on any invalid row.
+export async function readEaColwickLevels() {
+  try {
+    const items = await withDeadline(
+      fetchLegacyMeasureItems(COLWICK_LEVEL.stationId, COLWICK_LEVEL.measureType),
+      EA_LEVELS_READ_DEADLINE_MS,
+    );
+    const readings = validateLegacySeries(items, COLWICK_LEVEL.measure);
+    return readings ? { readings } : { error: "EA_INVALID_SERIES" };
+  } catch (error) {
+    return { error: error?.message === "EA_TIMEOUT" ? "EA_TIMEOUT" : "EA_UNAVAILABLE" };
+  }
+}
+
+export function toLevelData(readings) {
+  return readings
+    .slice(0, LEVELS_READING_LIMIT)
+    .map((reading) => ({ reading_date: reading.dateTime, reading_level: reading.value }));
+}
+
+export function describeObserved(chosen, now = new Date()) {
+  if (!chosen) {
+    return { origin: null, state: "unavailable", observedAt: null, ageSeconds: null };
+  }
+  return {
+    origin: chosen.origin,
+    state: isSeriesFresh(chosen.readings, now) ? "fresh" : "stale",
+    observedAt: chosen.readings[0].dateTime,
+    ageSeconds: getSeriesAgeSeconds(chosen.readings, now),
+  };
+}
+
+let lastKnownEaLevels = null;
+
+// Non-RDP observed levels: direct EA, else this instance's last-known EA series (reported stale).
+// It no longer reads the scraper's public `levels/latest.json`.
+export async function getLegacyLevelsSnapshot() {
+  const now = new Date();
+  const ea = await readEaColwickLevels();
+  if (ea.readings) lastKnownEaLevels = ea.readings;
+
+  const chosen = ea.readings
+    ? { origin: "ea", readings: ea.readings }
+    : lastKnownEaLevels && { origin: "cache", readings: lastKnownEaLevels };
+
+  if (!chosen) {
+    createRequestLogger({ method: "GET" }, "levels").warn(`EA levels unavailable ${JSON.stringify({ eaError: ea.error })}`);
     throw new HttpError(502, 'Failed to fetch levels data');
   }
 
-  return response.json();
-}
-
-export async function getLegacyLevelsSnapshot() {
-  const data = await fetchLegacyLevelsPayload();
-
-  const level_data = normalizeReadingsArray(data?.level_readings);
-  const forecast_data = normalizeReadingsArray(data?.forecast_readings);
-  return { level_data, forecast_data, health: buildOperationalHealth({ source: "scraper-levels", generatedAt: getNewestTimestamp(data?.generatedAt, data?.timestamp, level_data.map((row) => row.reading_date), forecast_data.map((row) => row.forecast_date)) }) };
+  const observed = describeObserved(chosen, now);
+  return {
+    level_data: toLevelData(chosen.readings),
+    forecast_data: [],
+    health: {
+      ...buildOperationalHealth({ source: EA_LEVELS_SOURCE, generatedAt: observed.observedAt, fetchedAt: now, fallback: chosen.origin !== "ea" }),
+      observed,
+      forecast: buildGovernmentForecastHealth(now),
+    },
+  };
 }
 
 // Read independently of the other RDP consumers; an invalid value keeps observed levels on legacy.
@@ -52,4 +123,8 @@ export async function getLatestLevelsSnapshot() {
   }
 
   return getLegacyLevelsSnapshot();
+}
+
+export function __resetLegacyLevelsStateForTests() {
+  lastKnownEaLevels = null;
 }

@@ -18,7 +18,7 @@ Keep legacy EA read available per complete measurement series (not pointwise), v
 `buildOperationalHealth` currently labels fallback ahead of stale; change precedence or attach independent status so an hours-old fallback cannot masquerade as acceptable fresh data. All fallback output must preserve actual observation age, origin and whether any series is missing.
 
 ## Observed levels and forecasts
-Use RDP Colwick observations for `level_data`; retain the scraper snapshot as the **separate** legacy forecast source for `forecast_data`. Preserve `/api/levels` shape (`reading_date`, `reading_level`, `forecast_date`, `forecast_reading`) and public envelope; avoid conflating observation freshness with forecast generation age. Fail either component independently, including legacy-fallback processing, and expose backwards-compatible source/health diagnostics. Other predictor/forecast API reads remain unchanged.
+Use RDP Colwick observations for `level_data`; retain the scraper snapshot as the **separate** legacy forecast source for `forecast_data`. *(Superseded by #90: the government forecast is retired, `forecast_data` is always empty, and the display fallback is a bounded direct-EA read, not the snapshot.)* Preserve `/api/levels` shape (`reading_date`, `reading_level`, `forecast_date`, `forecast_reading`) and public envelope; avoid conflating observation freshness with forecast generation age. Fail either component independently, including legacy-fallback processing, and expose backwards-compatible source/health diagnostics. Other predictor/forecast API reads remain unchanged.
 
 ## Live gauge alert safety — refined Slice D (31 October 2026)
 

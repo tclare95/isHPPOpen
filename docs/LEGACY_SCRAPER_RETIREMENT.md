@@ -6,7 +6,7 @@
 
 1. HPP threshold/status and transitions belong to an **independent HPP service** consuming RDP verified Colwick observations, not an RDP HPP writer. Hold last-known HPP status on stale/unverified input without creating transitions.
 2. RDP owns CSO provider evidence and explicit site membership/assessment evidence. The website initially retains calibrated site water-quality risk and presentation.
-3. Forecast contract first. Keep `trent-predictor`'s independent hourly Python/CSV outputs; plan a later separate public snapshot compatibility publisher.
+3. ~~Forecast contract first; plan a later separate public snapshot compatibility publisher.~~ **Superseded 13 November 2026 ([#90](https://github.com/tclare95/isHPPOpen/issues/90)):** trent-predictor's ML forecast is the only primary forecast. The government forecast and `levels/` snapshot are retired without a replacement publisher ([FORECAST-ML-PRIMARY-90](FORECAST-ML-PRIMARY-90.md)).
 
 ## Source/trigger inventory
 
@@ -33,7 +33,7 @@ Scraper source locations: [SAM schedule](https://github.com/tclare95/ishppopenSc
 | Mongo `waterQuality` | Explicit site membership and evidence projection, density history continuity, website risk/alert parity; no runtime dependence on Sewage Map | future `water-quality-site-assessments`, after [#71](https://github.com/tclare95/isHPPOpen/issues/71)/[#72](https://github.com/tclare95/isHPPOpen/issues/72) |
 | SQS enqueue + `csoData` worker | #71 validated selection, #72 source/event history, complete matching polling and consumption, queue/DLQ reconciliation and no competing writes. Code ready: `RDP_CSO_SOURCE=rdp` no longer needs `csoData`; scraper `CSO_COLLECTION` switch and modify-only worker/archiver disable releases, ordered in [RDP-CSO-RETIREMENT-68](RDP-CSO-RETIREMENT-68.md) | #71/#72, [scraper #10](https://github.com/tclare95/ishppopenScraper/issues/10) |
 | Weekly `csoData` archiver | Archive restorability/integrity evidence, historical access/retention, source delete reconciliation and explicit retirement approval | [scraper #11](https://github.com/tclare95/ishppopenScraper/issues/11), #72 |
-| Government forecast and public `levels/` publisher | Contract fixtures, verified government feed, separate single-writer compatibility publisher, exact S3 URLs/JSON keys and website `forecast_data` parity | [#90](https://github.com/tclare95/isHPPOpen/issues/90); later `legacy-river-snapshot-publication` |
+| Government forecast, public `levels/` publisher and `riverschemas` writer | Website no longer reads `levels/latest.json` (RDP + direct-EA levels, `forecast_data: []`); then scraper `LEGACY_RIVER_PUBLICATION=disabled`. No compatibility publisher (#90 decision) | [#90](https://github.com/tclare95/isHPPOpen/issues/90), [release sequence](FORECAST-ML-PRIMARY-90.md#release-sequence) |
 | Node main schedule | All mixed duties migrated and verified, rollback paths confirmed; **last** switch | [#68](https://github.com/tclare95/isHPPOpen/issues/68) |
 
 **Not scraper duties:** independent hourly predictor; Vercel email alerts; direct-EA Trent dashboard and Trent Lock submission queries; website editorial events/banner writes. They still have downstream source dependencies, but need not move to retire the Node scheduler.

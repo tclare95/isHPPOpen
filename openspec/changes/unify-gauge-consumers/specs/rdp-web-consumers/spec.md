@@ -46,12 +46,22 @@ The website SHALL preserve all six series in the `/api/trentweirs` contract, new
 - **WHEN** a legacy last-successful display snapshot exceeds the 30-minute freshness baseline
 - **THEN** it is visibly stale (or unavailable) and MUST NOT be represented as fresh merely because it is fallback data.
 
-### Requirement: Independently sourced observed levels and legacy forecast
-The website SHALL migrate only observed Colwick `level_data` to RDP while preserving the separate legacy `forecast_data` and existing `/api/levels` response fields.
+### Requirement: Independently sourced observed levels and retired government forecast
+*Modified 13 November 2026 by [#90](https://github.com/tclare95/isHPPOpen/issues/90): the government forecast is retired and trent-predictor's ML forecast is the only primary forecast.*
 
-#### Scenario: Forecast unavailable but observed levels healthy
-- **WHEN** the existing forecast source fails while RDP observations are usable
-- **THEN** the public response retains observed readings and communicates the forecast failure separately, without manufacturing forecast values.
+The website SHALL read observed Colwick `level_data` from RDP, with a bounded, whole-series-validated direct-EA fallback, and SHALL NOT read the scraper's `levels/latest.json`. It SHALL keep the existing `/api/levels` response fields, with `forecast_data` always empty and a government-forecast health entry reported as unavailable.
+
+#### Scenario: Government forecast retired
+- **WHEN** `/api/levels` is served in any source mode
+- **THEN** `forecast_data` is `[]`, `health.forecast` is `unavailable` with source `government-forecast`, and the top-level observed health is unaffected.
+
+#### Scenario: ML forecast never relabelled
+- **WHEN** the predictor forecast is available
+- **THEN** it is served only by the predictor forecast APIs and MUST NOT be placed in `forecast_data` or any field identified as an EA or government forecast.
+
+#### Scenario: RDP not fresh
+- **WHEN** the RDP Colwick series is missing or stale
+- **THEN** one bounded direct-EA request for the Colwick level measure may supply a complete fresh series (reported `fallback`); otherwise the newest stale series is reported `stale`, never `fallback`, and RDP and EA points are never mixed.
 
 ### Requirement: Alert-safe per-measurement evaluation
 Live gauge alerts MUST select one authoritative source per evaluation, MUST NOT reuse read-only display fallback or stale display snapshots, and MUST validate observations independently for each gauge. Only measurements with verified identity, units, acceptable quality and a valid observed timestamp no more than 30 minutes old may affect alert state. Unusable measurements MUST NOT trigger, rearm or advance their dependent rules.

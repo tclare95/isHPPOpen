@@ -56,7 +56,7 @@ Editorial writes use the shared `libs/cache/revalidate.js` helper with `revalida
   - `app/api/events/route.js`: read/update/delete events.
   - `app/api/sitebanner/route.js`: get/update banner messages.
   - `app/api/hppstatus/route.js`: computes closure days over time windows.
-   - `app/api/levels/route.js`: reads the latest river snapshot via `libs/services/levelsService.js`. `RDP_LEVELS_SOURCE` (`legacy|shadow|rdp`, default `legacy`) selects the observed `level_data` source only; `libs/rdp/levelsSource.js` is loaded only outside legacy. See [RDP-LEVELS-51C.md](RDP-LEVELS-51C.md).
+   - `app/api/levels/route.js`: serves observed Colwick levels via `libs/services/levelsService.js`. `RDP_LEVELS_SOURCE` (`legacy|shadow|rdp`, default `legacy`) selects the `level_data` source: `rdp` reads RDP with a bounded direct-EA fallback, and `legacy` reads direct EA; `libs/rdp/levelsSource.js` is loaded only outside legacy. `forecast_data` is always `[]`: the government forecast is retired and the ML forecast is served only by `/api/s3forecast` (#90). No mode reads `levels/latest.json`. See [RDP-LEVELS-51C.md](RDP-LEVELS-51C.md) and [FORECAST-ML-PRIMARY-90.md](FORECAST-ML-PRIMARY-90.md).
    - `app/api/trentweirs/route.js`: serves the cached Trent gauge snapshot via `libs/services/trentWeirsService.js`.
    - `app/api/waterquality/route.js`: reads water-quality snapshots via `libs/services/waterQualityService.js`. `RDP_CSO_SOURCE` (`legacy|shadow|rdp`, default `legacy`) selects current CSO status for this route and `/api/waterquality/cso*` only; `libs/rdp/csoSource.js` is loaded only outside legacy. `rdp` mode never reads Mongo `csoData` and reports RDP unavailability as `health.state: unavailable`; alert evaluation and operational health read summary freshness only ([RDP-CSO-RETIREMENT-68.md](RDP-CSO-RETIREMENT-68.md)). Diagnostics: `/api/admin/cso-shadow`. See [RDP-CSO-120.md](RDP-CSO-120.md).
    - Upstream membership: `RDP_CSO_MEMBERSHIP` (`legacy|rdp`, default `legacy`), independent of `RDP_CSO_SOURCE`. `rdp` uses the approved, version-pinned RDP relationship set `hpp-upstream-outfalls` (confirmed scope primary; candidate/catchment-only labelled separately) via `libs/rdp/csoMembership.js`, with status/events from one cached `hpp-catchment` set walk. Applies to event history in every source mode and to the map/status when `RDP_CSO_SOURCE=rdp`. Density, thresholds and alerts never read it. See [RDP-CSO-MEMBERSHIP-114.md](RDP-CSO-MEMBERSHIP-114.md).
@@ -86,8 +86,8 @@ Editorial writes use the shared `libs/cache/revalidate.js` helper with `revalida
   Preview smoke. [Slice #51-B](RDP-TRENT-51B.md) lets `/api/trentweirs` read it
   when `RDP_TRENT_SOURCE` is `shadow` or `rdp` (default and all deployed targets:
   `legacy`). [Slice #51-C](RDP-LEVELS-51C.md) does the same for observed
-  Colwick `level_data` in `/api/levels` via `RDP_LEVELS_SOURCE`; `forecast_data`
-  stays on the scraper snapshot. [Slice #51-D](RDP-GAUGE-ALERTS-51D.md) gives
+  Colwick `level_data` in `/api/levels` via `RDP_LEVELS_SOURCE`; since #90
+  `forecast_data` is always empty and no mode reads the scraper snapshot. [Slice #51-D](RDP-GAUGE-ALERTS-51D.md) gives
   live gauge alerts their own alert-safe EA/RDP reader via `RDP_GAUGE_ALERTS_SOURCE`
   (default and all deployed targets: `legacy`).
 - MongoDB connectivity is centralized in `libs/database.js`.

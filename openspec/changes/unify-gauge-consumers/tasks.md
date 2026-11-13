@@ -22,6 +22,7 @@ Slice B: see [implementation runbook](../../../docs/RDP-TRENT-51B.md). All deplo
 - [x] 3.1 Read `level_data` from RDP while preserving legacy `forecast_data` and exact public `/api/levels` field shapes.
 - [x] 3.2 Keep observation and forecast health independent, with fresh legacy display fallback and honest stale/unavailable states.
 - [x] 3.3 Add fixture contract tests for independent failures and selection/rollback; no predictor changes.
+- [x] 3.4 (#90) Retire the government forecast: `forecast_data: []` with retired `health.forecast`, replace the scraper-snapshot observation fallback with a bounded direct-EA read, and stop reading `levels/latest.json` in every mode. See [FORECAST-ML-PRIMARY-90](../../../docs/FORECAST-ML-PRIMARY-90.md).
 
 Slice C: see [implementation runbook](../../../docs/RDP-LEVELS-51C.md). All deployed modes remain `legacy`. Live shadow evidence needs Preview function-runtime federation and separate approval; Colwick (`ea-colwick-level`) is not one of the three #52-reserved IDs.
 

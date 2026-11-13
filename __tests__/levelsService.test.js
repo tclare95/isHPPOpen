@@ -1,71 +1,44 @@
-const { getLatestLevelsSnapshot } = require('../libs/services/levelsService');
+/** @jest-environment node */
+jest.mock('server-only', () => ({}));
+
+const { buildGovernmentForecastHealth, readEaColwickLevels } = require('../libs/services/levelsService');
+
+const EA_URL = 'https://environment.data.gov.uk/flood-monitoring/id/stations/4009/readings?_sorted&_limit=672&parameter=level';
+const MEASURE = 'http://environment.data.gov.uk/flood-monitoring/id/measures/4009-level-stage-i-15_min-mASD';
 
 describe('levelsService', () => {
-  const originalS3LevelsUrl = process.env.S3_LEVELS_URL;
-
   beforeEach(() => {
-    jest.clearAllMocks();
-    process.env.S3_LEVELS_URL = 'https://example.com/levels/latest.json';
     global.fetch = jest.fn();
   });
 
-  afterEach(() => {
-    process.env.S3_LEVELS_URL = originalS3LevelsUrl;
+  test('the government forecast is reported as retired and unavailable, never as an ML forecast', () => {
+    expect(buildGovernmentForecastHealth(new Date('2026-11-13T10:00:00Z'))).toEqual({
+      source: 'government-forecast', state: 'unavailable', reason: 'retired',
+      generatedAt: null, fetchedAt: '2026-11-13T10:00:00.000Z', ageSeconds: null,
+    });
   });
 
-  test('getLatestLevelsSnapshot returns latest level and forecast arrays', async () => {
+  test('readEaColwickLevels reads only the Colwick level measure and returns newest-first readings', async () => {
     global.fetch.mockResolvedValue({
       ok: true,
-      json: jest.fn().mockResolvedValue({
-        level_readings: [{ reading_level: 1.1 }],
-        forecast_readings: [{ forecast_reading: 1.2 }],
-      }),
+      json: jest.fn().mockResolvedValue({ items: [
+        { dateTime: '2026-11-13T10:00:00Z', value: 1.21, measure: MEASURE },
+        { dateTime: '2026-11-13T09:45:00Z', value: '1.2', measure: MEASURE },
+      ] }),
     });
 
-    const result = await getLatestLevelsSnapshot();
-
-    expect(result).toMatchObject({
-      level_data: [{ reading_level: 1.1 }],
-      forecast_data: [{ forecast_reading: 1.2 }],
-    });
-    expect(result.health).toMatchObject({ source: "scraper-levels", state: "stale" });
-
-    expect(global.fetch).toHaveBeenCalledTimes(1);
-    expect(global.fetch).toHaveBeenCalledWith(
-      'https://example.com/levels/latest.json',
-      expect.objectContaining({
-        next: expect.objectContaining({ revalidate: 900 }),
-      }),
-    );
+    await expect(readEaColwickLevels()).resolves.toEqual({ readings: [
+      { dateTime: '2026-11-13T10:00:00Z', value: 1.21 },
+      { dateTime: '2026-11-13T09:45:00Z', value: 1.2 },
+    ] });
+    expect(global.fetch).toHaveBeenCalledWith(EA_URL, expect.objectContaining({ next: expect.objectContaining({ revalidate: 900 }) }));
   });
 
-  test('getLatestLevelsSnapshot normalizes missing arrays', async () => {
-    global.fetch.mockResolvedValue({
-      ok: true,
-      json: jest.fn().mockResolvedValue({
-        level_readings: null,
-      }),
-    });
-
-    const result = await getLatestLevelsSnapshot();
-
-    expect(result).toMatchObject({
-      level_data: [],
-      forecast_data: [],
-    });
-    expect(result.health).toMatchObject({ source: "scraper-levels", state: "stale" });
-  });
-
-  test('getLatestLevelsSnapshot throws when S3_LEVELS_URL is missing', async () => {
-    delete process.env.S3_LEVELS_URL;
-
-    await expect(getLatestLevelsSnapshot()).rejects.toThrow('Levels URL not configured');
-    expect(global.fetch).not.toHaveBeenCalled();
-  });
-
-  test('getLatestLevelsSnapshot throws when fetch fails', async () => {
+  test('readEaColwickLevels never rejects', async () => {
     global.fetch.mockResolvedValue({ ok: false });
+    await expect(readEaColwickLevels()).resolves.toEqual({ error: 'EA_UNAVAILABLE' });
 
-    await expect(getLatestLevelsSnapshot()).rejects.toThrow('Failed to fetch levels data');
+    global.fetch.mockResolvedValue({ ok: true, json: jest.fn().mockResolvedValue({ items: [] }) });
+    await expect(readEaColwickLevels()).resolves.toEqual({ error: 'EA_INVALID_SERIES' });
   });
 });

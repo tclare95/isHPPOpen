@@ -115,7 +115,7 @@ describe('CsoEventHistory', () => {
     render(<CsoEventHistory />);
     const select = screen.getByLabelText('Outfall');
     expect(within(select).getAllByRole('option').map((option) => option.textContent)).toEqual(['All monitored outfalls', 'River SVT1 (SVT1) (2)', 'River SVT2 (SVT2) (1)']);
-    expect(screen.getByText(/reviewed set hpp-upstream-outfalls \(version bb422e98d78e, 592 confirmed\)/)).toBeInTheDocument();
+    expect(screen.getByText(/set hpp-upstream-outfalls \(bb422e98d78e, 592 confirmed\)/)).toBeInTheDocument();
   });
 
   it('says the service is unavailable rather than showing an empty history', () => {

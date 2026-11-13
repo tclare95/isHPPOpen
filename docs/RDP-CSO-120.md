@@ -204,7 +204,9 @@ Each step is a separate, explicit action.
    - Record `notSelectedForPolling`. Legacy members that RDP does not poll show as `no_observations`.
 3. **Enable shadow:** set `RDP_CSO_SOURCE=shadow` for **Production only** in Vercel, then redeploy. Vercel
    environment changes apply to new deployments. Public output is unchanged by construction.
-4. **Observe for at least 7 days**, including at least one wet-weather spill:
+4. **Observe for at least 48 hours, and until at least one member spill has been seen to start and stop**
+   (owner decision, 2026-11-13; replaces the original 7 days). Comparison continues after step 6, because the
+   admin report works in every mode while legacy collection still runs:
    - search the runtime logs for `RDP CSO shadow comparison`;
    - capture the admin report at least daily and during spills.
 
@@ -214,8 +216,13 @@ Each step is a separate, explicit action.
    - `unknown` reasons;
    - read failures (403, 429, 503, timeouts);
    - coverage gaps.
-5. **Parity review:** write up the evidence in #120. For every mismatch, explain which source was right.
-   Then get explicit approval before step 6.
+5. **Parity review:** write up the evidence in #120, then get explicit approval before step 6. The bar is
+   whether RDP tells the same story, not exact timestamp agreement:
+   - spilling vs not spilling agrees, apart from mismatches with a plausible explanation (for example
+     source lag around a transition or a legacy poll that missed a short spill);
+   - the same spills appear in both, with broadly consistent start and end times. Differences of a poll or
+     two are expected and are not blockers;
+   - no `identity_missing` or `identity_ambiguous` members, and no sustained read failures (403s, timeouts).
 6. **(Gated, not authorised by this PR)** Set `RDP_CSO_SOURCE=rdp` and redeploy. Check `/api/waterquality`:
    - `health.source` is `river-data-platform-cso` and `health.cso.origin` is `rdp`;
    - counts and markers match the latest admin report.

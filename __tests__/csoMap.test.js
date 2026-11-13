@@ -59,4 +59,10 @@ describe('WaterQualityMap', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'Spill history for this outfall' })[2]);
     expect(onShowHistory).toHaveBeenCalledWith('IDLE');
   });
+
+  it('says status is unavailable, not stale, when RDP has no usable status', () => {
+    render(<WaterQualityMap locations={[{ id: 'A', status: 'unknown', coordinates: null }]} health={{ state: 'unavailable', cso: { available: false } }} now={now} />);
+    expect(screen.getByText(/Current status is unavailable\. No location is labelled as currently spilling or as clear/)).toBeInTheDocument();
+    expect(screen.queryByText(/No stale location is labelled/)).not.toBeInTheDocument();
+  });
 });

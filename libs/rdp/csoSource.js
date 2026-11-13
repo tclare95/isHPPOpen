@@ -395,8 +395,25 @@ export async function getCsoShadowReport(now = new Date()) {
   return buildComparison(legacy, now, { deadlineMs: CSO_READ_DEADLINE_MS * 2, includeHealth: true });
 }
 
-// RDP-authoritative current status over the legacy membership. A total RDP failure serves the whole legacy
-// snapshot, marked `fallback`, rather than mixing sources per location.
+// A total RDP failure (#68 CSO retirement). Nothing falls back to Mongo `csoData`, which stops being written
+// once the legacy collection is retired: every member is `unknown` with `statusReason: "rdp_unavailable"`,
+// the spilling/recent counts are `null` (not counted, never 0) and health is `unavailable`. The response
+// still succeeds so the route cache replaces the previous snapshot instead of keeping it as current.
+export function buildUnavailableRdpSnapshot(latest, now, rdpError) {
+  const locations = getSummaryMembership(latest).map((id) => ({ id, status: "unknown", coordinates: null, receivingWaterCourse: null,
+    latestEventStart: null, latestEventEnd: null, eventDurationMinutes: null, observedAt: null, sourceUpdatedAt: null, statusReason: "rdp_unavailable" }));
+  const health = { ...buildLegacyWaterQualityHealth(latest, now, { unavailable: true }), source: SOURCE_NAME,
+    cso: { origin: "rdp", available: false, rdpError, partial: false, unknown: locations.length } };
+  const snapshot = assembleWaterQualitySnapshot(latest, locations, now, health);
+  return {
+    ...snapshot,
+    WaterQuality: { ...snapshot.WaterQuality, CSOActiveTime: null },
+    ActiveCSOCount: null,
+    statusSummary: { currentlySpilling: null, recentlyStopped48h: null, offline: null, unknown: locations.length },
+  };
+}
+
+// RDP-authoritative current status over the legacy membership. Never reads Mongo `csoData`.
 export async function getRdpWaterQualitySnapshot(now = new Date()) {
   const logger = createRequestLogger({ method: "GET" }, "rdp/cso");
   const latest = await getLatestWaterQualitySummary();
@@ -409,15 +426,14 @@ export async function getRdpWaterQualitySnapshot(now = new Date()) {
     read = { ok: false, error: errorCode(error), failures: [] };
   }
   if (!read.ok && ids.length) {
-    logger.warn(`RDP CSO unavailable; serving legacy ${JSON.stringify({ error: read.error })}`);
-    const legacy = await getLatestWaterQualitySnapshot(now);
-    return { ...legacy, health: { ...buildLegacyWaterQualityHealth(latest, now, { fallback: true }), cso: { origin: "legacy", rdpError: read.error } } };
+    logger.warn(`RDP CSO unavailable; reporting status unavailable ${JSON.stringify({ error: read.error })}`);
+    return buildUnavailableRdpSnapshot(latest, now, read.error);
   }
   if (read.failures.length) logger.warn(`RDP CSO read degraded ${JSON.stringify({ failures: read.failures.map(({ stage, code }) => ({ stage, code })) })}`);
   const locations = buildRdpLocations(ids, read, now);
   // Membership age still bounds trust in the population, so health is stale whenever the summary is.
   const health = { ...buildLegacyWaterQualityHealth(latest, now), source: SOURCE_NAME,
-    cso: { origin: "rdp", partial: read.failures.length > 0, unknown: locations.filter((l) => l.status === "unknown").length } };
+    cso: { origin: "rdp", available: true, partial: read.failures.length > 0, unknown: locations.filter((l) => l.status === "unknown").length } };
   return assembleWaterQualitySnapshot(latest, locations, now, health);
 }
 

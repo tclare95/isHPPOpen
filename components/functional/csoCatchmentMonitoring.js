@@ -86,7 +86,8 @@ function Comparison({ comparison }) {
   return (
     <>
       <p>Each row is one existing density observation, at its own observation time, next to what River Data Platform recorded at that same moment. The two columns use different catchment boundaries, outfall lists and denominators, so they are <strong>not interchangeable</strong>. The indicator reference levels ({comparison.legacyThresholds.elevated} and {comparison.legacyThresholds.high}) apply to the existing density only.</p>
-      <p className="small">Outfalls on the existing list, compared at the same time: both spilling {n(agreement.bothSpilling)}; existing only {n(agreement.legacyOnly)}; River Data Platform only {n(agreement.rdpOnly)}; neither {n(agreement.neither)}; River Data Platform end not reported {n(agreement.rdpUncertain)}; not comparable {n(agreement.notComparable)}.</p>
+      {agreement ? <p className="small">Outfalls on the existing list, compared at the same time: both spilling {n(agreement.bothSpilling)}; existing only {n(agreement.legacyOnly)}; River Data Platform only {n(agreement.rdpOnly)}; neither {n(agreement.neither)}; River Data Platform end not reported {n(agreement.rdpUncertain)}; not comparable {n(agreement.notComparable)}.</p>
+        : <p className="small">Per-outfall status from the existing list is not available for this period, so only density is compared.</p>}
       {comparison.rows.length ? (
         <div className="table-responsive">
           <Table size="sm" variant="dark" className="mb-0 small">
@@ -108,7 +109,7 @@ function Comparison({ comparison }) {
                   <td><time dateTime={row.observedAt}>{formatTime(row.observedAt)}</time></td>
                   <td>{Number.isFinite(row.legacy.numberCSOsPerKm2) ? row.legacy.numberCSOsPerKm2.toFixed(4) : '—'}</td>
                   <td>{n(row.legacy.numberUpstreamCSOs)}</td>
-                  <td>{n(row.members.spilling)} / {n(row.members.reporting)} of {n(row.members.listed)}</td>
+                  <td>{row.members.reporting === null ? `— of ${n(row.members.listed)}` : `${n(row.members.spilling)} / ${n(row.members.reporting)} of ${n(row.members.listed)}`}</td>
                   <td>{row.rdp.collectedOutfalls ? n(row.rdp.collectedOutfalls) : 'Not collected'}</td>
                   <td>{row.rdp.collectedOutfalls ? (row.rdp.spillingOutfalls.lower === row.rdp.spillingOutfalls.upper ? n(row.rdp.spillingOutfalls.lower) : `${n(row.rdp.spillingOutfalls.lower)}–${n(row.rdp.spillingOutfalls.upper)}`) : '—'}</td>
                   <td>{row.rdp.collectedOutfalls ? n(row.rdp.spillingLocations) : '—'}</td>

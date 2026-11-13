@@ -16,7 +16,7 @@ jest.mock("../libs/services/alertMailerService", () => ({
 }));
 jest.mock("../libs/services/forecastService", () => ({ getLatestForecastSnapshot: jest.fn() }));
 jest.mock("../libs/services/hppStatusService", () => ({ getHppStatusSnapshot: jest.fn() }));
-jest.mock("../libs/services/waterQualityService", () => ({ getLatestWaterQualitySnapshot: jest.fn(), getWaterQualityDensitySeries: jest.fn() }));
+jest.mock("../libs/services/waterQualityService", () => ({ getLatestWaterQualitySummaryHealth: jest.fn(), getWaterQualityDensitySeries: jest.fn() }));
 jest.mock("../libs/waterQualityIndicator", () => ({ getCsoActivityAssessment: jest.fn() }));
 
 const { connectToDatabase } = require("../libs/database");
@@ -24,7 +24,7 @@ const { createRdpClient } = require("../libs/rdp/client");
 const { sendThresholdAlertEmail, AlertEmailError } = require("../libs/services/alertMailerService");
 const { getLatestForecastSnapshot } = require("../libs/services/forecastService");
 const { getHppStatusSnapshot } = require("../libs/services/hppStatusService");
-const { getLatestWaterQualitySnapshot, getWaterQualityDensitySeries } = require("../libs/services/waterQualityService");
+const { getLatestWaterQualitySummaryHealth, getWaterQualityDensitySeries } = require("../libs/services/waterQualityService");
 const { getCsoActivityAssessment } = require("../libs/waterQualityIndicator");
 const { runColwickAlerts } = require("../libs/services/colwickAlertsService");
 const { decideGaugeRule, normalizeObservedAt } = require("../libs/alerts/gaugeAlertDecision");
@@ -69,7 +69,7 @@ beforeEach(() => {
   createRdpClient.mockReturnValue(feeds.client);
   getLatestForecastSnapshot.mockResolvedValue({ forecast_data: [], metadata: null });
   getHppStatusSnapshot.mockResolvedValue({ data: { currentStatus: false, health: { generatedAt: T0.toISOString() } } });
-  getLatestWaterQualitySnapshot.mockResolvedValue({ ScrapeTimestamp: T0.toISOString() });
+  getLatestWaterQualitySummaryHealth.mockResolvedValue({ ScrapeTimestamp: T0.toISOString() });
   getWaterQualityDensitySeries.mockResolvedValue([]);
   getCsoActivityAssessment.mockReturnValue({ level: "lower" });
   sendThresholdAlertEmail.mockResolvedValue(undefined);

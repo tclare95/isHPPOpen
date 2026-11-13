@@ -61,7 +61,8 @@ export default function WaterQualityMap({ locations = [], health, isPending = fa
   if (!locations.length && !hasRiverGeometry) return <p>No CSO location data is available.</p>;
   return (
     <div>
-      {health?.state !== 'fresh' ? <div className="alert alert-warning py-2">Status data may be stale. No stale location is labelled as currently spilling.</div> : null}
+      {health?.cso?.available === false ? <div className="alert alert-warning py-2">Current status is unavailable. No location is labelled as currently spilling or as clear.</div>
+        : health?.state !== 'fresh' ? <div className="alert alert-warning py-2">Status data may be stale. No stale location is labelled as currently spilling.</div> : null}
       <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
         <ButtonGroup size="sm" aria-label="Recent spill window">
           {WINDOWS.map((option) => <Button key={option.hours} variant={windowHours === option.hours ? 'info' : 'outline-light'} onClick={() => setWindowHours(option.hours)}>{option.label}</Button>)}
@@ -103,7 +104,7 @@ export default function WaterQualityMap({ locations = [], health, isPending = fa
 
 WaterQualityMap.propTypes = {
   locations: PropTypes.array,
-  health: PropTypes.shape({ state: PropTypes.string }),
+  health: PropTypes.shape({ state: PropTypes.string, cso: PropTypes.shape({ available: PropTypes.bool }) }),
   isPending: PropTypes.bool,
   error: PropTypes.object,
   now: PropTypes.instanceOf(Date),

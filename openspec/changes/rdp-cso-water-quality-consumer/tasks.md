@@ -26,5 +26,12 @@ All tasks unchecked. Implementation/release approvals are separate from this doc
 - [ ] Obtain separately approved risk/alert switch and protect subscription/rearm/delivery continuity.
 - [ ] Prove old SQS/Mongo writers and archives no longer have active consumers before removal; Node mixed-schedule shutdown last.
 
+## Slice E — RDP authoritative reads and legacy CSO collection retirement (#68)
+- [x] `rdp` mode reports RDP unavailability honestly and never reads Mongo `csoData`; alerts and operational health read summary freshness only; the catchment comparison treats legacy status history as optional. ([RDP-CSO-RETIREMENT-68](../../../docs/RDP-CSO-RETIREMENT-68.md))
+- [x] Scraper: independent switch to stop CSO SQS enqueueing and the inline direct-Severn-Trent fallback without stopping the main schedule ([ishppopenScraper](https://github.com/tclare95/ishppopenScraper)).
+- [ ] Separately approved: production shadow evidence and parity review (Slice C), then `RDP_CSO_SOURCE=rdp` in Production.
+- [ ] Separately approved: scraper release that stops legacy CSO collection; verify no new `csoData` records and no Severn Trent ArcGIS requests.
+- [ ] Separately approved: scraper release that disables the SQS worker event-source mapping and the weekly archiver after the queue drains; existing Mongo records and S3 archives are kept.
+
 ## Review-only
 No build/test execution, AWS interaction, schema changes, import, code implementation, new live writer, source switch or deployment performed by this OpenSpec.

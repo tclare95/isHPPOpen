@@ -196,10 +196,6 @@ export default function CsoCatchmentMonitoring() {
                 <Accordion.Body className="text-start"><Comparison comparison={data.comparison} /></Accordion.Body>
               </Accordion.Item>
             </Accordion>
-            <p className="small water-quality-muted mt-3 mb-0">
-              Source: {data.attribution || `${data.set.providerLabel} storm overflow reports`}, collected by River Data Platform about every 15 minutes (reviewed set {data.set.relationshipSet} {data.set.relationshipVersion}).
-              {' '}Outfalls at identical published coordinates count as one location; counts here are not the density used by the indication.
-            </p>
           </>
         );
       })() : null}

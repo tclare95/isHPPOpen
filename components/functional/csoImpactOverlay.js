@@ -8,8 +8,7 @@ export const IMPACT_LABELS = {
   unresolved: 'Spill end not confirmed',
   recent: 'Stopped recently',
 };
-export const IMPACT_CAVEAT = 'Lines show river reaches connected downstream of reported spills on the mapped river network. '
-  + 'Hydrological connectivity only: they do not show pollution concentration, how long it takes to travel, or whether the water is safe.';
+export const IMPACT_CAVEAT = 'Lines show the river downstream of reported spills. They show connection only, not pollution levels, travel time or whether the water is safe.';
 const STYLES = {
   active: { color: '#dc3545', weight: 4, opacity: 0.9 },
   unresolved: { color: '#fd7e14', weight: 3, opacity: 0.85, dashArray: '6 6' },
@@ -48,7 +47,7 @@ export function ImpactPanel({ impact = null, isPending = false, error = null, se
   const unknown = counts.unknown;
   return (
     <div className="cso-impact-panel mt-2" aria-live="polite">
-      <p className="small mb-1"><strong>Reported downstream spill impact.</strong> {IMPACT_CAVEAT}</p>
+      <p className="small mb-1">{IMPACT_CAVEAT}</p>
       <div className="cso-map-legend mb-1">
         <span className="legend-impact legend-impact--active" aria-hidden="true" /> {IMPACT_LABELS.active}
         <span className="legend-impact legend-impact--unresolved" aria-hidden="true" /> {IMPACT_LABELS.unresolved}
@@ -57,8 +56,9 @@ export function ImpactPanel({ impact = null, isPending = false, error = null, se
       <p className="small water-quality-muted mb-1">
         {counts.active} spilling, {counts.unresolved} with an unconfirmed end and {counts.recent} stopped recently.
         {unknown ? ` ${unknown} upstream outfalls have no usable current status; their routes are not drawn, and they are not assumed clear.` : ''}
-        {impact.unroutedDrawnOutfalls.length ? ` ${impact.unroutedDrawnOutfalls.length} reported outfalls could not be linked to a river reach and are not drawn.` : ''}
+        {impact.unroutedDrawnOutfalls.length ? ` ${impact.unroutedDrawnOutfalls.length} could not be linked to the river network.` : ''}
         {impact.statusPartial ? ' Some status reads failed; those outfalls are shown as unknown.' : ''}
+        {' '}Updated {formatTime(impact.asOf)}.
       </p>
       {outfalls.length ? (
         <Form.Group controlId="cso-impact-outfall" className="mb-1">
@@ -84,10 +84,6 @@ export function ImpactPanel({ impact = null, isPending = false, error = null, se
           {onShowHistory ? <Button size="sm" variant="link" className="p-0" onClick={() => onShowHistory(selected.externalId)}>Spill history for this outfall</Button> : null}
         </div>
       ) : null}
-      <p className="small water-quality-muted mt-1 mb-0">
-        As of {formatTime(impact.asOf)}. Relationship set {impact.relationships.setId} ({impact.relationships.version.slice(0, 12)}), network {impact.network.release}.
-        {' '}{impact.attribution}
-      </p>
     </div>
   );
 }

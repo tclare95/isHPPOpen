@@ -5,7 +5,7 @@ import Button from 'react-bootstrap/Button';
 import ButtonGroup from 'react-bootstrap/ButtonGroup';
 import Form from 'react-bootstrap/Form';
 import PropTypes from 'prop-types';
-import { membershipText } from '../../libs/csoMembershipText';
+import { membershipUnavailable } from '../../libs/csoMembershipText';
 import { contributorsOf, ImpactPanel, impactReachStyle } from './csoImpactOverlay';
 
 const MapContainer = dynamic(() => import('react-leaflet').then((mod) => mod.MapContainer), { ssr: false });
@@ -82,7 +82,7 @@ export default function WaterQualityMap({ locations = [], relatedLocations = nul
   const plotted = [...filtered, ...related];
   const markerIcon = (location) => (isPossible(location)
     ? icons[location.status === 'active' ? 'possibleActive' : 'possibleRecent'] : icons[location.status]) || undefined;
-  const membershipNote = membershipText(membership);
+  const membershipNote = membershipUnavailable(membership) ? 'Upstream outfall list unavailable.' : null;
 
   if (isPending) return <p>Loading map data…</p>;
   if (error) return <p>Unable to load map data right now.</p>;
@@ -142,7 +142,7 @@ export default function WaterQualityMap({ locations = [], relatedLocations = nul
           </MarkerClusterGroup>
         </MapContainer>
       )}
-      <p className="small water-quality-muted mt-2 mb-0">Showing {filtered.length} locations{related.length ? ` and ${related.length} not confirmed upstream` : ''}. Locations with offline, stale or unknown status are counted above but are not plotted.</p>
+      {plotted.length ? <p className="small water-quality-muted mt-2 mb-0">Showing {filtered.length} locations{related.length ? ` and ${related.length} not confirmed upstream` : ''}. Locations without a current status are not plotted.</p> : null}
       {membershipNote ? <p className="small water-quality-muted mt-1 mb-0">{membershipNote}</p> : null}
       {impactPanel}
     </div>

@@ -15,6 +15,7 @@ import WaterQualityIndicator from '../../components/functional/vomitfactor';
 import RiverContext from '../../components/functional/riverContext';
 import CsoEventHistory from '../../components/functional/csoEventHistory';
 import CsoCatchmentMonitoring from '../../components/functional/csoCatchmentMonitoring';
+import AboutTheData from '../../components/functional/aboutTheData';
 import useFetch from '../../libs/useFetch';
 import { SWR_15_MINUTES } from '../../libs/dataFreshness';
 
@@ -125,6 +126,10 @@ export default function WaterQualityPage() {
               <p>The CSO bands are relative to the previous year of data. They do not measure discharge volume, pathogens, agricultural pollution or pollution from systems outside Severn Trent&apos;s network.</p>
               <p className="mb-0">Use normal paddling precautions, pay attention to how you feel and avoid swallowing river water. This information is directional guidance only.</p>
             </Accordion.Body>
+          </Accordion.Item>
+          <Accordion.Item eventKey="about">
+            <Accordion.Header>About the data</Accordion.Header>
+            <Accordion.Body className="text-start small"><AboutTheData membership={current?.membership ?? null} /></Accordion.Body>
           </Accordion.Item>
         </Accordion>
         <p className="text-center"><Link href="/alerts" className="text-info">Email me when CSO activity becomes elevated</Link></p>

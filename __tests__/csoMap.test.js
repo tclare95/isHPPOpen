@@ -82,7 +82,8 @@ describe('WaterQualityMap', () => {
       const onShowHistory = jest.fn();
       render(<WaterQualityMap locations={confirmed} relatedLocations={relatedLocations} membership={membership} health={{ state: 'fresh' }} now={now} onShowHistory={onShowHistory} />);
       expect(screen.getAllByTestId('marker')).toHaveLength(2);
-      expect(screen.getByText('Upstream outfalls: River Data Platform set hpp-upstream-outfalls (bb422e98d78e, 592 confirmed). Data: Severn Trent Water.')).toBeInTheDocument();
+      // Provenance is stated once in the page's About section, not under the map.
+      expect(screen.queryByText(/River Data Platform set/)).not.toBeInTheDocument();
       fireEvent.click(screen.getByLabelText('Show unconfirmed upstream outfalls (2 active or recent)'));
       expect(screen.getAllByTestId('marker')).toHaveLength(4);
       expect(screen.getByText('Possibly upstream: river link not confirmed')).toBeInTheDocument();
@@ -121,7 +122,7 @@ describe('WaterQualityMap', () => {
     it('draws reported spills downstream routes with the connectivity caveat and the unknown count', () => {
       render(<WaterQualityMap locations={spilling} health={{ state: 'fresh' }} now={now} impactEnabled impact={compactImpact()} />);
       expect(screen.getAllByTestId('impact-reach')).toHaveLength(2);
-      expect(screen.getByText(/do not show pollution concentration, how long it takes to travel, or whether the water is safe/)).toBeInTheDocument();
+      expect(screen.getByText(/connection only, not pollution levels, travel time or whether the water is safe/)).toBeInTheDocument();
       expect(screen.getByText(/1 upstream outfalls have no usable current status; their routes are not drawn, and they are not assumed clear/)).toBeInTheDocument();
       expect(screen.getByRole('option', { name: /SVT00001: Currently spilling/ })).toBeInTheDocument();
     });

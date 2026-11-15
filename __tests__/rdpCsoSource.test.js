@@ -5,7 +5,7 @@ import { connectToDatabase } from "../libs/database";
 import {
   classifyRdpLocation, compareCsoLocation, eventWindow, getCsoShadowReport, getRdpCsoDetailsByIds,
   getRdpWaterQualitySnapshot, getShadowWaterQualitySnapshot, readRdpCsoEvidence, resolveCsoIdentities,
-  __resetRdpCsoStateForTests, CSO_MAX_EVENT_READS,
+  __resetRdpCsoStateForTests, CSO_MAX_EVENT_READS, CATALOGUE_CACHE_LIMIT_BYTES, packCatalogue, unpackCatalogue,
 } from "../libs/rdp/csoSource";
 import {
   getLatestWaterQualitySnapshot, getLatestWaterQualitySummaryHealth, getPublicWaterQualitySnapshot, getPublicCsoDetailsByIds, getCsoSourceMode,
@@ -114,6 +114,36 @@ describe("status classification", () => {
     expect(classify({ status: status("SVT1"), events: events([]) })).toMatchObject({ status: "unknown", statusReason: "not_spilling_no_recent_event" });
     expect(classify({ status: status("SVT1"), events: null })).toMatchObject({ status: "unknown", statusReason: "events_unavailable" });
     expect(classify({ status: status("SVT1"), events: events([], { truncated: true }) })).toMatchObject({ status: "unknown", statusReason: "events_truncated" });
+  });
+});
+
+describe("catalogue cache packing", () => {
+  const catalogues = [{ provider: "severn-trent", sourceId: "storm-overflow-activity", state: "Healthy", version: "v1", attribution: "Severn Trent Water" }];
+
+  test("packs and rebuilds the exact parsed catalogue, preserving order across groups", () => {
+    const assets = [
+      asset("SVT1", { sets: ["hpp-catchment", "hpp-upstream"], name: "Outfall one", latitude: null, longitude: null }),
+      asset("SVT2", { selected: false, sets: [], receivingWatercourse: null }),
+      asset("WX1", { assetId: "wessex-water:overflows:WX1", provider: "wessex-water", sourceId: "overflows", catalogueVersion: "w1" }),
+      asset("SVT3", { sets: ["hpp-catchment"] }),
+    ];
+    const rebuilt = unpackCatalogue(JSON.parse(JSON.stringify(packCatalogue({ assets, catalogues }))));
+    expect(rebuilt).toEqual({ assets, catalogues });
+    const contiguous = [assets[0], assets[1], assets[3], assets[2]];
+    const packed = packCatalogue({ assets: contiguous, catalogues });
+    expect(packed.order).toBeNull();
+    expect(unpackCatalogue(packed).assets).toEqual(contiguous);
+  });
+
+  test("a production-sized catalogue fits the data cache with room to grow", () => {
+    const sets = ["hpp-catchment", "hpp-upstream", "colwick-reviewed"];
+    const assets = Array.from({ length: 6000 }, (_, i) => asset(`SVT${String(i).padStart(5, "0")}`, {
+      latitude: 52 + i / 7919, longitude: -1.5 + i / 7907, receivingWatercourse: `RIVER NUMBER ${i % 400}`,
+      sets: sets.slice(0, i % 4), selected: i % 4 > 0, catalogueVersion: "9962b46480831b1939812c7f40372b9e8596a67a137b4e266d369703077432f2" }));
+    const plain = Buffer.byteLength(JSON.stringify({ assets, catalogues }));
+    const packed = Buffer.byteLength(JSON.stringify(packCatalogue({ assets, catalogues })));
+    expect(plain).toBeGreaterThan(CATALOGUE_CACHE_LIMIT_BYTES);
+    expect(packed).toBeLessThan(CATALOGUE_CACHE_LIMIT_BYTES / 2);
   });
 });
 

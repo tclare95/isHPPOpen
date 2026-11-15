@@ -89,8 +89,76 @@ async function readCatalogueUncached() {
   throw new RdpError("CURSOR_STALE");
 }
 
+// The Next.js data cache refuses items over 2 MB. As objects, RDP's whole catalogue (about 6,000 outfalls) is 2.55 MB, so it
+// was never cached and every request re-read up to 10 catalogue pages. It is cached in columns instead (provider, source
+// and version once per group, one array per field) and rebuilt into the same objects on read, so callers see no change.
+export const CATALOGUE_CACHE_LIMIT_BYTES = 2 * 1024 * 1024;
+const CATALOGUE_CACHE_WARN_BYTES = 1.5 * 1024 * 1024;
+
+export function packCatalogue({ assets, catalogues }) {
+  const groups = new Map();
+  const setNames = [];
+  const setIndex = new Map();
+  for (const asset of assets) {
+    const key = `${asset.provider}\n${asset.sourceId}\n${asset.catalogueVersion}`;
+    let group = groups.get(key);
+    if (!group) {
+      group = { provider: asset.provider, sourceId: asset.sourceId, catalogueVersion: asset.catalogueVersion, externalId: [], latitude: [],
+        longitude: [], receivingWatercourse: [], name: [], selected: [], sets: [] };
+      groups.set(key, group);
+    }
+    group.externalId.push(asset.externalId);
+    group.latitude.push(asset.latitude);
+    group.longitude.push(asset.longitude);
+    group.receivingWatercourse.push(asset.receivingWatercourse);
+    group.name.push(asset.name);
+    group.selected.push(asset.selected ? 1 : 0);
+    group.sets.push(asset.sets.map((set) => {
+      if (!setIndex.has(set)) setIndex.set(set, setNames.push(set) - 1);
+      return setIndex.get(set);
+    }));
+  }
+  // Asset order is kept: groups are contiguous in RDP's provider-ordered catalogue, and `order` records it otherwise.
+  const order = assets.map((asset) => `${asset.provider}\n${asset.sourceId}\n${asset.catalogueVersion}`);
+  const keys = [...groups.keys()];
+  const contiguous = order.every((key, i) => i === 0 || key === order[i - 1] || keys.indexOf(key) === keys.indexOf(order[i - 1]) + 1);
+  return { schema: 1, setNames, groups: [...groups.values()], catalogues, order: contiguous ? null : order.map((key) => keys.indexOf(key)) };
+}
+
+export function unpackCatalogue(packed) {
+  const rows = packed.groups.map((group) => group.externalId.map((externalId, i) => ({
+    assetId: `${group.provider}:${group.sourceId}:${externalId}`,
+    provider: group.provider,
+    sourceId: group.sourceId,
+    externalId,
+    latitude: group.latitude[i],
+    longitude: group.longitude[i],
+    receivingWatercourse: group.receivingWatercourse[i],
+    name: group.name[i],
+    selected: group.selected[i] === 1,
+    sets: group.sets[i].map((index) => packed.setNames[index]),
+    catalogueVersion: group.catalogueVersion,
+  })));
+  let assets;
+  if (packed.order) {
+    const next = rows.map(() => 0);
+    assets = packed.order.map((g) => rows[g][next[g]++]);
+  } else assets = rows.flat();
+  return { assets, catalogues: packed.catalogues };
+}
+
+async function readPackedCatalogue() {
+  const packed = packCatalogue(await readCatalogueUncached());
+  const bytes = Buffer.byteLength(JSON.stringify(packed));
+  if (bytes > CATALOGUE_CACHE_WARN_BYTES) {
+    createRequestLogger({ method: "GET" }, "rdp/cso-catalogue")
+      .warn(`RDP CSO catalogue near the data cache limit ${JSON.stringify({ bytes, limit: CATALOGUE_CACHE_LIMIT_BYTES, assets: packed.groups.reduce((n, g) => n + g.externalId.length, 0) })}`);
+  }
+  return packed;
+}
+
 // Values cached here are public catalogue/status/event data, never credentials. Failures are not cached.
-const readCachedCatalogue = unstable_cache(readCatalogueUncached, ["rdp-cso-catalogue-v1"], { revalidate: 6 * 3600, tags: ["rdp-cso"] });
+const readCachedCatalogue = unstable_cache(readPackedCatalogue, ["rdp-cso-catalogue-v2"], { revalidate: 6 * 3600, tags: ["rdp-cso"] });
 const readCachedStatus = unstable_cache((ids) => getClient().getCsoStatus(ids), ["rdp-cso-status-v1"], { revalidate: 300, tags: ["rdp-cso"] });
 const readCachedHealth = unstable_cache((id) => getClient().getCsoHealth(id), ["rdp-cso-health-v1"], { revalidate: 900, tags: ["rdp-cso"] });
 const readCachedEvents = unstable_cache(async (id, from, to) => {
@@ -107,7 +175,7 @@ const readCachedEvents = unstable_cache(async (id, from, to) => {
   return { events, coverage, truncated: true };
 }, ["rdp-cso-events-v1"], { revalidate: 900, tags: ["rdp-cso"] });
 
-export const readCatalogue = () => coalesce("catalogue", readCachedCatalogue);
+export const readCatalogue = () => coalesce("catalogue", async () => unpackCatalogue(await readCachedCatalogue()));
 const readStatusBatch = (ids) => coalesce(`status:${ids.join(",")}`, () => readCachedStatus(ids));
 const readEvents = (id, from, to) => coalesce(`events:${id}:${from}:${to}`, () => readCachedEvents(id, from, to));
 const readHealth = (id) => coalesce(`health:${id}`, () => readCachedHealth(id));

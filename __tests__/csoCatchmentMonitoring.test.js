@@ -45,13 +45,16 @@ describe('CsoCatchmentMonitoring', () => {
     const { container } = render(<CsoCatchmentMonitoring />);
     expect(container).toBeEmptyDOMElement();
     expect(useFetch).toHaveBeenCalledWith('/api/waterquality/cso/catchment', expect.objectContaining({ shouldRetryOnError: false }));
+    // A tab left open picks up new spills on return and within one CDN period, not 15 minutes later.
+    expect(useFetch).toHaveBeenCalledWith('/api/waterquality/cso/catchment',
+      expect.objectContaining({ revalidateOnFocus: true, refreshInterval: 5 * 60 * 1000 }));
   });
 
   test('makes monitored versus unknown evidence obvious and keeps outfalls and locations distinct', () => {
     useFetch.mockReturnValue({ data: data(), error: undefined, isPending: false });
     render(<CsoCatchmentMonitoring />);
     expect(screen.getByText(/have a fresh report/).textContent)
-      .toBe('1,405 of 1,514 outfalls have a fresh report. 109 have no usable current report and are unknown, not clear.');
+      .toBe('1,405 of 1,514 outfalls have a fresh report. 109 have no usable current report and are unknown, not clear. As of 12 Nov, 11:59.');
     expect(screen.getByRole('img', { name: /Current evidence across 1,514 outfalls/ })).toBeInTheDocument();
     expect(screen.getByText('Monitored outfalls').nextSibling)
       .toHaveTextContent('At 1,390 distinct locations, 4 outfalls without a published location; 150 outfalls share a location with another.');

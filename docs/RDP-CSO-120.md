@@ -146,6 +146,8 @@ Nothing falls back to Mongo `csoData`, and sources are never mixed per location.
 | Events | 15 min, window aligned to 15-min buckets | one window per fresh mapped member, ≤ 20 members, ≤ 3 pages each, concurrency 4 |
 | Health | 15 min | diagnostics only, ≤ 20 |
 
+The catalogue is cached in columns (provider, source and version once per group, one array per field) and rebuilt into the same objects on read. As plain objects RDP's whole catalogue (about 6,000 outfalls) is 2.55 MB, over the Next.js data cache's 2 MB item limit, so it was never cached and every request re-read the catalogue pages. Packed it is about a fifth of that; a packed value over 1.5 MB logs a warning.
+
 Concurrent cache misses in one instance coalesce into a single in-flight read. Members over a budget are
 listed in `budget.skipped` and classified `status_not_read`; they are never assumed clear. The browser only
 calls `/api/waterquality` (revalidate 900 s), so a page view never causes per-marker RDP reads.

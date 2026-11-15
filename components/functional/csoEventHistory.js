@@ -5,7 +5,6 @@ import ButtonGroup from 'react-bootstrap/ButtonGroup';
 import Form from 'react-bootstrap/Form';
 import PropTypes from 'prop-types';
 import useFetch from '../../libs/useFetch';
-import { membershipText } from '../../libs/csoMembershipText';
 
 // Recorded upstream spills from RDP's canonical event history (#121). Purely descriptive: it never changes
 // the indicator, density chart or alerts, and an empty list is only described as far as coverage allows.
@@ -191,7 +190,6 @@ export default function CsoEventHistory({ selectedOutfallId = '', onSelectOutfal
 
   const events = ((filter ? filteredData?.events : null) ?? data?.events ?? []).filter((event) => !filter || event.outfallId === filter);
   const available = data?.state === 'available';
-  const membershipNote = membershipText(data?.membership);
 
   return (
     <section className="water-quality-panel mb-4" aria-labelledby="cso-history-heading" id="cso-history">
@@ -231,7 +229,7 @@ export default function CsoEventHistory({ selectedOutfallId = '', onSelectOutfal
                 const open = openEventId === event.eventId;
                 const panelId = `cso-event-${event.eventId}`;
                 return (
-                  <li key={event.eventId} className={`cso-event cso-event--${event.display}`}>
+                  <li key={event.eventId} className="cso-event">
                     <button type="button" className="cso-event__summary" aria-expanded={open} aria-controls={panelId}
                       onClick={() => setOpenEventId(open ? null : event.eventId)}>
                       <span className="cso-event__place">{outfallName(outfall, event.outfallId)}</span>
@@ -249,11 +247,6 @@ export default function CsoEventHistory({ selectedOutfallId = '', onSelectOutfal
               })}
             </ol>
           ) : null}
-          <p className="small water-quality-muted mt-3 mb-0">
-            Source: {data.sources?.length ? data.sources.map((source) => source.attribution || source.providerLabel).join('; ') : 'water company storm overflow reports'}, collected by River Data Platform about every 15 minutes.
-            {' '}Times are as reported by the provider; an end time is never estimated. Earlier versions of an event stay in its revision history.
-          </p>
-          {membershipNote ? <p className="small water-quality-muted mt-1 mb-0">{membershipNote}</p> : null}
         </>
       ) : null}
     </section>

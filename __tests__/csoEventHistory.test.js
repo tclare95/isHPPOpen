@@ -108,14 +108,15 @@ describe('CsoEventHistory', () => {
     expect(useFetch).toHaveBeenCalledWith('/api/waterquality/cso/events?window=24h&outfall=SVT2', expect.any(Object));
   });
 
-  it('lists only outfalls with events for a large RDP membership and names its source', () => {
+  it('lists only outfalls with events for a large RDP membership, leaving provenance to the About section', () => {
     const many = Array.from({ length: 30 }, (_, i) => outfall(`Q${i}`, { eventCount: 0 }));
     mockFetch({ data: history({ outfalls: [outfall('SVT1', { eventCount: 2 }), outfall('SVT2', { eventCount: 1 }), ...many],
       membership: { source: 'rdp', state: 'available', relationshipSet: 'hpp-upstream-outfalls', version: 'bb422e98d78ee1bc', scopes: [{ name: 'confirmed', count: 592 }] } }) });
     render(<CsoEventHistory />);
     const select = screen.getByLabelText('Outfall');
     expect(within(select).getAllByRole('option').map((option) => option.textContent)).toEqual(['All monitored outfalls', 'River SVT1 (SVT1) (2)', 'River SVT2 (SVT2) (1)']);
-    expect(screen.getByText(/set hpp-upstream-outfalls \(bb422e98d78e, 592 confirmed\)/)).toBeInTheDocument();
+    expect(screen.queryByText(/hpp-upstream-outfalls/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^Source:/)).not.toBeInTheDocument();
   });
 
   it('says the service is unavailable rather than showing an empty history', () => {

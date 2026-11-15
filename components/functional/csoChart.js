@@ -44,7 +44,6 @@ export default function CsoChart({ data = [], error = null, isPending = false, h
       <Chart width="100%" height={320} chartType="LineChart" loader={<div>Loading chart…</div>}
         data={[[{ type: 'datetime', label: 'Date' }, { type: 'number', label: 'Activity density' }, { type: 'number', label: 'Elevated threshold' }, { type: 'number', label: 'High threshold' }], ...rows]}
         options={{ legend: { position: 'bottom' }, chartArea: { top: 15, right: 15, bottom: 65, left: 55 }, hAxis: { format: hours === 24 ? 'ha' : 'd MMM', title: 'Observed time' }, vAxis: { title: 'CSO activity / km²', minValue: 0 }, colors: ['#37a9e1', '#ffc107', '#dc3545'], series: { 0: { lineWidth: 3 }, 1: { lineDashStyle: [5, 5], lineWidth: 1 }, 2: { lineDashStyle: [5, 5], lineWidth: 1 } } }} />
-      <p className="small water-quality-muted">This is an upstream downstream-impact proxy, not a count of CSOs physically at HPP.</p>
     </div>
   );
 }

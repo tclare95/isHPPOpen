@@ -185,6 +185,78 @@ export function parseCsoSetActivity(payload, set, hours) {
   };
 }
 
+// ---- Whole-set summary (`GET /v1/cso/sets/{set}/summary`) ----
+// One as-of time: full rows for outfalls that need attention, every other outfall in `quiet` groups (read, fresh,
+// reported and effective not_spilling, no event in the window). Every member appears exactly once; anything else is a
+// contract error, never a partial set presented as whole.
+export const CSO_SET_SUMMARY_MAX_OUTFALLS = 5000;
+export const CSO_SET_SUMMARY_MAX_BYTES = 4 * 1024 * 1024;
+const CATALOGUE_READ_STATES = ["available", "missing", "unavailable"];
+const EXTERNAL_ID = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/;
+
+export function parseCsoSetSummary(payload, set, hours) {
+  check(object(payload) && object(payload.data) && object(payload.meta));
+  const { data, meta } = payload;
+  check(meta.set === set && text(meta.provider, 80) && text(meta.sourceId, 80) && meta.windowHours === hours &&
+    nonNegativeInteger(meta.total) && meta.total <= CSO_SET_SUMMARY_MAX_OUTFALLS && typeof meta.partial === "boolean" &&
+    object(meta.catalogue) && CATALOGUE_READ_STATES.includes(meta.catalogue.state) && nonNegativeInteger(meta.catalogue.members) &&
+    (meta.catalogue.version === null || text(meta.catalogue.version, 200)) && nullableText(meta.catalogue.attribution));
+  const from = time(meta.from);
+  const to = time(meta.to);
+  check(from < to);
+  const prefix = `${meta.provider}:${meta.sourceId}:`;
+  check(Array.isArray(data.outfalls) && data.outfalls.length <= CSO_SET_SUMMARY_MAX_OUTFALLS && Array.isArray(data.quiet) && object(data.coordinates));
+  const rows = data.outfalls.map((item) => {
+    check(object(item) && object(item.status) && text(item.status.assetId, 200) && CSO_ASSET_ID.test(item.status.assetId) &&
+      item.status.assetId.startsWith(prefix));
+    const assetId = item.status.assetId;
+    const status = parseStatusRow(item.status, assetId);
+    let events = null;
+    if (item.events !== null && item.events !== undefined) {
+      check(object(item.events) && Array.isArray(item.events.data) && item.events.data.length <= 100 && typeof item.events.truncated === "boolean");
+      const list = item.events.data.map((event) => parseEvent(event, assetId));
+      check(new Set(list.map((event) => event.eventId)).size === list.length);
+      events = { events: list, coverage: parseCoverage(item.events.coverage), truncated: item.events.truncated };
+    }
+    let catalogue = null;
+    if (item.catalogue !== null && item.catalogue !== undefined) {
+      const c = item.catalogue;
+      check(object(c) && nullableText(c.name) && nullableText(c.receivingWatercourse) &&
+        (c.othersAtSameCoordinates === null || c.othersAtSameCoordinates === undefined || nonNegativeInteger(c.othersAtSameCoordinates)));
+      catalogue = { name: c.name ?? null, receivingWatercourse: c.receivingWatercourse ?? null, latitude: coordinate(c.latitude, 90),
+        longitude: coordinate(c.longitude, 180), othersAtSameCoordinates: c.othersAtSameCoordinates ?? null };
+    }
+    return { status, events, catalogue };
+  });
+  const quiet = data.quiet.map((group) => {
+    check(object(group) && group.freshness === "fresh" && Array.isArray(group.externalIds) && group.externalIds.length > 0 &&
+      group.externalIds.every((id) => typeof id === "string" && EXTERNAL_ID.test(id)) && group.outfalls === group.externalIds.length &&
+      (group.sourceAgeSeconds === null || group.sourceAgeSeconds === undefined || Number.isFinite(group.sourceAgeSeconds)));
+    return { sourceUpdatedAt: time(group.sourceUpdatedAt), sourceAgeSeconds: group.sourceAgeSeconds ?? null, fetchedAt: nullableTime(group.fetchedAt),
+      freshness: group.freshness, coverage: parseCoverage(group.coverage), externalIds: [...group.externalIds] };
+  });
+  const ids = [...rows.map((row) => row.status.assetId), ...quiet.flatMap((group) => group.externalIds.map((id) => prefix + id))];
+  check(new Set(ids).size === ids.length && ids.length === meta.total);
+  const c = data.coordinates;
+  check(["distinct", "withoutCoordinates", "sharedCoordinates", "outfallsAtSharedCoordinates"].every((key) => nonNegativeInteger(c[key])));
+  return {
+    set: meta.set,
+    provider: meta.provider,
+    sourceId: meta.sourceId,
+    windowHours: meta.windowHours,
+    from,
+    to,
+    retrievedAt: time(meta.retrievedAt),
+    total: meta.total,
+    partial: meta.partial,
+    catalogue: { state: meta.catalogue.state, version: meta.catalogue.version, attribution: meta.catalogue.attribution ?? null, members: meta.catalogue.members },
+    coordinates: { distinct: c.distinct, withoutCoordinates: c.withoutCoordinates, sharedCoordinates: c.sharedCoordinates,
+      outfallsAtSharedCoordinates: c.outfallsAtSharedCoordinates },
+    rows,
+    quiet,
+  };
+}
+
 function parseEvent(event, id) {
   check(object(event) && EVENT_ID.test(event.eventId) && event.assetId === id && LIFECYCLES.includes(event.lifecycle) &&
     ["provider_reported", "end_not_reported"].includes(event.boundaryProvenance) && Number.isInteger(event.revision) &&

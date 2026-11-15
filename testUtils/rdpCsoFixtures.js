@@ -73,3 +73,51 @@ export function setActivityResponse(items, { set = "hpp-catchment", total = item
     meta: { set, provider: "severn-trent", sourceId: "storm-overflow-activity", windowHours: hours, from, to, retrievedAt, total, partial, nextCursor },
   };
 }
+
+// `GET /v1/cso/sets/{set}/summary` built from the same activity items and catalogue assets, with RDP's rules: an outfall
+// is quiet exactly when read, fresh, reported and effective not_spilling, with no event and no truncation; quiet outfalls
+// sharing a source time and coverage are one group; coordinates are counted to 5 decimal places.
+export function setSummaryResponse(items, assets = [], { set = "hpp-catchment", hours = 48, partial = false, catalogueState = "available",
+  attribution = null, retrievedAt = "2026-11-12T11:59:00Z", from = "2026-11-10T11:59:00Z", to = retrievedAt } = {}) {
+  const byId = new Map(assets.map((a) => [a.assetId, a]));
+  const place = (a) => (Number.isFinite(a?.latitude) && Number.isFinite(a?.longitude) ? `${a.latitude.toFixed(5)},${a.longitude.toFixed(5)}` : null);
+  const places = new Map();
+  for (const item of items) {
+    const key = catalogueState === "available" ? place(byId.get(item.status.assetId)) : null;
+    if (key) places.set(key, (places.get(key) ?? 0) + 1);
+  }
+  const isQuiet = ({ status: s, events: e }) => s.status === "available" && s.freshness === "fresh" && s.reportedState === "not_spilling"
+    && s.effectiveState === "not_spilling" && e && e.data.length === 0 && !e.truncated;
+  const rows = items.filter((item) => !isQuiet(item)).map((item) => {
+    const a = catalogueState === "available" ? byId.get(item.status.assetId) : null;
+    const key = place(a);
+    return { ...item, catalogue: a ? { name: a.name, receivingWatercourse: a.receivingWatercourse, latitude: a.latitude, longitude: a.longitude,
+      othersAtSameCoordinates: key ? places.get(key) - 1 : null } : null };
+  });
+  const groups = new Map();
+  for (const item of items.filter(isQuiet)) {
+    const key = `${item.status.sourceUpdatedAt}|${JSON.stringify(item.events.coverage)}`;
+    const group = groups.get(key) ?? { sourceUpdatedAt: item.status.sourceUpdatedAt, sourceAgeSeconds: item.status.sourceAgeSeconds,
+      fetchedAt: item.status.fetchedAt, freshness: "fresh", coverage: item.events.coverage, outfalls: 0, externalIds: [] };
+    group.outfalls += 1;
+    group.externalIds.push(item.status.assetId.slice(item.status.assetId.lastIndexOf(":") + 1));
+    groups.set(key, group);
+  }
+  const shared = [...places.values()].filter((count) => count > 1);
+  const located = [...places.values()].reduce((sum, count) => sum + count, 0);
+  return {
+    data: {
+      counts: {}, events: {}, coverage: {}, sourceAge: {},
+      coordinates: { rule: "identical published catalogue coordinates rounded to 5 decimal places", distinct: places.size,
+        withoutCoordinates: items.length - located, sharedCoordinates: shared.length, outfallsAtSharedCoordinates: shared.reduce((s, c) => s + c, 0) },
+      outfalls: rows,
+      quiet: [...groups.values()],
+    },
+    meta: {
+      set, provider: "severn-trent", sourceId: "storm-overflow-activity", windowHours: hours, from, to, retrievedAt, total: items.length, partial,
+      catalogue: { state: catalogueState, version: catalogueState === "available" ? "v1" : null, attribution,
+        members: catalogueState === "available" ? items.filter((item) => byId.has(item.status.assetId)).length : 0 },
+      refresh: { mode: "cached-on-demand", bucketStart: "2026-11-12T11:55:00Z", bucketEnd: "2026-11-12T12:00:00Z" },
+    },
+  };
+}

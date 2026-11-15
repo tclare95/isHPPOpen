@@ -169,6 +169,31 @@ evidence. Any replacement metric must:
 - be calibrated separately against at least a full season of collected coverage;
 - be reviewed before it touches the indication or alerts.
 
+## Set source
+
+`RDP_CSO_SET_SOURCE=summary` (default `walk`) reads the set from RDP's `GET /v1/cso/sets/{set}/summary` instead of walking
+16 activity pages plus the full catalogue. It serves this section and the RDP membership reads (status, map and
+24-hour/7-day history), which use the same set.
+
+- **One request per window.** RDP reads every outfall at one as-of time and computes it once per 5-minute bucket; the app
+  caches it for 5 minutes (`rdp-cso-set-summary-v1`). It is normally well under 1 MB, against about 1 MB for the cached
+  walk and 2.55 MB for the uncached catalogue.
+- **Same rules.** RDP sends full rows (status, events, coverage, catalogue name and coordinates) only for outfalls that need
+  attention. Quiet outfalls (read, fresh, reported and effective not_spilling, no event in the window) come in groups and are
+  rebuilt as not-spilling reports with no events, the group's coverage and its earliest poll time. Classification still runs
+  here at request time, so a quiet report older than 30 minutes becomes `stale`, never "not spilling".
+- **Locations.** Distinct and shared locations for all outfalls come from RDP's coordinate counts, and each highlighted
+  outfall's "same location as" count is RDP's. Subsets (spilling, recent, with events) are counted here from their rows.
+- **No catalogue read.** Names, coordinates, catalogue membership and attribution come with the summary. A catalogue outage
+  in RDP is shown as "Outfall locations are unavailable" (`catalogueError: CATALOGUE_UNAVAILABLE`), with the counts kept.
+- **Failures** map as before: 403 `not_authorised`, `SET_NOT_FOUND` `set_not_enabled`, anything else `read_failed`.
+- **Activation:** separately approved, after the RDP read API release that adds the route and the caller IAM update for
+  `sets/*/summary` (until then RDP answers 403). Set `RDP_CSO_SET_SOURCE=summary` in Production and redeploy; the
+  response's `source` says which path served it. Rollback: unset it.
+
+Tests check that the walk and the summary give identical section output, membership snapshot and 24-hour history for the
+same set state.
+
 ## Deployment state and prerequisites
 
 - **RDP production (merged config and recorded evidence).** Production `enabledSets` includes `hpp-catchment`, with

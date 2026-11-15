@@ -12,7 +12,8 @@ import { parseRiverLocation, parseRiverTrace, riverCoordinates, riverSamplePath,
 import { assertRiverImpactQuery, parseRiverImpact, RIVER_IMPACT_MAX_BYTES } from "./riverImpact.js";
 import {
   assertCsoAssetId, assertCsoCursor, assertCsoEventId, assertCsoSetName, isCsoTimestamp, parseCsoCatalogue, parseCsoEvent, parseCsoEvents,
-  parseCsoHealth, parseCsoRevisions, parseCsoSetActivity, parseCsoStatus, CSO_SET_ACTIVITY_MAX_ITEMS,
+  parseCsoHealth, parseCsoRevisions, parseCsoSetActivity, parseCsoSetSummary, parseCsoStatus, CSO_SET_ACTIVITY_MAX_ITEMS,
+  CSO_SET_SUMMARY_MAX_BYTES,
 } from "./csoContract.js";
 
 export const CSO_STATUS_BATCH_LIMIT = 20;
@@ -184,6 +185,12 @@ export function createRdpClient(env = process.env) {
       }
       return request(`/v1/cso/sets/${set}/activity`, { hours: String(hours), limit: String(limit), ...(cursor === undefined ? {} : { cursor }) },
         (body) => parseCsoSetActivity(body, set, hours), true);
+    },
+    // The whole set at one as-of time in one bounded response (rows only where needed, quiet outfalls grouped).
+    getCsoSetSummary(set, { hours = 48 } = {}) {
+      assertCsoSetName(set);
+      if (!Number.isInteger(hours) || hours < 1 || hours > 168) throw new RdpError("INVALID_QUERY");
+      return request(`/v1/cso/sets/${set}/summary`, { hours: String(hours) }, (body) => parseCsoSetSummary(body, set, hours), CSO_SET_SUMMARY_MAX_BYTES);
     },
     getCsoHealth(id) {
       assertCsoAssetId(id);

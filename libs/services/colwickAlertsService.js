@@ -8,6 +8,9 @@ import { getLatestWaterQualitySummaryHealth, getWaterQualityDensitySeries } from
 import { TRENT_DASHBOARD_STATIONS, getTrentStationKey } from "../trentWeirsConfig";
 import { sendAlertConfirmationEmail, sendManageAlertsAccessEmail, sendThresholdAlertEmail } from "./alertMailerService";
 import { getCsoActivityAssessment } from "../waterQualityIndicator";
+import { alertRisk, ASSESSMENT_METHOD } from "../waterQualityAssessment";
+import { decideWaterQualityRule, summariseWaterQualityDecisions } from "../alerts/waterQualityAlertDecision";
+import { getRdpAlertAssessment, getWaterQualityAssessmentMode, LEGACY_ASSESSMENT_VERSION } from "./waterQualityAssessmentService";
 import { createRequestLogger } from "../api/logger";
 import { decideGaugeRule, describeGaugeRead, gaugeRetryGate, getGaugeAlertSourceMode, isLiveGaugeRule } from "../alerts/gaugeAlertDecision";
 import { compareGaugeAlertShadow } from "../alerts/gaugeAlertShadow";
@@ -93,6 +96,7 @@ const usable = (result) => result.status === "fulfilled" && (!result.value?.heal
 // Forecast gauge rules only. Live gauge rules are decided from alert-safe observations (libs/alerts).
 function forecastCondition(rule, forecast) { const row = forecast?.forecast_data?.find((item) => rule.direction === "below" ? Number(item.forecast_reading) <= rule.threshold : Number(item.forecast_reading) >= rule.threshold); return row ? { met: true, value: Number(row.forecast_reading), at: row.forecast_date, forecastRunAt: forecast?.metadata?.forecast_time || null } : { met: false }; }
 function risk(rows, now = new Date()) { const assessment = getCsoActivityAssessment(rows, now); return assessment.level === "high" ? "red" : assessment.level === "elevated" ? "amber" : assessment.level === "lower" ? "green" : null; }
+function legacyWaterRisk(sources, now) { const value = usable(sources.water) && sources.cso.status === "fulfilled" ? risk(sources.cso.value, now) : null; return value ? { lowest: value, highest: value, at: sources.water.value.ScrapeTimestamp } : null; }
 function condition(rule, sources, now) { const type = typeOf(rule); if (type === "gauge") return rule.source === "forecast" && usable(sources.forecast) ? forecastCondition(rule, sources.forecast.value) : null; if (type === "hpp_status") { const value = sources.hpp.value?.data?.currentStatus; return usable(sources.hpp) && typeof value === "boolean" ? { met: rule.desiredStatus === (value ? "open" : "closed"), clear: rule.desiredStatus !== (value ? "open" : "closed"), value: value ? "open" : "closed", at: sources.hpp.value.data.health.generatedAt } : null; } const value = usable(sources.water) && sources.cso.status === "fulfilled" ? risk(sources.cso.value, now) : null; if (!value) return null; const rank = { green: 0, amber: 1, red: 2 }; return { met: rank[value] >= rank[rule.riskLevel], clear: rank[value] < rank[rule.riskLevel], value, at: sources.water.value.ScrapeTimestamp }; }
 
 // ---------------------------------------------------------------------------
@@ -151,6 +155,8 @@ function createEvaluation(db, now) {
   async function releaseTransition(rule, transitionId) {
     // Keep a live gauge's observation marker attached: the triggering observation was processed.
     const markerState = rule.lastObservedAt ? { lastObservedState: "armed" } : {};
+    // Likewise a water-quality assessment marker (RDP_WQ_ASSESSMENT=rdp).
+    if (rule.wqAssessment) markerState.wqAssessment = { ...rule.wqAssessment, state: "armed" };
     const result = await subscriptions.updateOne(
       { alertKey: rule.alertKey, pendingTransitionId: transitionId },
       { $set: { lastConditionState: "armed", ...markerState, updatedAt: at }, $unset: { pendingTransitionId: "", pendingSince: "" }, $inc: { stateRevision: 1 } }
@@ -266,6 +272,11 @@ function createEvaluation(db, now) {
    */
   function progressUpdate(progress, state, transitionId) {
     if (!progress) return {};
+    // Water-quality assessment marker: the assessment version and evidence time the state was decided from.
+    if (progress.kind === "wq") {
+      return { set: { wqAssessment: { version: progress.version, at: progress.at, lowest: progress.lowest, highest: progress.highest, state,
+        transitionId: transitionId ?? null, suppressUntilClear: progress.suppressUntilClear } } };
+    }
     return {
       set: { lastObservedAt: progress.at, lastObservedValue: progress.value, lastObservedSource: progress.source, lastObservedMeasurementId: progress.measurementId, lastObservedState: state, lastObservedTransitionId: transitionId ?? null },
       unset: { gaugeHold: "" },
@@ -353,7 +364,42 @@ function createEvaluation(db, now) {
     }
   }
 
+  /**
+   * Water-quality rules decided with assessment markers: every rule under RDP_WQ_ASSESSMENT=rdp, and in legacy/shadow
+   * mode only rules that carry a marker (they were last decided by another assessment, e.g. before a rollback).
+   */
+  async function evaluateWaterQuality(rule, risk, version) {
+    const decision = decideWaterQualityRule(rule, risk, version);
+    const progress = risk && { kind: "wq", version, at: risk.at, lowest: risk.lowest, highest: risk.highest, suppressUntilClear: decision.suppressUntilClear ?? false };
+    switch (decision.kind) {
+      case "trigger":
+        return trigger(rule, { met: true, value: decision.value, at: risk.at }, progress);
+      case "rearm":
+        return rearm(rule, progress);
+      case "enrol":
+        return advance(rule, progress, "enrolled");
+      case "advance":
+        return advance(rule, progress, "unchanged");
+      case "unchanged":
+        await touch(rule);
+        return "unchanged";
+      default:
+        await touch(rule);
+        return "skipped";
+    }
+  }
+
   async function evaluate(rule, sources) {
+    if (typeOf(rule) === "water_quality") {
+      if (rule.pendingTransitionId) return resumePending(rule, null);
+      if (sources.wqMode === "rdp") return evaluateWaterQuality(rule, sources.wq.status === "fulfilled" ? sources.wq.risk : null, ASSESSMENT_METHOD.version);
+      if (sources.wqMode === null) {
+        await touch(rule);
+        return "skipped";
+      }
+      // Legacy/shadow: unchanged for rules that never saw the RDP assessment (no marker); marked rules re-enrol first.
+      if (rule.wqAssessment) return evaluateWaterQuality(rule, legacyWaterRisk(sources, now), LEGACY_ASSESSMENT_VERSION);
+    }
     if (isLiveGaugeRule(rule)) {
       const read = sources.gauges?.get(rule.gaugeKey);
       if (rule.pendingTransitionId) return resumePending(rule, () => gaugeRetryGate(rule, read, now));
@@ -423,9 +469,27 @@ async function reportGaugeShadow(shadowRead, rules, legacyGauges, now) {
   }
 }
 
+/** A cold 7-day set walk takes about 70 s; it is normally a shared cache hit. */
+export const WQ_ALERT_READ_DEADLINE_MS = 120000;
+
+/** The RDP assessment's alert view, read once per run. Never rejects. */
+async function readWaterQualityAssessment(now) {
+  try {
+    const assessment = await getRdpAlertAssessment({ now, deadlineMs: WQ_ALERT_READ_DEADLINE_MS });
+    const cso = assessment.current.factors.cso;
+    const risk = alertRisk(cso);
+    return { status: risk ? "fulfilled" : "unavailable", risk,
+      diagnostics: { version: assessment.version, level: cso.level, risk, observedAt: cso.observedAt ?? null, unknown: cso.unknown ?? null, reason: cso.unavailableReason ?? null } };
+  } catch {
+    return { status: "unavailable", risk: null, diagnostics: { reason: "read_failed" } };
+  }
+}
+
 export async function runColwickAlerts({ now = new Date() } = {}) {
   const started = Date.now();
   const gaugeMode = getGaugeAlertSourceMode();
+  // RDP_WQ_ASSESSMENT is pinned for the run. Invalid: water-quality rules are skipped (`wq-assessment-config`).
+  const wqMode = getWaterQualityAssessmentMode();
   const { db } = await connectToDatabase();
   const runs = db.collection(ALERT_RUNS_COLLECTION);
   const runId = randomUUID();
@@ -448,10 +512,20 @@ export async function runColwickAlerts({ now = new Date() } = {}) {
     const shadowRules = gaugeMode === "shadow" ? structuredClone(liveRules) : null;
     const shadowRead = gaugeMode === "shadow" && gaugeKeys.length ? readGauges("rdp", gaugeKeys, now).catch(() => null) : null;
     const authoritativeGauges = gaugeMode ? readGauges(gaugeMode === "rdp" ? "rdp" : "legacy", gaugeKeys, now) : Promise.resolve(new Map());
-    const [gaugeResult, forecast, hpp, water, cso] = await Promise.allSettled([authoritativeGauges, getLatestForecastSnapshot(), getHppStatusSnapshot(), getLatestWaterQualitySummaryHealth(), getWaterQualityDensitySeries(3)]);
+    const wqRules = rules.filter((rule) => typeOf(rule) === "water_quality");
+    const readsLegacyWater = wqMode === "legacy" || wqMode === "shadow";
+    const readsRdpWater = (wqMode === "rdp" || wqMode === "shadow") && wqRules.length > 0;
+    const skippedRead = Promise.resolve(null);
+    const [gaugeResult, forecast, hpp, water, cso, wqRead] = await Promise.allSettled([authoritativeGauges, getLatestForecastSnapshot(), getHppStatusSnapshot(),
+      readsLegacyWater ? getLatestWaterQualitySummaryHealth() : skippedRead, readsLegacyWater ? getWaterQualityDensitySeries(3) : skippedRead,
+      readsRdpWater ? readWaterQualityAssessment(now) : skippedRead]);
     const gauges = gaugeResult.status === "fulfilled" ? gaugeResult.value : new Map();
     const gaugeHoldReasons = {};
-    const sources = { gauges, gaugeHoldReasons, forecast, hpp, water, cso };
+    const wq = wqRead.value ?? { status: "not_read", risk: null, diagnostics: null };
+    // Shadow decisions use pre-run copies; evaluation never sees them and nothing is written for them.
+    const wqShadow = wqMode === "shadow" && wqRules.length
+      ? { rdp: wq.diagnostics, decisions: summariseWaterQualityDecisions(structuredClone(wqRules), wq.risk, ASSESSMENT_METHOD.version) } : null;
+    const sources = { gauges, gaugeHoldReasons, forecast, hpp, water, cso, wqMode, wq };
     const counts = { sent: 0, rearmed: 0, skipped: 0, suppressed: 0, failed: 0, uncertain: 0, heldForReview: 0, inFlight: 0, released: 0, errors: 0, enrolled: 0, gaugeHeld: 0, deferred: 0 };
     const errorCategories = {};
 
@@ -474,13 +548,17 @@ export async function runColwickAlerts({ now = new Date() } = {}) {
     const sourceFailures = [
       ...(gaugeMode ? [] : ["gauge-source-config"]),
       ...Object.entries(gaugeSources).filter(([, read]) => read.status !== "fresh").map(([key]) => `gauge:${key}`),
-      ...["forecast", "hpp", "water", "cso"].filter((name) => !usable(sources[name])),
+      ...["forecast", "hpp"].filter((name) => !usable(sources[name])),
+      ...(readsLegacyWater ? ["water", "cso"].filter((name) => !usable(sources[name])) : []),
+      ...(wqMode === null ? ["wq-assessment-config"] : []),
+      ...(wqMode === "rdp" && readsRdpWater && wq.status !== "fulfilled" ? ["wq-assessment"] : []),
     ];
     const outstanding = await outstandingDeliveries(deliveries, now).catch(() => null);
     const degraded = sourceFailures.length || counts.errors || counts.failed || counts.uncertain || counts.heldForReview || counts.gaugeHeld || deliveryIndex === "missing";
     const result = {
       runId, scanned: rules.length, ...counts, sourceFailures, errorCategories, deliveryIndex,
       gaugeSource: gaugeMode ?? "invalid", gaugeSources, gaugeHoldReasons,
+      waterQualitySource: wqMode ?? "invalid", ...(wqMode === "rdp" && wq.diagnostics && { waterQuality: wq.diagnostics }),
       outstandingDeliveries: outstanding,
       needsReview: Boolean(outstanding && (outstanding.staleClaims || outstanding.heldForReview)),
       incompleteRunsReconciled: staleRuns?.modifiedCount ?? 0,
@@ -488,8 +566,10 @@ export async function runColwickAlerts({ now = new Date() } = {}) {
     };
     await runs.updateOne({ runId }, { $set: { ...result, status: degraded ? "degraded" : "success", completedAt: new Date().toISOString() } });
     // The shadow summary is returned (and logged) only; it is never part of the run record.
-    if (shadowRules) return { ...result, shadow: shadowRead ? await reportGaugeShadow(shadowRead, shadowRules, gauges, now) : { status: "no_live_rules" } };
-    return result;
+    if (wqShadow) createRequestLogger({ method: "GET" }, "alerts/wq-shadow").info(`RDP water-quality alert shadow ${JSON.stringify(wqShadow)}`);
+    const withWqShadow = wqShadow ? { ...result, waterQualityShadow: wqShadow } : result;
+    if (shadowRules) return { ...withWqShadow, shadow: shadowRead ? await reportGaugeShadow(shadowRead, shadowRules, gauges, now) : { status: "no_live_rules" } };
+    return withWqShadow;
   } catch (error) {
     await runs.updateOne({ runId }, { $set: { status: "failed", errorCategory: errorCategoryOf(error), durationMs: Date.now() - started, completedAt: new Date().toISOString() } }).catch(() => {});
     throw error;

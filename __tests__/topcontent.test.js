@@ -7,8 +7,8 @@ import useFetch from '../libs/useFetch';
 jest.mock('../libs/useFetch');
 jest.mock('next/link', () => ({ children, href }) => <a href={href}>{children}</a>);
 jest.mock('../components/functional/opentitle', () => () => <div data-testid="open-title" />);
-jest.mock('../components/functional/vomitfactor', () => ({ levelData, csoData }) => (
-  <div data-testid="vomit-factor">{`${levelData.length}:${csoData.length}`}</div>
+jest.mock('../components/functional/vomitfactor', () => ({ assessment, isPending }) => (
+  <div data-testid="vomit-factor">{isPending ? 'pending' : assessment?.level ?? 'none'}</div>
 ));
 jest.mock('../components/functional/weirlevels', () => ({ currentLevel }) => (
   <div data-testid="weir-levels">{currentLevel}</div>
@@ -53,7 +53,7 @@ describe('TopContent', () => {
       '/api/levels': { data: undefined, error: undefined, isPending: true },
       '/api/s3forecast': { data: undefined, error: undefined, isPending: true },
       '/api/forecastaccuracy': { data: undefined, error: undefined, isPending: true },
-      '/api/waterquality/csodensity?hours=3': { data: undefined, error: undefined, isPending: true },
+      '/api/waterquality/assessment': { data: undefined, error: undefined, isPending: true },
     });
 
     renderWithGraphContext(<TopContent cachedEvents={[]} />);
@@ -81,8 +81,8 @@ describe('TopContent', () => {
         error: undefined,
         isPending: false,
       },
-      '/api/waterquality/csodensity?hours=3': {
-        data: [{ timestamp: '2026-03-08T10:00:00Z', numberCSOsPerKm2: 1.2 }],
+      '/api/waterquality/assessment': {
+        data: { source: 'rdp', current: { level: 'elevated', label: 'Elevated', reasons: [] } },
         error: undefined,
         isPending: false,
       },
@@ -91,7 +91,9 @@ describe('TopContent', () => {
     renderWithGraphContext(<TopContent cachedEvents={[]} />);
 
     expect(screen.getByText(/The River Level is/)).toHaveTextContent('The River Level is 1.45 M');
-    expect(screen.getByTestId('vomit-factor')).toHaveTextContent('1:1');
+    // The front page shows the server's assessment; it no longer computes one from density rows (#wq-assessment).
+    expect(screen.getByTestId('vomit-factor')).toHaveTextContent('elevated');
+    expect(mockUseFetch.mock.calls.map(([path]) => path)).not.toContain('/api/waterquality/csodensity?hours=3');
     expect(screen.getByTestId('weir-levels')).toHaveTextContent('1.45');
     expect(screen.getByTestId('forecast-chart')).toHaveTextContent('1:1:1');
   });
@@ -113,8 +115,8 @@ describe('TopContent', () => {
         error: undefined,
         isPending: false,
       },
-      '/api/waterquality/csodensity?hours=3': {
-        data: [],
+      '/api/waterquality/assessment': {
+        data: undefined,
         error: undefined,
         isPending: false,
       },

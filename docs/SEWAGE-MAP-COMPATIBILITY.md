@@ -1,5 +1,9 @@
 # Sewage Map compatibility inventory
 
+> **Superseded for runtime use (16 November 2026):** the indication, chart and alerts no longer need this feed once
+> `RDP_WQ_ASSESSMENT=rdp`; see [RDP-WATER-QUALITY-ASSESSMENT](RDP-WATER-QUALITY-ASSESSMENT.md). The replacement is a new,
+> versioned measure, not density parity. This inventory remains the record of what the legacy values meant.
+
 Reviewed 6 November 2026 against web `a9127f6` and legacy scraper source
 (`waterQuality.mjs` blob `6dc9da5`, `app.mjs` blob `bb456e8`, matching GitHub main).
 Repository/issue and public upstream source inspection only: no hosted Sewage Map

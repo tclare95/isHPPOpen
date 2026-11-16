@@ -5,6 +5,8 @@ import { createRequestLogger } from "../../../../../libs/api/logger";
 import { runColwickAlerts } from "../../../../../libs/services/colwickAlertsService";
 
 export const dynamic = "force-dynamic";
+// Water-quality rules under RDP_WQ_ASSESSMENT=rdp may need a cold 7-day RDP set read (about 70 s, normally cached).
+export const maxDuration = 180;
 
 export async function GET(request) {
   const logger = createRequestLogger({ method: "GET" }, "api/internal/alerts/run");

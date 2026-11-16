@@ -48,7 +48,8 @@ only RDP, returning 503 on total failure.
 | `scripts/create-water-quality-indexes.mjs` | index maintenance only; harmless |
 
 The `waterQuality` summary (membership `CSO_IDs` and Sewage Map density) is still written by the Node main schedule.
-It still feeds density, the indicator, alerts and the RDP membership. It is **not** retired here.
+It still feeds density, the indicator, alerts and the RDP membership. It is **not** retired here; its replacement and
+writer retirement are in [RDP-WATER-QUALITY-ASSESSMENT](RDP-WATER-QUALITY-ASSESSMENT.md).
 
 ## Activation and retirement sequence
 

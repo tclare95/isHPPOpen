@@ -2,6 +2,8 @@ import "server-only";
 import { unstable_cache } from "next/cache";
 import { HttpError } from "../api/http";
 import { createRequestLogger } from "../api/logger";
+import { buildOperationalHealth } from "../operationalHealth";
+import { getWaterQualityAssessmentMode } from "../services/waterQualityAssessmentService";
 import {
   assembleWaterQualitySnapshot, buildLegacyWaterQualityHealth, getLatestWaterQualitySummary,
 } from "../services/waterQualityService";
@@ -146,12 +148,14 @@ function assertWalkSource(walk, set) {
   }
 }
 
-// RDP_CSO_SOURCE=rdp with RDP_CSO_MEMBERSHIP=rdp. Never reads Mongo `csoData` or `CSO_IDs`; the Mongo summary still
-// supplies the density fields and their freshness, which this task does not change.
+// RDP_CSO_SOURCE=rdp with RDP_CSO_MEMBERSHIP=rdp. Never reads Mongo `csoData` or `CSO_IDs`. The Mongo summary supplies
+// the legacy density fields and health only while the legacy assessment is in use: with RDP_WQ_ASSESSMENT=rdp it is not
+// read at all (so the legacy `waterQuality` writer can stop), and health is the RDP set read's.
 export async function getRdpMembershipWaterQualitySnapshot(now = new Date()) {
   const logger = createRequestLogger({ method: "GET" }, "rdp/cso-membership");
-  const latest = await getLatestWaterQualitySummary();
-  if (!latest) return null;
+  const withoutLegacySummary = getWaterQualityAssessmentMode() === "rdp";
+  const latest = withoutLegacySummary ? null : await getLatestWaterQualitySummary();
+  if (!latest && !withoutLegacySummary) return null;
 
   let set;
   try {
@@ -185,7 +189,8 @@ export async function getRdpMembershipWaterQualitySnapshot(now = new Date()) {
   const read = walkSummary(walk, set.members);
   const partial = !walk.complete || walk.partialPages > 0;
   if (partial) logger.warn(`RDP CSO set activity degraded ${JSON.stringify(read)}`);
-  const health = { ...buildLegacyWaterQualityHealth(latest, now), source: SOURCE_NAME,
+  const baseHealth = latest ? buildLegacyWaterQualityHealth(latest, now) : buildOperationalHealth({ source: SOURCE_NAME, generatedAt: walk.retrievedAt, fetchedAt: now });
+  const health = { ...baseHealth, source: SOURCE_NAME,
     cso: { origin: "rdp", available: true, partial, unknown: locations.filter((row) => row.status === "unknown").length, read } };
   const snapshot = assembleWaterQualitySnapshot(latest, locations, now, health, { csoIds: locations.map((row) => row.id), membership });
   return {

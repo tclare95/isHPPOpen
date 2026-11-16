@@ -12,6 +12,7 @@ import Row from 'react-bootstrap/Row';
 import PropTypes from 'prop-types';
 import SourceHealthBadge from '../../components/functional/sourceHealthBadge';
 import WaterQualityIndicator from '../../components/functional/vomitfactor';
+import WaterQualityInterpretation from '../../components/functional/waterQualityInterpretation';
 import RiverContext from '../../components/functional/riverContext';
 import CsoEventHistory from '../../components/functional/csoEventHistory';
 import CsoCatchmentMonitoring from '../../components/functional/csoCatchmentMonitoring';
@@ -21,6 +22,9 @@ import { SWR_15_MINUTES } from '../../libs/dataFreshness';
 
 const WaterQualityMap = dynamic(() => import('../../components/functional/csoMap'), { ssr: false, loading: () => <p>Loading map…</p> });
 const CsoChart = dynamic(() => import('../../components/functional/csoChart'), { ssr: false, loading: () => <p>Loading chart…</p> });
+const WaterQualityAssessmentChart = dynamic(() => import('../../components/functional/waterQualityAssessmentChart'), { ssr: false, loading: () => <p>Loading chart…</p> });
+// The archived Sewage Map density view (RDP assessment in use): the last 30 days the legacy writer recorded.
+const ARCHIVE_HOURS = 720;
 
 function formatUpdated(value) {
   const date = value ? new Date(value) : null;
@@ -42,6 +46,7 @@ export default function WaterQualityPage() {
   const [riverDirection, setRiverDirection] = useState('off');
   const [historyOutfallId, setHistoryOutfallId] = useState('');
   const [mapFocusId, setMapFocusId] = useState(null);
+  const [showArchive, setShowArchive] = useState(false);
   const { data: riverData, error: riverError, isPending: riverPending } = useFetch(
     riverDirection === 'off' ? null : `/api/waterquality/river?direction=${riverDirection}`,
     { revalidateOnFocus: false, revalidateOnReconnect: false, shouldRetryOnError: false });
@@ -54,8 +59,12 @@ export default function WaterQualityPage() {
     { refreshInterval: 300000, revalidateOnFocus: false, revalidateOnReconnect: false, shouldRetryOnError: false });
   const impactError = impactFetchError ?? (impactData && !impactData.enabled ? new Error('Downstream impact is not enabled') : null);
   const { data: summaryData, error: summaryError, isPending: summaryPending } = useFetch('/api/waterquality', SWR_15_MINUTES);
-  const { data: densityData, error: densityError, isPending: densityPending } = useFetch('/api/waterquality/csodensity?hours=120', SWR_15_MINUTES);
-  const { data: levelData, error: levelError, isPending: levelPending } = useFetch('/api/levels', SWR_15_MINUTES);
+  // The indication and its history come from the server in every RDP_WQ_ASSESSMENT mode. Only the legacy assessment, or
+  // the archived view of it, reads the Sewage Map density series; the two are never drawn on one axis.
+  const { data: assessment, error: assessmentError, isPending: assessmentPending } = useFetch(`/api/waterquality/assessment?hours=${chartHours}`, SWR_15_MINUTES);
+  const rdpAssessment = assessment?.source === 'rdp';
+  const densityPath = !assessment ? null : !rdpAssessment ? '/api/waterquality/csodensity?hours=120' : showArchive ? `/api/waterquality/csodensity?hours=${ARCHIVE_HOURS}&interval=60` : null;
+  const { data: densityData, error: densityError, isPending: densityPending } = useFetch(densityPath, SWR_15_MINUTES);
   const current = summaryData?.waterQualityData ?? null;
   const counts = current?.statusSummary || {};
   // A fresh "not spilling" report with no recent provider-reported spill is not unavailable data, but RDP coverage is
@@ -65,7 +74,7 @@ export default function WaterQualityPage() {
   // RDP reported no usable CSO status at all (#68): never present the counts as zero spills.
   const csoStatusUnavailable = current?.health?.cso?.available === false;
   const densityRows = Array.isArray(densityData) ? densityData : [];
-  const levels = levelData?.level_data || [];
+  const observedAt = assessment?.current?.observedAt ?? current?.ScrapeTimestamp;
 
   return (
     <main className="water-quality-page text-white">
@@ -73,7 +82,7 @@ export default function WaterQualityPage() {
         <div className="mb-4">
           <Link href="/" className="water-quality-back">← Back to home</Link>
           <h1 className="display-5 fw-bold mt-4">Water quality indication</h1>
-          <p className="lead water-quality-intro col-lg-8">A general indication based on upstream storm-overflow activity and how quickly the river is rising. It is not a measurement of bacteria or a guarantee that the water is safe.</p>
+          <p className="lead water-quality-intro col-lg-8">A general indication based on recent upstream storm-overflow activity and whether the river is rising. It is not a measurement of bacteria or a guarantee that the water is safe.</p>
         </div>
 
         <Card className="water-quality-hero mb-4">
@@ -81,13 +90,13 @@ export default function WaterQualityPage() {
             <Row className="align-items-center g-4">
               <Col lg={7}>
                 <p className="text-uppercase small fw-semibold text-info mb-2">Overall indication</p>
-                <WaterQualityIndicator levelData={levels} csoData={densityRows} expanded />
+                <WaterQualityIndicator assessment={assessment?.current ?? null} isPending={assessmentPending} expanded />
               </Col>
               <Col lg={5}>
-                <p className="mb-1"><strong>Observed:</strong> {formatUpdated(current?.ScrapeTimestamp)}</p>
+                <p className="mb-1"><strong>Observed:</strong> {formatUpdated(observedAt)}</p>
                 <p className="small water-quality-muted mb-2">Sources normally update around every 15 minutes.</p>
-                <SourceHealthBadge health={current?.health} />
-                {(summaryError || densityError || levelError) ? <div className="alert alert-warning mt-3 mb-0">Some supporting data is unavailable, so the indication may be incomplete.</div> : null}
+                <SourceHealthBadge health={assessment?.health ?? current?.health} />
+                {(summaryError || assessmentError) ? <div className="alert alert-warning mt-3 mb-0">Some supporting data is unavailable, so the indication may be incomplete.</div> : null}
               </Col>
             </Row>
           </Card.Body>
@@ -110,7 +119,27 @@ export default function WaterQualityPage() {
               label="Reported downstream spill impact" />
             <WaterQualityMap locations={current?.locations || []} relatedLocations={current?.relatedLocations ?? null} membership={current?.membership ?? null} health={current?.health} isPending={summaryPending} error={summaryError} riverTrace={riverTrace} focusId={mapFocusId} onShowHistory={(id) => { setHistoryOutfallId(id); scrollToSection('cso-history'); }}
               impactEnabled={impactOn} impact={impactData?.enabled ? impactData.impact : null} impactPending={impactOn && impactPending} impactError={impactOn ? impactError : null} /></section></Col>
-          <Col lg={6}><section className="water-quality-panel h-100"><h2>Activity over time</h2><p className="water-quality-muted">Hourly upstream CSO activity density with the indicator reference levels.</p><CsoChart data={densityRows} error={densityError} isPending={densityPending} hours={chartHours} onHoursChange={setChartHours} /></section></Col>
+          <Col lg={6}><section className="water-quality-panel h-100"><h2>Activity over time</h2>
+            {rdpAssessment ? (
+              <>
+                <p className="water-quality-muted">Reviewed upstream storm overflows that spilled in the previous {assessment.method?.recentHours ?? 48} hours, hour by hour, with the indication&apos;s reference levels.</p>
+                <WaterQualityAssessmentChart assessment={assessment} error={assessmentError} isPending={assessmentPending} hours={chartHours} onHoursChange={setChartHours} />
+                <Form.Check type="switch" id="wq-archive-toggle" className="small mt-3" checked={showArchive} onChange={(e) => setShowArchive(e.target.checked)}
+                  label="Show the archived Sewage Map density (previous method)" />
+                {showArchive ? (
+                  <div className="mt-2" data-testid="wq-archive">
+                    <p className="small water-quality-muted">Archived: the density the indication used before it moved to River Data Platform. It is a different measure on a different scale, so its values and reference levels cannot be compared with the counts above.</p>
+                    <CsoChart data={densityRows} error={densityError} isPending={densityPending} hours={ARCHIVE_HOURS} windows={[]} />
+                  </div>
+                ) : null}
+              </>
+            ) : (
+              <>
+                <p className="water-quality-muted">Hourly upstream CSO activity density with the indicator reference levels.</p>
+                <CsoChart data={densityRows} error={densityError ?? assessmentError} isPending={densityPending || assessmentPending} hours={chartHours} onHoursChange={setChartHours} />
+              </>
+            )}
+          </section></Col>
         </Row>
 
         <CsoEventHistory selectedOutfallId={historyOutfallId} onSelectOutfall={setHistoryOutfallId}
@@ -121,19 +150,14 @@ export default function WaterQualityPage() {
         <Accordion className="mb-4">
           <Accordion.Item eventKey="0">
             <Accordion.Header>How to interpret this indication</Accordion.Header>
-            <Accordion.Body className="text-start">
-              <p>Higher recent CSO activity suggests a greater upstream wastewater influence. A rapidly rising river can also bring agricultural and urban runoff. The page uses whichever factor gives the higher indication.</p>
-              <p>The CSO bands are relative to the previous year of data. They do not measure discharge volume, pathogens, agricultural pollution or pollution from systems outside Severn Trent&apos;s network.</p>
-              <p className="mb-0">Use normal paddling precautions, pay attention to how you feel and avoid swallowing river water. This information is directional guidance only.</p>
-            </Accordion.Body>
+            <Accordion.Body className="text-start"><WaterQualityInterpretation assessment={assessment ?? null} /></Accordion.Body>
           </Accordion.Item>
           <Accordion.Item eventKey="about">
             <Accordion.Header>About the data</Accordion.Header>
-            <Accordion.Body className="text-start small"><AboutTheData membership={current?.membership ?? null} /></Accordion.Body>
+            <Accordion.Body className="text-start small"><AboutTheData membership={current?.membership ?? null} assessment={assessment ?? null} /></Accordion.Body>
           </Accordion.Item>
         </Accordion>
         <p className="text-center"><Link href="/alerts" className="text-info">Email me when CSO activity becomes elevated</Link></p>
-        {levelPending ? <span className="visually-hidden">Loading river levels</span> : null}
       </Container>
     </main>
   );

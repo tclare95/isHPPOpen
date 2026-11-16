@@ -78,7 +78,8 @@ export default function TopContent(props) {
     isPending: forecastPending,
   } = useFetch("/api/s3forecast", SWR_15_MINUTES);
   const { data: accuracyData, error: accuracyError } = useFetch("/api/forecastaccuracy", SWR_15_MINUTES);
-  const { data: csoDensityData } = useFetch("/api/waterquality/csodensity?hours=3", SWR_15_MINUTES);
+  // The same server-side assessment as /waterquality (RDP_WQ_ASSESSMENT); never computed in the browser.
+  const { data: waterQualityAssessment, isPending: assessmentPending } = useFetch("/api/waterquality/assessment", SWR_15_MINUTES);
 
   const levelReadings = levelData?.level_data ?? [];
   const recentEntry = isPending ? null : levelReadings[0];
@@ -86,7 +87,6 @@ export default function TopContent(props) {
   const readingTime = recentEntry?.reading_date ? new Date(recentEntry.reading_date) : currentTime;
   const recentLevel = recentEntry ? recentEntry.reading_level : 0;
   const { lowerBound, upperBound, updateBounds } = useContext(GraphContext);
-  const csoData = Array.isArray(csoDensityData) ? csoDensityData : [];
   const hasOperationalError = Boolean(levelError || forecastError || accuracyError);
 
   useEffect(() => {
@@ -119,7 +119,7 @@ export default function TopContent(props) {
           </h3>
           <a href="#waterquality">
             {isPending || levelError ? null : (
-              <VomitFactor levelData={levelReadings} csoData={csoData} />
+              <VomitFactor assessment={waterQualityAssessment?.current ?? null} isPending={assessmentPending} />
             )}
           </a>
         </Col>

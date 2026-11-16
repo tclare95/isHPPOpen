@@ -35,6 +35,12 @@ route is released and the caller IAM includes `sets/*/summary`; unset to roll ba
 Optional: `RDP_RIVER_IMPACT=on` (default off) enables the "Reported downstream spill impact" map overlay from RDP's live
 downstream impact for the pinned `hpp-upstream-outfalls` set. It is connectivity only: never feed it to the indicator, thresholds or alerts. See [docs/RDP-RIVER-IMPACT.md](docs/RDP-RIVER-IMPACT.md).
 
+Optional: `RDP_WQ_ASSESSMENT` (`legacy|shadow|rdp`, default `legacy`) selects the water-quality assessment for the indication,
+its chart, the front-page tile and water-quality alerts. `rdp` is the versioned RDP assessment `hpp-upstream-activity/v1` and
+never reads Mongo `waterQuality` or falls back to the Sewage Map density; its numbers are counts on a different scale from the
+legacy density and must never be compared with, joined to or judged by the legacy thresholds. Alerts re-baseline on a mode
+change instead of notifying. See [docs/RDP-WATER-QUALITY-ASSESSMENT.md](docs/RDP-WATER-QUALITY-ASSESSMENT.md).
+
 Optional, development only: `HISTORY_DEV_FIXTURE_DIR` serves local EA Hydrology fixtures to `/history`
 (`npm run history:fixtures`), because the RDP client needs Vercel OIDC and cannot run locally. It is ignored
 outside `NODE_ENV=development`; see [docs/HISTORICAL_RIVER_CONDITIONS.md](docs/HISTORICAL_RIVER_CONDITIONS.md).

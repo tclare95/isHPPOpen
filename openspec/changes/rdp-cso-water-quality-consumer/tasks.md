@@ -34,5 +34,11 @@ All tasks unchecked. Implementation/release approvals are separate from this doc
 - [ ] Separately approved: scraper release that stops legacy CSO collection; verify no new `csoData` records and no Severn Trent ArcGIS requests.
 - [ ] Separately approved: scraper release that disables the SQS worker event-source mapping and the weekly archiver after the queue drains; existing Mongo records and S3 archives are kept.
 
+## Slice F — versioned RDP water-quality assessment (R9)
+- [x] Pure, versioned assessment `hpp-upstream-activity/v1` with conservative unknown handling, recomputed history and a labelled legacy archive; `RDP_WQ_ASSESSMENT=legacy|shadow|rdp`; alert re-baselining in both directions; fixture and representative real-data tests. ([RDP-WATER-QUALITY-ASSESSMENT](../../../docs/RDP-WATER-QUALITY-ASSESSMENT.md))
+- [ ] Product acceptance of the v1 thresholds and windows ([decisions](../../../docs/RDP-WATER-QUALITY-ASSESSMENT.md#decisions-needing-product-acceptance)).
+- [ ] Separately approved: `RDP_WQ_ASSESSMENT=rdp` in Production (optionally after a short `shadow` look).
+- [ ] Separately approved: scraper release that stops the `waterQuality` summary writer and its Sewage Map lookup; existing documents are kept.
+
 ## Review-only
 No build/test execution, AWS interaction, schema changes, import, code implementation, new live writer, source switch or deployment performed by this OpenSpec.

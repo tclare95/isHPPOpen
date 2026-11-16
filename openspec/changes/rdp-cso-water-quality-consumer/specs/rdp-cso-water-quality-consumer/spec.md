@@ -49,5 +49,15 @@
 - **WHEN** status or events are needed for a large membership **THEN** they come from bounded, cached whole-set reads; any member not read is reported as not read, never as clear or as having no events.
 - **WHEN** membership changes source **THEN** the legacy activity density, its chart, calibrated thresholds and alerts are unchanged, and the change is reversible by configuration alone.
 
+### R9. Versioned RDP water-quality assessment replacing the Sewage Map density
+- **WHEN** the RDP assessment is selected **THEN** the indication, its history chart, the front-page indication and water-quality alerts use one versioned, HPP-owned assessment of recent activity of the approved upstream membership's confirmed scope and of river conditions, computed from RDP status, event and collection-coverage evidence and observed levels, and nothing reads new legacy summary records or Sewage Map data.
+- **WHEN** an outfall has no recorded spill in the assessed window **THEN** it is counted as not having spilled only with positive evidence (collection throughout the window and, for the current point, a fresh, online, non-contradictory status); offline, stale, uncollected, unread, truncated or unresolved evidence is unknown and can only raise, never lower, the indication.
+- **WHEN** unknown evidence could change the level **THEN** a recorded higher level is shown as "at least" that level, and a lower level is shown only within a stated tolerance of unknown evidence; otherwise the assessment is unavailable. River conditions may raise an indication but never replace missing overflow evidence.
+- **WHEN** history is shown **THEN** each point is computed only from evidence available for its whole window, gaps are shown as gaps, and the legacy density history is preserved and presented only as a separately labelled archive on its own scale: old and new values and thresholds are never compared, joined or converted.
+- **WHEN** the assessment is shown **THEN** its version, thresholds, sources and attribution are stated, with what it measures and what it does not (not a measurement of bacteria or water safety, not other pollution sources).
+- **WHEN** the assessment source or version changes, in either direction **THEN** existing subscriptions are not modified and no notification results from the change itself: rules are re-baselined first and notify only after the new assessment has cleared below their level and risen again. Rules trigger only on proven evidence, re-arm only when evidence rules the level out, and are skipped when the assessment is unavailable.
+- **WHEN** RDP evidence is unavailable **THEN** the assessment is reported unavailable with no fallback to the legacy density; the switch is reversible by configuration alone.
+- **WHEN** the assessment thresholds or method change **THEN** that is a new version requiring explicit product acceptance.
+
 ## Non-goals
 No new dashboard/map, platform risk engine, invented upstream matching, automatic polling selection, replacement 48h formula by convenience, publication of anonymous RDP reads, implementation or production changes from this spec.

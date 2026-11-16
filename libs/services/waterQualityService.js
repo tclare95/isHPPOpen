@@ -114,18 +114,21 @@ export function legacyMembership(latest) {
 }
 
 // Shared by the legacy and RDP-backed paths so both emit exactly the same public snapshot shape. `csoIds` and
-// `membership` describe an RDP membership (#114); density fields always stay the legacy summary's.
+// `membership` describe an RDP membership (#114); density fields always stay the legacy summary's. With the RDP
+// assessment (RDP_WQ_ASSESSMENT=rdp) there is no legacy summary: `latest` is null, the Sewage Map fields are null
+// (never 0) and `ScrapeTimestamp` is the RDP read time carried by `health`.
 export function assembleWaterQualitySnapshot(latest, locations, now, health, { csoIds, membership } = {}) {
-  const waterQuality = latest.water_quality || {};
+  const waterQuality = latest?.water_quality || {};
+  const legacyNumber = (value) => (latest ? Number(value) || 0 : null);
   const recentCutoff = new Date(now.getTime() - RECENT_EVENT_HOURS * HOURS_TO_MS);
   const count = (status) => locations.filter((location) => location.status === status).length;
   const activeLocations = locations.filter((location) => location.status === 'active');
   return {
-    Id: latest.id ?? null,
-    ScrapeTimestamp: latest.scrape_timestamp ?? null,
+    Id: latest?.id ?? null,
+    ScrapeTimestamp: latest ? latest.scrape_timestamp ?? null : health?.generatedAt ?? null,
     WaterQuality: {
-      NumberUpstreamCSOs: Number(waterQuality.number_upstream_CSOs) || 0,
-      NumberCSOsPerKm2: Number(waterQuality.number_CSOs_per_km2) || 0,
+      NumberUpstreamCSOs: legacyNumber(waterQuality.number_upstream_CSOs),
+      NumberCSOsPerKm2: legacyNumber(waterQuality.number_CSOs_per_km2),
       CSOIds: csoIds ?? getSummaryMembership(latest),
       CSOActiveTime: activeHoursWithinWindow(activeLocations, now, recentCutoff),
     },
@@ -144,7 +147,7 @@ export function assembleWaterQualitySnapshot(latest, locations, now, health, { c
 }
 
 export function buildLegacyWaterQualityHealth(latest, now, options = {}) {
-  return buildOperationalHealth({ source: 'mongodb-water-quality', generatedAt: latest.scrape_timestamp, fetchedAt: now, ...options });
+  return buildOperationalHealth({ source: 'mongodb-water-quality', generatedAt: latest?.scrape_timestamp ?? null, fetchedAt: now, ...options });
 }
 
 // Legacy (Mongo `waterQuality` + `csoData`) snapshot: the `legacy` mode, shadow comparison and admin

@@ -24,7 +24,10 @@ function hourlyRows(data, hours) {
   return [...buckets.entries()].map(([time, bucket]) => [new Date(time), bucket.sum / bucket.count, WATER_QUALITY_CALIBRATION.waterQuality.elevatedDensity, WATER_QUALITY_CALIBRATION.waterQuality.highDensity]);
 }
 
-export default function CsoChart({ data = [], error = null, isPending = false, hours = 120, onHoursChange = () => {} }) {
+const WINDOW_LABELS = { 24: '24 hours', 120: '5 days' };
+
+// Legacy Sewage Map density. With the RDP assessment it is only shown as an archive (`windows=[]`, fixed `hours`).
+export default function CsoChart({ data = [], error = null, isPending = false, hours = 120, onHoursChange = () => {}, windows = [24, 120] }) {
   const rows = useMemo(() => hourlyRows(data, hours), [data, hours]);
   if (isPending) return <p>Loading chart…</p>;
   if (error) return <p>Unable to load chart data right now.</p>;
@@ -36,10 +39,11 @@ export default function CsoChart({ data = [], error = null, isPending = false, h
     <div>
       <div className="d-flex justify-content-between align-items-center gap-2 mb-2">
         <p className="mb-0"><strong>{trend}</strong><br /><span className="small water-quality-muted">Latest hourly density: {latest.toFixed(3)}</span></p>
-        <ButtonGroup size="sm" aria-label="Chart time window">
-          <Button variant={hours === 24 ? 'info' : 'outline-light'} onClick={() => onHoursChange(24)}>24 hours</Button>
-          <Button variant={hours === 120 ? 'info' : 'outline-light'} onClick={() => onHoursChange(120)}>5 days</Button>
-        </ButtonGroup>
+        {windows.length ? (
+          <ButtonGroup size="sm" aria-label="Chart time window">
+            {windows.map((window) => <Button key={window} variant={hours === window ? 'info' : 'outline-light'} onClick={() => onHoursChange(window)}>{WINDOW_LABELS[window] ?? `${window} hours`}</Button>)}
+          </ButtonGroup>
+        ) : null}
       </div>
       <Chart width="100%" height={320} chartType="LineChart" loader={<div>Loading chart…</div>}
         data={[[{ type: 'datetime', label: 'Date' }, { type: 'number', label: 'Activity density' }, { type: 'number', label: 'Elevated threshold' }, { type: 'number', label: 'High threshold' }], ...rows]}
@@ -48,4 +52,4 @@ export default function CsoChart({ data = [], error = null, isPending = false, h
   );
 }
 
-CsoChart.propTypes = { data: PropTypes.array, error: PropTypes.object, isPending: PropTypes.bool, hours: PropTypes.number, onHoursChange: PropTypes.func };
+CsoChart.propTypes = { data: PropTypes.array, error: PropTypes.object, isPending: PropTypes.bool, hours: PropTypes.number, onHoursChange: PropTypes.func, windows: PropTypes.arrayOf(PropTypes.number) };

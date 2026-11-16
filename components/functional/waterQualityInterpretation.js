@@ -24,7 +24,7 @@ export default function WaterQualityInterpretation({ assessment = null }) {
       </ul>
       <p><strong>What it does not mean.</strong> {assessment.explanation?.doesNotMean} Lower is not &quot;clean&quot; and High is not a measured hazard. Spill duration and volume, rainfall runoff from farmland and roads, and overflows outside the reviewed set are not counted.</p>
       <p><strong>Missing evidence.</strong> An offline or stale monitor, a gap in collection or a spill without a reported end is never counted as &quot;no spill&quot;. &quot;At least&quot; and &quot;partial data&quot; mean activity may be higher than shown. If too much evidence is missing to rule out a higher level, the indication is Unavailable rather than Lower.</p>
-      <p><strong>Method and history.</strong> Assessment version {method.version}. Before it, the indication used Sewage Map&apos;s density measure; that history is kept as an archive and is a different scale, so old and new values are never compared or joined.</p>
+      <p><strong>Method.</strong> Version {method.version}. Earlier readings used Sewage Map&apos;s density and are shown separately on their own scale.</p>
       <p className="mb-0">Use normal paddling precautions, pay attention to how you feel and avoid swallowing river water. This information is directional guidance only.</p>
     </>
   );

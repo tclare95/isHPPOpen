@@ -128,7 +128,7 @@ export default function WaterQualityPage() {
                   label="Show the archived Sewage Map density (previous method)" />
                 {showArchive ? (
                   <div className="mt-2" data-testid="wq-archive">
-                    <p className="small water-quality-muted">Archived: the density the indication used before it moved to River Data Platform. It is a different measure on a different scale, so its values and reference levels cannot be compared with the counts above.</p>
+                    <p className="small water-quality-muted">Sewage Map CSO activity per km², the previous measure. Its scale and reference levels differ from the counts above.</p>
                     <CsoChart data={densityRows} error={densityError} isPending={densityPending} hours={ARCHIVE_HOURS} windows={[]} />
                   </div>
                 ) : null}

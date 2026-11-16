@@ -73,14 +73,14 @@ describe('WaterQualityPage', () => {
     expect(screen.queryByTestId('density-chart')).not.toBeInTheDocument();
     expect(useFetch.mock.calls.every(([path]) => !path?.startsWith('/api/waterquality/csodensity'))).toBe(true);
     // Explains what the indication is and is not, with its version and thresholds.
-    expect(screen.getByText(/Assessment version hpp-upstream-activity\/v1/)).toBeInTheDocument();
+    expect(screen.getByText(/Version hpp-upstream-activity\/v1/)).toBeInTheDocument();
     expect(screen.getByText(/What it does not mean/).parentElement).toHaveTextContent(/It is not a measurement of bacteria/);
     expect(screen.getByText(/never counted as "no spill"/)).toBeInTheDocument();
 
     fireEvent.click(screen.getByLabelText('Show the archived Sewage Map density (previous method)'));
     // The archive is a separate, labelled chart on its own scale.
     expect(useFetch).toHaveBeenCalledWith('/api/waterquality/csodensity?hours=720&interval=60', expect.anything());
-    expect(screen.getByTestId('wq-archive')).toHaveTextContent(/different measure on a different scale/);
+    expect(screen.getByTestId('wq-archive')).toHaveTextContent(/scale and reference levels differ/);
     expect(screen.getByTestId('density-chart')).toBeInTheDocument();
     expect(screen.getByTestId('assessment-chart')).toBeInTheDocument();
   });

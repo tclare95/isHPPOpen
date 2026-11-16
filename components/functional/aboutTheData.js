@@ -10,7 +10,7 @@ export default function AboutTheData({ membership, assessment = null }) {
       <li><strong>Storm overflows:</strong> {providers}, collected by River Data Platform about every 15 minutes. Spill times are as the provider reports them; an end time is never estimated.</li>
       {set ? <li><strong>Upstream outfalls:</strong> the {Number.isFinite(set.confirmed) ? `${set.confirmed} ` : ''}outfalls in River Data Platform&apos;s reviewed set {set.relationshipSet} (version {set.version}).</li> : null}
       {assessment?.source === 'rdp' ? (
-        <li><strong>Indication and activity chart:</strong> assessment {assessment.version}, calculated by this site from River Data Platform&apos;s storm-overflow events and collection coverage for the reviewed upstream set, and Environment Agency river levels. River Data Platform supplies the evidence, not the indication. Before this, the indication used Sewage Map&apos;s density measure, which is kept only as an archive.</li>
+        <li><strong>Indication and activity chart:</strong> storm-overflow events and collection coverage for the reviewed upstream outfalls from River Data Platform, and Colwick river levels from the Environment Agency. Method {assessment.version}.</li>
       ) : (
         <li><strong>Activity chart:</strong> a measure of upstream overflow activity affecting HPP, not a count of overflows at HPP itself.</li>
       )}

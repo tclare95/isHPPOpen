@@ -152,12 +152,23 @@ async function readCompleteWalk(set, hours) {
 }
 const readCachedWalk = unstable_cache(readCompleteWalk, ["rdp-cso-set-activity-v2"], { revalidate: CATCHMENT_CACHE_SECONDS, tags: ["rdp-cso"] });
 
+// Next's data cache serves an expired entry and refreshes it in the background, and on Vercel that refresh may never
+// finish. A set read older than this is never presented: it is read again instead. Production served a 21-hour-old walk
+// on 2026-11-16, so every report was `stale` and the section showed 0 spilling and 1,514 unknown during active spills.
+export const SET_READ_MAX_AGE_MS = 2 * CATCHMENT_CACHE_SECONDS * 1000;
+export const isTooOld = (read, now = Date.now()) => !(now - Date.parse(read.retrievedAt) <= SET_READ_MAX_AGE_MS);
+
 // Concurrent misses in one instance share one walk.
-const readWalk = (set, hours) => coalesce(`set-activity:${set}:${hours}`,
-  () => readCachedWalk(set, hours).catch((error) => {
+const readWalk = (set, hours) => coalesce(`set-activity:${set}:${hours}`, async () => {
+  let walk;
+  try {
+    walk = await readCachedWalk(set, hours);
+  } catch (error) {
     if (error instanceof IncompleteWalk) return error.result;
     throw error;
-  }));
+  }
+  return isTooOld(walk) ? walkSetActivity(set, hours) : walk;
+});
 
 // ---- The same set from RDP's one-request summary (`RDP_CSO_SET_SOURCE=summary`) ----
 // RDP computes the whole set at one as-of time once per 5-minute bucket and returns full rows only for outfalls that
@@ -197,7 +208,10 @@ export function walkFromSummary(summary) {
 
 const readCachedSummary = unstable_cache((set, hours) => getClient().getCsoSetSummary(set, { hours }), ["rdp-cso-set-summary-v1"],
   { revalidate: SUMMARY_CACHE_SECONDS, tags: ["rdp-cso"] });
-const readSummaryWalk = (set, hours) => coalesce(`set-summary:${set}:${hours}`, async () => walkFromSummary(await readCachedSummary(set, hours)));
+const readSummaryWalk = (set, hours) => coalesce(`set-summary:${set}:${hours}`, async () => {
+  const summary = await readCachedSummary(set, hours);
+  return walkFromSummary(isTooOld(summary) ? await getClient().getCsoSetSummary(set, { hours }) : summary);
+});
 
 export const readSetActivity = (set, hours = CATCHMENT_WINDOW_HOURS) =>
   (setReadSource() === "summary" ? readSummaryWalk(set, hours) : readWalk(set, hours));

@@ -161,6 +161,37 @@ describe("missing pages and unavailable sets", () => {
     expect(rdp.getCsoSetActivity).toHaveBeenCalledTimes(calls);
   });
 
+  test("a cached set read too old to present is read again, never shown as all stale", async () => {
+    // Production served a 21-hour-old walk: every report was stale, so the section showed 0 spilling and 1,514 unknown.
+    const spilling = { reportedState: "spilling", effectiveState: "spilling", statusStart: "2026-11-12T11:30:00Z" };
+    const at = (time) => [parse(setActivityResponse([setActivityItem("A", { status: { ...spilling, sourceUpdatedAt: time, fetchedAt: time } })],
+      { retrievedAt: time, from: "2026-11-10T00:00:00Z", to: time }))];
+    let pages = at("2026-11-12T11:59:00Z");
+    rdp = fakeClient({ pages: (index) => pages[index] });
+    expect((await getCatchmentMonitoring()).summary.states.active).toBe(1);
+    const calls = rdp.getCsoSetActivity.mock.calls.length;
+
+    // The test data cache never expires, like an entry whose background refresh never finished.
+    jest.setSystemTime(new Date("2026-11-12T13:00:00Z"));
+    pages = at("2026-11-12T12:59:00Z");
+    const later = await getCatchmentMonitoring();
+    expect(rdp.getCsoSetActivity.mock.calls.length).toBeGreaterThan(calls);
+    expect(later.window.retrievedAt).toBe("2026-11-12T12:59:00.000Z");
+    expect(later.summary.states).toMatchObject({ active: 1, stale: 0 });
+
+    // The same for the summary source.
+    process.env.RDP_CSO_SET_SOURCE = "summary";
+    let retrievedAt = "2026-11-12T12:59:00Z";
+    const items = () => [setActivityItem("A", { status: { ...spilling, sourceUpdatedAt: retrievedAt, fetchedAt: retrievedAt } })];
+    rdp.getCsoSetSummary = jest.fn(async () => parseCsoSetSummary(setSummaryResponse(items(), [], { retrievedAt, from: "2026-11-10T00:00:00Z" }), "hpp-catchment", 48));
+    expect((await getCatchmentMonitoring()).summary.states.active).toBe(1);
+    jest.setSystemTime(new Date("2026-11-12T15:00:00Z"));
+    retrievedAt = "2026-11-12T14:59:00Z";
+    const summarised = await getCatchmentMonitoring();
+    expect(rdp.getCsoSetSummary).toHaveBeenCalledTimes(2);
+    expect(summarised.summary.states).toMatchObject({ active: 1, stale: 0 });
+  });
+
   test("concurrent requests share one walk", async () => {
     rdp = fakeClient({ pages: pagesOf(ids(150).map((id) => setActivityItem(id))) });
     await Promise.all([getCatchmentMonitoring(), getCatchmentMonitoring(), getCatchmentMonitoring()]);

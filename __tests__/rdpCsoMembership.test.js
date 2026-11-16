@@ -3,7 +3,7 @@ import fs from "node:fs";
 import { createRdpClient } from "../libs/rdp/client";
 import { RdpError } from "../libs/rdp/errors";
 import { connectToDatabase } from "../libs/database";
-import { parseCsoSetActivity, parseCsoEvent, parseCsoRevisions, parseCsoCatalogue } from "../libs/rdp/csoContract";
+import { parseCsoSetActivity, parseCsoSetSummary, parseCsoEvent, parseCsoRevisions, parseCsoCatalogue } from "../libs/rdp/csoContract";
 import { parseRelationshipSet } from "../libs/rdp/relationshipContract";
 import { __resetRdpCsoStateForTests } from "../libs/rdp/csoSource";
 import {
@@ -13,7 +13,7 @@ import { CSO_HISTORY_MAX_EVENTS, limitHistoryEvents } from "../libs/rdp/csoHisto
 import {
   getCsoMembershipMode, getPublicCsoEventDetail, getPublicCsoEventHistory, getPublicWaterQualitySnapshot,
 } from "../libs/services/waterQualityService";
-import { CURSOR, NOW, ST, asset, catalogue, event, eventsResponse, setActivityItem, setActivityResponse } from "../testUtils/rdpCsoFixtures";
+import { CURSOR, NOW, ST, asset, catalogue, event, eventsResponse, setActivityItem, setActivityResponse, setSummaryResponse } from "../testUtils/rdpCsoFixtures";
 import { relationshipSet, svt } from "../testUtils/rdpRelationshipFixtures";
 
 jest.mock("server-only", () => ({}));
@@ -183,6 +183,22 @@ describe("RDP membership snapshot", () => {
     expect(snapshot.health.cso).toMatchObject({ origin: "rdp", available: true, partial: false, read: { total: 8, outsideMembership: 1 } });
   });
 
+  test("the RDP set summary (RDP_CSO_SET_SOURCE=summary) gives the same snapshot in one read", async () => {
+    const walked = await getRdpMembershipWaterQualitySnapshot(NOW);
+    __resetRdpCsoStateForTests();
+    clearCaches();
+    rdp = fakeClient({ set: relationshipSet(members) });
+    rdp.getCsoSetSummary = jest.fn(async (name, { hours }) => parseCsoSetSummary(setSummaryResponse(walkItems(), [], { hours }), name, hours));
+    process.env.RDP_CSO_SET_SOURCE = "summary";
+    const summarised = await getRdpMembershipWaterQualitySnapshot(NOW);
+    expect(rdp.getCsoSetActivity).not.toHaveBeenCalled();
+    expect(rdp.getCsoSetSummary).toHaveBeenCalledTimes(1);
+    expect(summarised.locations).toEqual(walked.locations);
+    expect(summarised.statusSummary).toEqual(walked.statusSummary);
+    expect(summarised.relatedLocations).toEqual(walked.relatedLocations);
+    expect(summarised.health.cso.read).toEqual(walked.health.cso.read);
+  });
+
   test("assessment inputs stay legacy and nothing reads csoData, CSO_IDs or per-outfall status", async () => {
     const snapshot = await getRdpMembershipWaterQualitySnapshot(NOW);
     expect(snapshot.WaterQuality).toMatchObject({ NumberCSOsPerKm2: 0.02, NumberUpstreamCSOs: 7 });
@@ -315,11 +331,12 @@ describe("RDP_CSO_MEMBERSHIP", () => {
 describe("RDP membership event history", () => {
   const confirmed = svt(3);
   const set = relationshipSet({ confirmed, candidate: svt(1, 100) });
-  const items = (hours) => activityPages([
+  const rawItems = () => [
     setActivityItem("SVT00000", { events: [event("SVT00000", { eventId: EVENT_A, startedAt: "2026-11-12T06:00:00Z", endedAt: "2026-11-12T08:00:00Z", revision: 2 })] }),
     setActivityItem("SVT00001", { events: null }),
     setActivityItem("SVT00100", { events: [event("SVT00100", { eventId: "cse_" + "b".repeat(24) })] }),
-  ], { hours });
+  ];
+  const items = (hours) => activityPages(rawItems(), { hours });
 
   test("24 hours is one set read over the confirmed members", async () => {
     rdp = fakeClient({ set, activity: { 24: items(24) } });
@@ -333,6 +350,21 @@ describe("RDP membership event history", () => {
     expect(history.membership.version).toBe(HPP_MEMBERSHIP.version);
     expect(rdp.getCsoEvents).not.toHaveBeenCalled();
     expect(rdp.getCsoSetActivity).toHaveBeenCalledWith("hpp-catchment", expect.objectContaining({ hours: 24 }));
+  });
+
+  test("the RDP set summary gives the same recorded history", async () => {
+    rdp = fakeClient({ set, activity: { 24: items(24) } });
+    const walked = await getMembershipEventHistory("24h", NOW);
+    __resetRdpCsoStateForTests();
+    clearCaches();
+    rdp = fakeClient({ set });
+    rdp.getCsoSetSummary = jest.fn(async (name, { hours }) => parseCsoSetSummary(setSummaryResponse(rawItems(), [], { hours }), name, hours));
+    process.env.RDP_CSO_SET_SOURCE = "summary";
+    const summarised = await getMembershipEventHistory("24h", NOW);
+    expect(rdp.getCsoSetActivity).not.toHaveBeenCalled();
+    expect(summarised.outfalls).toEqual(walked.outfalls);
+    expect(summarised.events).toEqual(walked.events);
+    expect(summarised.evidence).toEqual(walked.evidence);
   });
 
   test("7 days reads the 168-hour set window", async () => {

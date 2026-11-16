@@ -153,11 +153,54 @@ async function readCompleteWalk(set, hours) {
 const readCachedWalk = unstable_cache(readCompleteWalk, ["rdp-cso-set-activity-v2"], { revalidate: CATCHMENT_CACHE_SECONDS, tags: ["rdp-cso"] });
 
 // Concurrent misses in one instance share one walk.
-export const readSetActivity = (set, hours = CATCHMENT_WINDOW_HOURS) => coalesce(`set-activity:${set}:${hours}`,
+const readWalk = (set, hours) => coalesce(`set-activity:${set}:${hours}`,
   () => readCachedWalk(set, hours).catch((error) => {
     if (error instanceof IncompleteWalk) return error.result;
     throw error;
   }));
+
+// ---- The same set from RDP's one-request summary (`RDP_CSO_SET_SOURCE=summary`) ----
+// RDP computes the whole set at one as-of time once per 5-minute bucket and returns full rows only for outfalls that
+// need attention; quiet outfalls (read, fresh, reported and effective not_spilling, no event in the window) come as
+// groups. This rebuilds the walk's shape from it, so the catchment section and the HPP membership reads use either
+// source unchanged. A quiet outfall becomes a not-spilling status with no events, its group's coverage and the group's
+// earliest poll time; classification still happens here at request time. Default `walk` until the route is released and
+// the caller IAM includes `sets/*/summary`; unset the flag to roll back.
+export const SUMMARY_CACHE_SECONDS = 300;
+export const setReadSource = () => (process.env.RDP_CSO_SET_SOURCE === "summary" ? "summary" : "walk");
+
+export function walkFromSummary(summary) {
+  const page = { from: summary.from, to: summary.to, retrievedAt: summary.retrievedAt };
+  const prefix = `${summary.provider}:${summary.sourceId}:`;
+  const items = summary.rows.map((row) => ({ ...compactItem(row, 0), catalogue: row.catalogue }));
+  for (const group of summary.quiet) {
+    for (const externalId of group.externalIds) {
+      items.push({
+        page: 0,
+        status: { assetId: prefix + externalId, status: "available", reportedState: "not_spilling", effectiveState: "not_spilling",
+          freshness: group.freshness, statusStart: null, sourceUpdatedAt: group.sourceUpdatedAt, sourceAgeSeconds: group.sourceAgeSeconds,
+          fetchedAt: group.fetchedAt },
+        events: { events: [], coverage: group.coverage, truncated: false },
+        catalogue: null,
+      });
+    }
+  }
+  items.sort((a, b) => (a.status.assetId < b.status.assetId ? -1 : a.status.assetId > b.status.assetId ? 1 : 0));
+  return {
+    set: summary.set, hours: summary.windowHours, provider: summary.provider, sourceId: summary.sourceId,
+    from: summary.from, to: summary.to, retrievedAt: summary.retrievedAt, total: summary.total, received: items.length,
+    missing: Math.max(0, summary.total - items.length), pageCount: 1, partialPages: summary.partial ? 1 : 0, duplicates: 0, restarted: false,
+    stopReason: null, errorCode: null, complete: items.length === summary.total, pages: [page], items,
+    source: "summary", catalogue: summary.catalogue, coordinates: summary.coordinates,
+  };
+}
+
+const readCachedSummary = unstable_cache((set, hours) => getClient().getCsoSetSummary(set, { hours }), ["rdp-cso-set-summary-v1"],
+  { revalidate: SUMMARY_CACHE_SECONDS, tags: ["rdp-cso"] });
+const readSummaryWalk = (set, hours) => coalesce(`set-summary:${set}:${hours}`, async () => walkFromSummary(await readCachedSummary(set, hours)));
+
+export const readSetActivity = (set, hours = CATCHMENT_WINDOW_HOURS) =>
+  (setReadSource() === "summary" ? readSummaryWalk(set, hours) : readWalk(set, hours));
 
 // ---- Per-outfall evidence ----
 
@@ -182,6 +225,8 @@ export function buildCatchmentRows(walk, assetsById, now) {
       receivingWatercourse: asset?.receivingWatercourse ?? null,
       inCatalogue: Boolean(asset),
       locationKey: locationKey(asset),
+      // From the summary only: how many other set members RDP counted at the same published coordinates.
+      othersAtLocation: item.catalogue ? item.catalogue.othersAtSameCoordinates : undefined,
       state: catchmentState(location.statusReason),
       reason: location.statusReason,
       latestEventStart: location.latestEventStart,
@@ -237,7 +282,14 @@ export function summariseCatchment(walk, rows, now) {
     freshReports: states.active + states.recent + states.not_spilling,
     unknown: UNKNOWN_STATES.reduce((sum, state) => sum + states[state], 0),
     locations: {
-      all: countLocations(rows),
+      // From the summary, quiet outfalls carry no coordinates here; RDP counted every member's published coordinates.
+      all: walk.coordinates ? {
+        outfalls: rows.length,
+        locations: walk.coordinates.distinct,
+        withoutLocation: walk.coordinates.withoutCoordinates,
+        sharedLocations: walk.coordinates.sharedCoordinates,
+        outfallsAtSharedLocations: walk.coordinates.outfallsAtSharedCoordinates,
+      } : countLocations(rows),
       active: countLocations(byState("active")),
       recent: countLocations(byState("recent")),
       withEvents: countLocations(withEvents),
@@ -279,7 +331,7 @@ function highlights(rows) {
     outfalls: list.slice(0, CATCHMENT_HIGHLIGHT_LIMIT).map((row) => ({
       assetId: row.assetId, externalId: row.externalId, name: row.name, receivingWatercourse: row.receivingWatercourse, state: row.state,
       latestEventStart: row.latestEventStart, latestEventEnd: row.latestEventEnd,
-      sharesLocationWith: row.locationKey ? counts.get(row.locationKey) - 1 : null,
+      sharesLocationWith: row.othersAtLocation !== undefined ? row.othersAtLocation : row.locationKey ? counts.get(row.locationKey) - 1 : null,
     })),
     truncated: list.length > CATCHMENT_HIGHLIGHT_LIMIT,
   };
@@ -441,9 +493,11 @@ export async function getCatchmentMonitoring(setKey = DEFAULT_CATCHMENT_SET, now
     expectedOutfalls: spec.expectedOutfalls, relationshipSet: spec.relationshipSet, relationshipVersion: spec.relationshipVersion, scope: spec.scope };
   const base = { set, method: CATCHMENT_METHOD, generatedAt: now.toISOString() };
 
-  // The catalogue (locations) is read alongside the walk so both fit inside the route's duration.
-  const catalogueRead = withDeadline(readCatalogue(), CATCHMENT_CATALOGUE_DEADLINE_MS)
-    .then((value) => ({ value, error: null }), (error) => ({ value: null, error: errorCode(error) }));
+  // The summary carries names, coordinates and catalogue counts itself. The walk needs the catalogue, read alongside it
+  // so both fit inside the route's duration.
+  const catalogueRead = setReadSource() === "summary" ? Promise.resolve({ value: null, error: null })
+    : withDeadline(readCatalogue(), CATCHMENT_CATALOGUE_DEADLINE_MS)
+      .then((value) => ({ value, error: null }), (error) => ({ value: null, error: errorCode(error) }));
   let walk;
   try {
     walk = await withDeadline(readSetActivity(setKey, CATCHMENT_WINDOW_HOURS), CATCHMENT_READ_DEADLINE_MS);
@@ -454,8 +508,12 @@ export async function getCatchmentMonitoring(setKey = DEFAULT_CATCHMENT_SET, now
     return { ...base, state: "unavailable", reason: UNAVAILABLE_REASONS[code] ?? "read_failed", errorCode: code };
   }
 
-  const { value: catalogue, error: catalogueError } = await catalogueRead;
-  const assetsById = catalogue ? new Map(catalogue.assets.map((asset) => [asset.assetId, asset])) : null;
+  const { value: catalogue, error: readError } = await catalogueRead;
+  const fromSummary = walk.source === "summary";
+  const catalogueError = fromSummary ? (walk.catalogue.state === "available" ? null : `CATALOGUE_${walk.catalogue.state.toUpperCase()}`) : readError;
+  const assetsById = fromSummary
+    ? new Map(walk.items.filter((item) => item.catalogue).map((item) => [item.status.assetId, { assetId: item.status.assetId, ...item.catalogue }]))
+    : catalogue ? new Map(catalogue.assets.map((asset) => [asset.assetId, asset])) : null;
   const rows = buildCatchmentRows(walk, assetsById, now);
   const summary = summariseCatchment(walk, rows, now);
 
@@ -471,16 +529,19 @@ export async function getCatchmentMonitoring(setKey = DEFAULT_CATCHMENT_SET, now
     logger.warn(`RDP CSO catchment degraded ${JSON.stringify({ set: setKey, stopReason: walk.stopReason, code: walk.errorCode,
       missing: walk.missing, partialPages: walk.partialPages, duplicates: walk.duplicates, catalogue: catalogueError })}`);
   }
-  const attribution = catalogue?.catalogues.find((entry) => entry.provider === spec.provider && entry.sourceId === spec.sourceId)?.attribution ?? null;
+  const attribution = fromSummary ? walk.catalogue.attribution
+    : catalogue?.catalogues.find((entry) => entry.provider === spec.provider && entry.sourceId === spec.sourceId)?.attribution ?? null;
+  const catalogueKnown = fromSummary ? walk.catalogue.state === "available" : Boolean(catalogue);
   return {
     ...base,
     state: degraded ? "partial" : "available",
+    source: fromSummary ? "summary" : "walk",
     selection: {
       // What RDP reports as the effective set on this stage, next to the reviewed size and the catalogue attribution.
       reportedTotal: walk.total,
       matchesReviewed: walk.total === spec.expectedOutfalls,
-      catalogueMembers: catalogue ? catalogue.assets.filter((asset) => asset.sets.includes(setKey)).length : null,
-      notInCatalogue: assetsById ? rows.filter((row) => !row.inCatalogue).length : null,
+      catalogueMembers: !catalogueKnown ? null : fromSummary ? walk.catalogue.members : catalogue.assets.filter((asset) => asset.sets.includes(setKey)).length,
+      notInCatalogue: !catalogueKnown ? null : fromSummary ? walk.total - walk.catalogue.members : rows.filter((row) => !row.inCatalogue).length,
     },
     window: { hours: walk.hours, from: walk.from, to: walk.to, retrievedAt: walk.retrievedAt },
     read: { complete: walk.complete, pages: walk.pageCount, received: walk.received, missing: walk.missing, partialPages: walk.partialPages,

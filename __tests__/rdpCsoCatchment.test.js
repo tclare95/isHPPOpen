@@ -2,14 +2,14 @@
 import { createRdpClient } from "../libs/rdp/client";
 import { RdpError } from "../libs/rdp/errors";
 import { connectToDatabase } from "../libs/database";
-import { parseCsoCatalogue, parseCsoSetActivity } from "../libs/rdp/csoContract";
+import { parseCsoCatalogue, parseCsoSetActivity, parseCsoSetSummary } from "../libs/rdp/csoContract";
 import { __resetRdpCsoStateForTests } from "../libs/rdp/csoSource";
 import {
-  CATCHMENT_MAX_PAGES, CATCHMENT_WALK_BUDGET_MS, compareWithLegacy, countLocations, getCatchmentMonitoring, walkSetActivity,
+  CATCHMENT_MAX_PAGES, CATCHMENT_WALK_BUDGET_MS, compareWithLegacy, countLocations, getCatchmentMonitoring, readSetActivity, walkSetActivity,
 } from "../libs/rdp/csoCatchment";
 import { getPublicCsoCatchmentMonitoring, isCsoCatchmentEnabled } from "../libs/services/waterQualityService";
 import calibration from "../libs/waterQualityCalibration.json";
-import { CURSOR, NOW, asset, catalogue, event, setActivityItem, setActivityResponse } from "../testUtils/rdpCsoFixtures";
+import { CURSOR, NOW, asset, catalogue, event, setActivityItem, setActivityResponse, setSummaryResponse } from "../testUtils/rdpCsoFixtures";
 
 jest.mock("server-only", () => ({}));
 // A data cache that, like Next's, stores only resolved values.
@@ -410,5 +410,125 @@ describe("flag", () => {
     rdp = fakeClient({ pages: [parse(setActivityResponse([setActivityItem("A")]))] });
     expect(await getPublicCsoCatchmentMonitoring()).toMatchObject({ enabled: true, state: "available", set: { key: "hpp-catchment" } });
     expect(rdp.getCsoSetActivity.mock.calls[0][0]).toBe("hpp-catchment");
+  });
+});
+
+describe("RDP set summary as the source (RDP_CSO_SET_SOURCE=summary)", () => {
+  const spilling = { reportedState: "spilling", effectiveState: "spilling", statusStart: "2026-11-12T10:00:00Z" };
+  const items = [
+    setActivityItem("A", { status: spilling, events: [event("A", { lifecycle: "ongoing", endedAt: null })] }),
+    setActivityItem("B", { events: [event("B", { startedAt: "2026-11-12T06:00:00Z", endedAt: "2026-11-12T08:00:00Z" })] }),
+    setActivityItem("C"),
+    setActivityItem("D", { status: { reportedState: "offline", effectiveState: "unknown" } }),
+    setActivityItem("E", { status: { freshness: "stale", sourceUpdatedAt: "2026-11-12T08:00:00Z", sourceAgeSeconds: 14400 } }),
+    setActivityItem("F", { status: { status: "no_observations", reportedState: "unknown", effectiveState: "unknown", freshness: "unknown", sourceUpdatedAt: null, sourceAgeSeconds: null } }),
+    setActivityItem("G", { events: [event("G", { lifecycle: "unresolved", endedAt: null, boundaryProvenance: "end_not_reported", endNoLaterThan: "2026-11-12T09:00:00Z" })] }),
+    setActivityItem("H", { status: { sourceUpdatedAt: "2026-11-12T11:45:00Z", sourceAgeSeconds: 900 } }),
+    setActivityItem("I"),
+    setActivityItem("J", { cover: { status: "partial", collectedFrom: "2026-11-11T09:00:00Z", collectedTo: "2026-11-12T11:52:00Z", reportingCompleteness: "unverified",
+      gaps: [{ from: "2026-11-11T20:00:00Z", to: "2026-11-11T22:00:00Z", reason: "not_collected" }] } }),
+    setActivityItem("K", { status: { status: "unavailable", reportedState: "unknown", effectiveState: "unknown", freshness: "unknown", sourceUpdatedAt: null, sourceAgeSeconds: null }, events: null }),
+  ];
+  // A and B are distinct; C and I share coordinates with A; J has none.
+  const assets = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K"].map((id, i) => asset(id, {
+    sets: ["hpp-catchment"], name: `Outfall ${id}`,
+    ...(["C", "I"].includes(id) ? { latitude: 52.9, longitude: -1.2 } : id === "J" ? { latitude: null, longitude: null } : { latitude: 52 + i / 10, longitude: -1 - i / 10 }),
+  }));
+  const parseSummary = (body, hours = 48) => parseCsoSetSummary(body, "hpp-catchment", hours);
+  const serveSummary = (body) => {
+    process.env.RDP_CSO_SET_SOURCE = "summary";
+    rdp.getCsoSetSummary = jest.fn(async () => (body instanceof Error ? (() => { throw body; })() : parseSummary(body)));
+  };
+
+  test("produces the same section as walking the activity pages with the catalogue, in one read and no catalogue read", async () => {
+    // Make A share coordinates with C and I so a highlighted outfall's shared-location count is exercised.
+    const located = assets.map((a) => (a.externalId === "A" ? { ...a, latitude: 52.9, longitude: -1.2 } : a));
+    rdp = fakeClient({ pages: [parse(setActivityResponse(items))], assets: located });
+    const walked = await getCatchmentMonitoring();
+    expect(walked.source).toBe("walk");
+    // Not a trivial match: the walk itself sees every state, the catalogue and the shared location.
+    expect(walked.summary.states).toEqual({ active: 1, recent: 1, not_spilling: 4, offline: 1, stale: 1, unresolved: 1, no_observations: 1, unavailable: 1, not_read: 0 });
+    expect(walked.summary.locations.all).toEqual({ outfalls: 11, locations: 8, withoutLocation: 1, sharedLocations: 1, outfallsAtSharedLocations: 3 });
+    expect(walked.selection).toMatchObject({ catalogueMembers: 11, notInCatalogue: 0 });
+    expect(walked.summary.coverage.partlyCollected).toBeGreaterThan(0);
+
+    __resetRdpCsoStateForTests();
+    clearDataCache();
+    rdp = fakeClient({ assets: located });
+    serveSummary(setSummaryResponse(items, located));
+    const summarised = await getCatchmentMonitoring();
+
+    expect(summarised.source).toBe("summary");
+    expect(rdp.getCsoSetSummary).toHaveBeenCalledTimes(1);
+    expect(rdp.getCsoSetSummary).toHaveBeenCalledWith("hpp-catchment", { hours: 48 });
+    expect(rdp.getCsoSetActivity).not.toHaveBeenCalled();
+    expect(rdp.listCsoOutfalls).not.toHaveBeenCalled();
+    for (const key of ["state", "summary", "highlights", "comparison", "selection", "window"]) expect(summarised[key]).toEqual(walked[key]);
+    expect(summarised.highlights.outfalls.find((o) => o.externalId === "A")).toMatchObject({ name: "Outfall A", sharesLocationWith: 2 });
+    expect(summarised.read).toMatchObject({ complete: true, pages: 1, received: 11, missing: 0, catalogueError: null });
+  });
+
+  test("quiet outfalls arrive grouped and are classified at request time like any other report", async () => {
+    serveSummary(setSummaryResponse(items, assets));
+    const body = setSummaryResponse(items, assets);
+    expect(body.data.outfalls.map((row) => row.status.assetId.slice(-1))).toEqual(["A", "B", "D", "E", "F", "G", "K"]);
+    expect(body.data.quiet.map((group) => group.externalIds)).toEqual([["C", "I"], ["H"], ["J"]]);
+    const walk = await readSetActivity("hpp-catchment", 48);
+    expect(walk.items.map((item) => item.status.assetId.slice(-1))).toEqual(["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K"]);
+    // An hour later every quiet report is older than the freshness window: stale, never still "not spilling".
+    const { summary } = await getCatchmentMonitoring("hpp-catchment", new Date("2026-11-12T13:00:00Z"));
+    expect(summary.states.not_spilling).toBe(0);
+    expect(summary.states.stale).toBeGreaterThanOrEqual(4);
+  });
+
+  test("RDP failures map to the same unavailable reasons as the walk", async () => {
+    for (const [error, reason] of [[new RdpError("AUTHORIZATION_FAILED", 403), "not_authorised"], [new RdpError("SET_NOT_FOUND", 404), "set_not_enabled"],
+      [new RdpError("STORAGE_UNAVAILABLE", 503), "read_failed"]]) {
+      __resetRdpCsoStateForTests();
+      clearDataCache();
+      serveSummary(error);
+      expect(await getCatchmentMonitoring()).toMatchObject({ state: "unavailable", reason });
+    }
+  });
+
+  test("a partial summary or an unavailable catalogue is reported, not hidden", async () => {
+    serveSummary(setSummaryResponse(items, assets, { partial: true }));
+    expect((await getCatchmentMonitoring()).read).toMatchObject({ partialPages: 1 });
+    __resetRdpCsoStateForTests();
+    clearDataCache();
+    serveSummary(setSummaryResponse(items, assets, { catalogueState: "unavailable" }));
+    const blind = await getCatchmentMonitoring();
+    expect(blind).toMatchObject({ state: "partial", read: { catalogueError: "CATALOGUE_UNAVAILABLE" }, selection: { catalogueMembers: null, notInCatalogue: null } });
+    expect(blind.summary.locations.all).toMatchObject({ locations: 0, withoutLocation: 11 });
+  });
+
+  test("the summary is cached and shared; the walk stays the default", async () => {
+    serveSummary(setSummaryResponse(items, assets));
+    await Promise.all([readSetActivity("hpp-catchment", 48), readSetActivity("hpp-catchment", 48)]);
+    await readSetActivity("hpp-catchment", 48);
+    expect(rdp.getCsoSetSummary).toHaveBeenCalledTimes(1);
+    delete process.env.RDP_CSO_SET_SOURCE;
+    rdp.getCsoSetActivity.mockResolvedValue(parse(setActivityResponse(items)));
+    expect((await readSetActivity("hpp-catchment", 48)).source).toBeUndefined();
+    expect(rdp.getCsoSetActivity).toHaveBeenCalled();
+  });
+
+  test("the summary contract rejects a set that is not exactly the whole set once", () => {
+    const good = setSummaryResponse(items, assets);
+    expect(() => parseSummary(good)).not.toThrow();
+    const broken = [
+      (b) => { b.meta.total += 1; },
+      (b) => { b.data.quiet[0].externalIds.push("A"); b.data.quiet[0].outfalls += 1; b.meta.total += 1; },
+      (b) => { b.data.quiet[0].freshness = "stale"; },
+      (b) => { b.data.quiet[0].outfalls = 5; },
+      (b) => { b.meta.windowHours = 24; },
+      (b) => { b.data.outfalls[0].status.assetId = "wessex-water:overflows:A"; },
+      (b) => { b.meta.catalogue.state = "Healthy"; },
+    ];
+    for (const breakIt of broken) {
+      const body = JSON.parse(JSON.stringify(good));
+      breakIt(body);
+      expect(() => parseSummary(body)).toThrow(RdpError);
+    }
   });
 });

@@ -6,6 +6,7 @@ import { RDP_STAGING_API_URL } from "../libs/rdp/config";
 import { RIVER_MAX_BYTES } from "../libs/rdp/river";
 import {
   ST, CURSOR, asset, catalogue, status, statusResponse, event, eventsResponse, healthResponse, setActivityItem, setActivityResponse,
+  setSummaryResponse,
 } from "../testUtils/rdpCsoFixtures";
 import { relationshipSet, svt } from "../testUtils/rdpRelationshipFixtures";
 
@@ -217,6 +218,34 @@ describe("set activity (ADR-002 D3)", () => {
   test("maps a set not enabled on this stage to SET_NOT_FOUND without retrying", async () => {
     global.fetch.mockResolvedValue(json({ error: { code: "SET_NOT_FOUND", message: "x" }, requestId: "r" }, 404));
     await expect(createRdpClient(preview).getCsoSetActivity("hpp-catchment")).rejects.toMatchObject({ code: "SET_NOT_FOUND", status: 404 });
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("whole-set summary", () => {
+  const items = [setActivityItem("SVT1", { events: [event("SVT1")] }), setActivityItem("SVT2"), setActivityItem("SVT3")];
+
+  test("signs one GET with only `hours` and parses rows and quiet groups", async () => {
+    global.fetch.mockResolvedValue(json(setSummaryResponse(items, [asset("SVT1", { name: "One" })], { hours: 24 })));
+    const summary = await createRdpClient(preview).getCsoSetSummary("hpp-catchment", { hours: 24 });
+    expect(requested().pathname).toBe("/staging/v1/cso/sets/hpp-catchment/summary");
+    expect(Object.fromEntries(requested().searchParams)).toEqual({ hours: "24" });
+    expect(global.fetch.mock.calls[0][1].headers.authorization).toMatch(/^AWS4-HMAC-SHA256 /);
+    expect(summary).toMatchObject({ set: "hpp-catchment", windowHours: 24, total: 3, partial: false, catalogue: { state: "available", members: 1 } });
+    expect(summary.rows.map((row) => row.status.assetId)).toEqual([ST("SVT1")]);
+    expect(summary.rows[0].catalogue).toMatchObject({ name: "One", othersAtSameCoordinates: 0 });
+    expect(summary.quiet).toEqual([expect.objectContaining({ externalIds: ["SVT2", "SVT3"], freshness: "fresh", sourceUpdatedAt: "2026-11-12T11:50:00.000Z" })]);
+  });
+
+  test.each([["Bad set", {}], ["hpp-catchment", { hours: 0 }], ["hpp-catchment", { hours: 169 }], ["../outfalls", {}]])(
+    "rejects %s %j before any request", (set, options) => {
+      expect(() => createRdpClient(preview).getCsoSetSummary(set, options)).toThrow("INVALID_QUERY");
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+  test("an unauthorised caller (route not yet in the caller IAM) fails without retrying", async () => {
+    global.fetch.mockResolvedValue(json({ message: "Forbidden" }, 403));
+    await expect(createRdpClient(preview).getCsoSetSummary("hpp-catchment")).rejects.toMatchObject({ status: 403 });
     expect(global.fetch).toHaveBeenCalledTimes(1);
   });
 });

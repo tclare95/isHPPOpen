@@ -29,6 +29,9 @@ Optional: `RDP_CSO_HISTORY=on` (default off) enables the "Recent upstream spills
 it is independent of `RDP_CSO_SOURCE` and never feeds the indicator or alerts. See [docs/RDP-CSO-HISTORY-121.md](docs/RDP-CSO-HISTORY-121.md).
 Optional: `RDP_CSO_CATCHMENT=on` (default off) enables "Whole-catchment monitoring" from RDP's `hpp-catchment` set on
 `/waterquality`. Its counts are not Sewage Map density: never feed them to the indicator, thresholds or alerts. See [docs/RDP-CSO-CATCHMENT-114.md](docs/RDP-CSO-CATCHMENT-114.md).
+Optional: `RDP_CSO_SET_SOURCE=summary` (default `walk`) reads the `hpp-catchment` set for whole-catchment monitoring and RDP
+membership from RDP's one-request `GET /v1/cso/sets/{set}/summary` instead of walking activity pages. Enable only after that
+route is released and the caller IAM includes `sets/*/summary`; unset to roll back. See [docs/RDP-CSO-CATCHMENT-114.md](docs/RDP-CSO-CATCHMENT-114.md#set-source).
 Optional: `RDP_RIVER_IMPACT=on` (default off) enables the "Reported downstream spill impact" map overlay from RDP's live
 downstream impact for the pinned `hpp-upstream-outfalls` set. It is connectivity only: never feed it to the indicator, thresholds or alerts. See [docs/RDP-RIVER-IMPACT.md](docs/RDP-RIVER-IMPACT.md).
 

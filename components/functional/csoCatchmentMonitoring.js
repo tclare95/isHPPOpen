@@ -11,7 +11,9 @@ import { formatTime } from './csoEventHistory';
 // changes the indication, the density chart, the calibrated thresholds or alerts, and its counts are not the
 // Sewage Map density shown in "Activity over time".
 
-const FETCH_OPTIONS = { revalidateOnFocus: false, revalidateOnReconnect: false, shouldRetryOnError: false, refreshInterval: 15 * 60 * 1000 };
+// The route is CDN-cached for 5 minutes, so polling faster gains nothing. Refreshing on focus means a tab left open while
+// spills start shows them on return instead of up to 15 minutes later.
+const FETCH_OPTIONS = { revalidateOnFocus: true, focusThrottleInterval: 60 * 1000, revalidateOnReconnect: true, shouldRetryOnError: false, refreshInterval: 5 * 60 * 1000 };
 const NUMBER = new Intl.NumberFormat('en-GB');
 const n = (value) => (Number.isFinite(value) ? NUMBER.format(value) : '—');
 const plural = (count, one, many = `${one}s`) => `${n(count)} ${count === 1 ? one : many}`;
@@ -146,7 +148,7 @@ export default function CsoCatchmentMonitoring() {
         const loc = summary.locations;
         return (
           <>
-            <p className="mb-2"><strong>{n(summary.freshReports)} of {n(summary.total)}</strong> outfalls have a fresh report. <strong>{n(summary.unknown)}</strong> have no usable current report and are unknown, not clear.</p>
+            <p className="mb-2"><strong>{n(summary.freshReports)} of {n(summary.total)}</strong> outfalls have a fresh report. <strong>{n(summary.unknown)}</strong> have no usable current report and are unknown, not clear.{data.window?.retrievedAt ? <> As of <time dateTime={data.window.retrievedAt}>{formatTime(data.window.retrievedAt)}</time>.</> : null}</p>
             <EvidenceBar states={summary.states} total={summary.total} />
             <div role="status" aria-live="polite">
               {readMessages(data).map((message) => <div key={message.text} className={`alert alert-${message.tone} py-2 mb-2`}>{message.text}</div>)}

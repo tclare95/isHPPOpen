@@ -156,7 +156,7 @@ const readCachedWalk = unstable_cache(readCompleteWalk, ["rdp-cso-set-activity-v
 // finish. A set read older than this is never presented: it is read again instead. Production served a 21-hour-old walk
 // on 2026-11-16, so every report was `stale` and the section showed 0 spilling and 1,514 unknown during active spills.
 export const SET_READ_MAX_AGE_MS = 2 * CATCHMENT_CACHE_SECONDS * 1000;
-export const isTooOld = (read, now = Date.now()) => !(now - Date.parse(read.retrievedAt) <= SET_READ_MAX_AGE_MS);
+export const isTooOld = (read, now = Date.now(), maxAgeMs = SET_READ_MAX_AGE_MS) => !(now - Date.parse(read.retrievedAt) <= maxAgeMs);
 
 // Concurrent misses in one instance share one walk.
 const readWalk = (set, hours) => coalesce(`set-activity:${set}:${hours}`, async () => {
@@ -170,15 +170,18 @@ const readWalk = (set, hours) => coalesce(`set-activity:${set}:${hours}`, async 
   return isTooOld(walk) ? walkSetActivity(set, hours) : walk;
 });
 
-// ---- The same set from RDP's one-request summary (`RDP_CSO_SET_SOURCE=summary`) ----
+// ---- The same set from RDP's one-request summary (the default; `RDP_CSO_SET_SOURCE=walk` reads the pages instead) ----
 // RDP computes the whole set at one as-of time once per 5-minute bucket and returns full rows only for outfalls that
 // need attention; quiet outfalls (read, fresh, reported and effective not_spilling, no event in the window) come as
 // groups. This rebuilds the walk's shape from it, so the catchment section and the HPP membership reads use either
 // source unchanged. A quiet outfall becomes a not-spilling status with no events, its group's coverage and the group's
-// earliest poll time; classification still happens here at request time. Default `walk` until the route is released and
-// the caller IAM includes `sets/*/summary`; unset the flag to roll back.
+// earliest poll time; classification still happens here at request time. The summary is the normal read (released with
+// the caller IAM for `sets/*/summary`, 2026-11-16); `RDP_CSO_SET_SOURCE=walk` is the rollback to the paginated walk.
 export const SUMMARY_CACHE_SECONDS = 300;
-export const setReadSource = () => (process.env.RDP_CSO_SET_SOURCE === "summary" ? "summary" : "walk");
+// One request, so a summary older than two cache periods is simply read again: live spill status is never more than about
+// 10 minutes behind RDP's answer, however the data cache behaves.
+export const SUMMARY_MAX_AGE_MS = 2 * SUMMARY_CACHE_SECONDS * 1000;
+export const setReadSource = () => (process.env.RDP_CSO_SET_SOURCE === "walk" ? "walk" : "summary");
 
 export function walkFromSummary(summary) {
   const page = { from: summary.from, to: summary.to, retrievedAt: summary.retrievedAt };
@@ -210,7 +213,7 @@ const readCachedSummary = unstable_cache((set, hours) => getClient().getCsoSetSu
   { revalidate: SUMMARY_CACHE_SECONDS, tags: ["rdp-cso"] });
 const readSummaryWalk = (set, hours) => coalesce(`set-summary:${set}:${hours}`, async () => {
   const summary = await readCachedSummary(set, hours);
-  return walkFromSummary(isTooOld(summary) ? await getClient().getCsoSetSummary(set, { hours }) : summary);
+  return walkFromSummary(isTooOld(summary, Date.now(), SUMMARY_MAX_AGE_MS) ? await getClient().getCsoSetSummary(set, { hours }) : summary);
 });
 
 export const readSetActivity = (set, hours = CATCHMENT_WINDOW_HOURS) =>

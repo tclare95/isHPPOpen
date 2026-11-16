@@ -43,7 +43,7 @@ The catalogue read, client, coalescing and identity mapping are shared with the 
 | Event detail and revisions | read only when a visitor opens an event; revisions limit 50, ≤ 2 pages | 5 min |
 | Whole history request | 15 s deadline, concurrency 4 | — |
 
-Route responses use `public, s-maxage=300, stale-while-revalidate=600` when every monitored outfall was
+Route responses use `public, s-maxage=300, stale-while-revalidate=300` when every monitored outfall was
 read. Degraded, unavailable or disabled responses use `s-maxage=60`. Errors use `no-store`. Failures are never
 written to the data cache. Concurrent misses in one instance share one read. A page view therefore never
 makes one RDP request per rendered list item.

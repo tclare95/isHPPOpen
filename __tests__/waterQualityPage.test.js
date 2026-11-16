@@ -7,13 +7,15 @@ jest.mock('../libs/useFetch');
 jest.mock('next/link', () => ({ children, href }) => <a href={href}>{children}</a>);
 jest.mock('next/dynamic', () => (loader) => {
   const source = loader.toString();
-  if (source.includes('csoMap')) return ({ locations }) => <div data-testid="map">{locations.length}</div>;
+  if (source.includes('csoMap')) return ({ locations, impactEnabled, impactSelectedId }) => <div data-testid="map" data-impact={String(impactEnabled)} data-route={impactSelectedId}>{locations.length}</div>;
   if (source.includes('waterQualityAssessmentChart')) return ({ assessment }) => <div data-testid="assessment-chart">{assessment.history.points.length}</div>;
   return ({ data }) => <div data-testid="density-chart">{data.length}</div>;
 });
 jest.mock('../components/functional/vomitfactor', () => ({ assessment }) => <div data-testid="indicator">{assessment?.level ?? 'none'}</div>);
 jest.mock('../components/functional/csoCatchmentMonitoring', () => () => <div data-testid="catchment" />);
-jest.mock('../components/functional/csoEventHistory', () => ({ onShowOnMap }) => <button type="button" data-testid="history" onClick={() => onShowOnMap('A')}>history</button>);
+jest.mock('../components/functional/csoEventHistory', () => ({ onShowOnMap, onShowRoute }) => (
+  <><button type="button" data-testid="history" onClick={() => onShowOnMap('A')}>history</button>
+    <button type="button" onClick={() => onShowRoute('severn-trent:storm-overflow-activity:A')}>history route</button></>));
 
 const LEGACY_ASSESSMENT = { source: 'legacy', version: 'sewage-map-density/2026-08-31', current: { level: 'lower', label: 'Lower', observedAt: '2026-08-31T12:00:00Z', reasons: [] }, history: null };
 const RDP_ASSESSMENT = {
@@ -107,5 +109,28 @@ describe('WaterQualityPage', () => {
     expect(screen.getByRole('status')).toHaveTextContent(/Current CSO status is temporarily unavailable/);
     expect(screen.queryByText('Currently spilling')).not.toBeInTheDocument();
     expect(screen.queryByText('Stopped in 48 hours')).not.toBeInTheDocument();
+  });
+
+  it('reports status as unavailable, not as zero spills, when no RDP report is up to date', () => {
+    const locations = ['A', 'B'].map((id) => ({ id, status: 'unknown', statusReason: 'stale' }));
+    mockFetches(RDP_ASSESSMENT, { waterQualityData: { statusSummary: { currentlySpilling: 0, recentlyStopped48h: 0, offline: 0, unknown: 2 }, locations,
+      health: { state: 'fresh', cso: { origin: 'rdp', available: true, read: { retrievedAt: '2026-11-16T18:15:00Z' } } } } });
+    render(<WaterQualityPage />);
+    expect(screen.getByRole('status')).toHaveTextContent(/temporarily unavailable: no upstream outfall has an up-to-date report/);
+    expect(screen.queryByText('Currently spilling')).not.toBeInTheDocument();
+  });
+
+  it('shows when the status was read, and a route chosen in the spill history switches the overlay on and selects it', () => {
+    mockFetches(RDP_ASSESSMENT, { waterQualityData: { statusSummary: { currentlySpilling: 1, recentlyStopped48h: 0, offline: 0, unknown: 0 },
+      locations: [{ id: 'A', status: 'active', statusReason: 'spilling' }],
+      health: { state: 'fresh', cso: { origin: 'rdp', available: true, read: { retrievedAt: '2026-11-16T18:15:00Z' } } } } });
+    render(<WaterQualityPage />);
+    expect(screen.getByText(/Status as of/)).toBeInTheDocument();
+    expect(useFetch).toHaveBeenCalledWith('/api/waterquality', expect.objectContaining({ refreshInterval: 300000 }));
+    expect(screen.getByTestId('map')).toHaveAttribute('data-impact', 'false');
+    fireEvent.click(screen.getByRole('button', { name: 'history route' }));
+    expect(screen.getByTestId('map')).toHaveAttribute('data-impact', 'true');
+    expect(screen.getByTestId('map')).toHaveAttribute('data-route', 'severn-trent:storm-overflow-activity:A');
+    expect(screen.getByLabelText('Reported downstream spill impact')).toBeChecked();
   });
 });

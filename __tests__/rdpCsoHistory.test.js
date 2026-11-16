@@ -110,7 +110,8 @@ describe("windows, coverage and event descriptions", () => {
   test("aligns windows to buckets and rejects other windows", () => {
     expect(historyWindow("24h", new Date("2026-11-12T11:52:10Z"))).toMatchObject({ from: "2026-11-11T12:00:00Z", to: "2026-11-12T12:00:00Z", hours: 24 });
     expect(historyWindow("30d", new Date("2026-11-12T11:52:10Z"))).toMatchObject({ from: "2026-10-13T12:00:00Z", to: "2026-11-12T12:00:00Z" });
-    expect(() => historyWindow("1y", NOW)).toThrow("window must be one of 24h, 7d, 30d");
+    expect(historyWindow("48h", new Date("2026-11-12T11:52:10Z"))).toMatchObject({ from: "2026-11-10T12:00:00Z", to: "2026-11-12T12:00:00Z", hours: 48 });
+    expect(() => historyWindow("1y", NOW)).toThrow("window must be one of 24h, 48h, 7d, 30d");
   });
 
   test("measures collected share up to RDP's answer, treating the not-yet-due poll as pending", () => {

@@ -367,6 +367,19 @@ describe("RDP membership event history", () => {
     expect(summarised.evidence).toEqual(walked.evidence);
   });
 
+  test("48 hours is the status cards' own summary read, so cards, map and history share one RDP answer", async () => {
+    rdp = fakeClient({ set });
+    rdp.getCsoSetSummary = jest.fn(async (name, { hours }) => parseCsoSetSummary(setSummaryResponse(rawItems(), [], { hours }), name, hours));
+    process.env.RDP_CSO_SET_SOURCE = "summary";
+    const snapshot = await getRdpMembershipWaterQualitySnapshot(NOW);
+    const history = await getMembershipEventHistory("48h", NOW);
+    expect(rdp.getCsoSetSummary).toHaveBeenCalledTimes(1);
+    expect(rdp.getCsoSetSummary).toHaveBeenCalledWith("hpp-catchment", { hours: 48 });
+    expect(history.window).toMatchObject({ key: "48h", hours: 48 });
+    expect(history.events.map((event) => event.eventId)).toEqual([EVENT_A]);
+    expect(snapshot.health.cso.read.retrievedAt).toBeTruthy();
+  });
+
   test("7 days reads the 168-hour set window", async () => {
     rdp = fakeClient({ set, activity: { 168: items(168) } });
     const history = await getMembershipEventHistory("7d", NOW);

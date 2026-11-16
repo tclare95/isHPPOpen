@@ -23,6 +23,8 @@ import { SWR_15_MINUTES } from '../../libs/dataFreshness';
 const WaterQualityMap = dynamic(() => import('../../components/functional/csoMap'), { ssr: false, loading: () => <p>Loading map…</p> });
 const CsoChart = dynamic(() => import('../../components/functional/csoChart'), { ssr: false, loading: () => <p>Loading chart…</p> });
 const WaterQualityAssessmentChart = dynamic(() => import('../../components/functional/waterQualityAssessmentChart'), { ssr: false, loading: () => <p>Loading chart…</p> });
+// Current spill status follows RDP's 5-minute summary and the route's 5-minute cache, not the 15-minute editorial cadence.
+const STATUS_FETCH = { ...SWR_15_MINUTES, refreshInterval: 5 * 60 * 1000 };
 // The archived Sewage Map density view (RDP assessment in use): the last 30 days the legacy writer recorded.
 const ARCHIVE_HOURS = 720;
 
@@ -54,11 +56,14 @@ export default function WaterQualityPage() {
   // Optional overlay, fetched only when switched on and refreshed every 5 minutes (RDP's own refresh interval) so the
   // drawn routes follow source events. A failure or a disabled overlay leaves the rest of the map unchanged.
   const [impactOn, setImpactOn] = useState(false);
+  // One highlighted route, chosen from the overlay list, a map marker or the spill history.
+  const [impactId, setImpactId] = useState('');
+  const showRoute = (assetId) => { setImpactOn(true); setImpactId(assetId); };
   const { data: impactData, error: impactFetchError, isPending: impactPending } = useFetch(
     impactOn ? '/api/waterquality/river/impact' : null,
     { refreshInterval: 300000, revalidateOnFocus: false, revalidateOnReconnect: false, shouldRetryOnError: false });
   const impactError = impactFetchError ?? (impactData && !impactData.enabled ? new Error('Downstream impact is not enabled') : null);
-  const { data: summaryData, error: summaryError, isPending: summaryPending } = useFetch('/api/waterquality', SWR_15_MINUTES);
+  const { data: summaryData, error: summaryError, isPending: summaryPending } = useFetch('/api/waterquality', STATUS_FETCH);
   // The indication and its history come from the server in every RDP_WQ_ASSESSMENT mode. Only the legacy assessment, or
   // the archived view of it, reads the Sewage Map density series; the two are never drawn on one axis.
   const { data: assessment, error: assessmentError, isPending: assessmentPending } = useFetch(`/api/waterquality/assessment?hours=${chartHours}`, SWR_15_MINUTES);
@@ -73,6 +78,12 @@ export default function WaterQualityPage() {
   const unavailable = Math.max(0, Number(counts.offline || 0) + Number(counts.unknown || 0) - noRecentSpill);
   // RDP reported no usable CSO status at all (#68): never present the counts as zero spills.
   const csoStatusUnavailable = current?.health?.cso?.available === false;
+  // RDP answered, but no upstream outfall has a fresh report (for example every report is out of date): the counts would all
+  // be zero, which reads as "nothing spilling". Say it is unavailable instead.
+  const rdpStatus = current?.health?.cso?.origin === 'rdp';
+  const freshReports = Number(counts.currentlySpilling || 0) + Number(counts.recentlyStopped48h || 0) + noRecentSpill;
+  const noFreshStatus = rdpStatus && !csoStatusUnavailable && (current?.locations?.length ?? 0) > 0 && freshReports === 0;
+  const statusAsOf = current?.health?.cso?.read?.retrievedAt ?? null;
   const densityRows = Array.isArray(densityData) ? densityData : [];
   const observedAt = assessment?.current?.observedAt ?? current?.ScrapeTimestamp;
 
@@ -94,7 +105,7 @@ export default function WaterQualityPage() {
               </Col>
               <Col lg={5}>
                 <p className="mb-1"><strong>Observed:</strong> {formatUpdated(observedAt)}</p>
-                <p className="small water-quality-muted mb-2">Sources normally update around every 15 minutes.</p>
+                <p className="small water-quality-muted mb-2">Spill status is checked about every 5 minutes; other sources about every 15 minutes.</p>
                 <SourceHealthBadge health={assessment?.health ?? current?.health} />
                 {(summaryError || assessmentError) ? <div className="alert alert-warning mt-3 mb-0">Some supporting data is unavailable, so the indication may be incomplete.</div> : null}
               </Col>
@@ -102,23 +113,27 @@ export default function WaterQualityPage() {
           </Card.Body>
         </Card>
 
-        {summaryPending ? <p>Loading current CSO status…</p> : summaryError ? <div className="alert alert-danger">Current CSO status is unavailable. Historical activity may still be shown below.</div> : csoStatusUnavailable ? (
-          <div className="alert alert-warning mb-4" role="status">Current CSO status is temporarily unavailable. No upstream location is shown as spilling or as clear until it can be checked again. Historical activity may still be shown below.</div>
+        {summaryPending ? <p>Loading current CSO status…</p> : summaryError ? <div className="alert alert-danger">Current CSO status is unavailable. Historical activity may still be shown below.</div> : csoStatusUnavailable || noFreshStatus ? (
+          <div className="alert alert-warning mb-4" role="status">Current CSO status is temporarily unavailable{noFreshStatus ? ': no upstream outfall has an up-to-date report' : ''}. No upstream location is shown as spilling or as clear until it can be checked again. Historical activity may still be shown below.</div>
         ) : (
           <Row className="g-3 mb-4">
             <Col md={4}><SummaryCard value={counts.currentlySpilling ?? '—'} label="Currently spilling" detail="Upstream locations reporting an active spill." /></Col>
             <Col md={4}><SummaryCard value={counts.recentlyStopped48h ?? '—'} label="Stopped in 48 hours" detail="The latest spill has ended, but its contents may still be travelling downstream." /></Col>
             <Col md={4}><SummaryCard value={unavailable} label="Status unavailable" detail="Locations with offline, stale, missing or unrecognised status data." /></Col>
-            {noRecentSpill ? <Col xs={12}><p className="small water-quality-muted mb-0">{noRecentSpill} other upstream location{noRecentSpill === 1 ? '' : 's'}: not spilling, no spill in the last 48 hours.</p></Col> : null}
+            <Col xs={12}><p className="small water-quality-muted mb-0">
+              {noRecentSpill ? `${noRecentSpill} other upstream location${noRecentSpill === 1 ? '' : 's'}: not spilling, no spill in the last 48 hours. ` : ''}
+              {statusAsOf ? <>Status as of <time dateTime={statusAsOf}>{formatUpdated(statusAsOf)}</time>; the map shows the same reports.</> : null}
+            </p></Col>
           </Row>
         )}
 
         <Row className="g-4 mb-4">
           <Col lg={6}><section className="water-quality-panel h-100" id="cso-map-panel"><h2>Upstream activity map</h2><p className="water-quality-muted">Current spills and recently stopped events that can contribute downstream.</p><RiverContext direction={riverDirection} onDirectionChange={setRiverDirection} context={riverData} error={riverError} isPending={riverPending} />
-            <Form.Check type="switch" id="cso-impact-toggle" className="small mb-2" checked={impactOn} onChange={(e) => setImpactOn(e.target.checked)}
+            <Form.Check type="switch" id="cso-impact-toggle" className="small mb-2" checked={impactOn} onChange={(e) => { setImpactOn(e.target.checked); if (!e.target.checked) setImpactId(''); }}
               label="Reported downstream spill impact" />
             <WaterQualityMap locations={current?.locations || []} relatedLocations={current?.relatedLocations ?? null} membership={current?.membership ?? null} health={current?.health} isPending={summaryPending} error={summaryError} riverTrace={riverTrace} focusId={mapFocusId} onShowHistory={(id) => { setHistoryOutfallId(id); scrollToSection('cso-history'); }}
-              impactEnabled={impactOn} impact={impactData?.enabled ? impactData.impact : null} impactPending={impactOn && impactPending} impactError={impactOn ? impactError : null} /></section></Col>
+              impactEnabled={impactOn} impact={impactData?.enabled ? impactData.impact : null} impactPending={impactOn && impactPending} impactError={impactOn ? impactError : null}
+              impactSelectedId={impactId} onImpactSelect={setImpactId} onShowRoute={showRoute} /></section></Col>
           <Col lg={6}><section className="water-quality-panel h-100"><h2>Activity over time</h2>
             {rdpAssessment ? (
               <>
@@ -143,7 +158,8 @@ export default function WaterQualityPage() {
         </Row>
 
         <CsoEventHistory selectedOutfallId={historyOutfallId} onSelectOutfall={setHistoryOutfallId}
-          onShowOnMap={(id) => { setMapFocusId(id); scrollToSection('cso-map-panel'); }} />
+          onShowOnMap={(id) => { setMapFocusId(id); scrollToSection('cso-map-panel'); }}
+          onShowRoute={(assetId) => { showRoute(assetId); scrollToSection('cso-map-panel'); }} />
 
         <CsoCatchmentMonitoring />
 

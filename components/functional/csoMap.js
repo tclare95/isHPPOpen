@@ -40,6 +40,7 @@ export const RELATIONSHIP_LABELS = {
   'catchment-only': 'In the catchment: river link unresolved',
 };
 const isPossible = (location) => Boolean(RELATIONSHIP_LABELS[location?.relationship?.category]);
+const PLOTTED_STATES = ['active', 'recent'];
 
 function inWindow(location, windowHours, now, focusId) {
   const latitude = Number(location?.coordinates?.y);
@@ -52,17 +53,28 @@ function inWindow(location, windowHours, now, focusId) {
 }
 
 export default function WaterQualityMap({ locations = [], relatedLocations = null, membership = null, health, isPending = false, error = null, now = new Date(), riverTrace = null, focusId = null, onShowHistory = null,
-  impactEnabled = false, impact = null, impactPending = false, impactError = null }) {
+  impactEnabled = false, impact = null, impactPending = false, impactError = null, impactSelectedId = null, onImpactSelect = null, onShowRoute = null }) {
   const [windowHours, setWindowHours] = useState(6);
   const [showRelated, setShowRelated] = useState(false);
-  const [impactId, setImpactId] = useState('');
+  // The highlighted route is the page's when it passes one (so the spill history can choose it too), else the map's own.
+  const [ownImpactId, setOwnImpactId] = useState('');
+  const impactId = impactSelectedId ?? ownImpactId;
+  const setImpactId = onImpactSelect ?? setOwnImpactId;
   // The overlay is optional: without it (off, loading, failed) the map behaves exactly as before.
   const overlay = impactEnabled && !impactError ? impact : null;
   const impactOutfalls = overlay?.outfalls ?? [];
   const selectedImpact = impactOutfalls.find((outfall) => outfall.assetId === impactId) ?? null;
   const impactFor = (location) => impactOutfalls.find((outfall) => outfall.assetId === location.assetId || outfall.externalId === location.id) ?? null;
   const hasImpact = Boolean(overlay?.reaches?.features?.length);
-  const [icons, setIcons] = useState({});
+  // A spilling or recently stopped marker can always ask for its route: before the overlay is loaded the page switches it
+  // on; once loaded, only routed outfalls offer it.
+  const routeTarget = (location) => {
+    const known = impactFor(location);
+    if (overlay) return known?.routed ? known.assetId : null;
+    return onShowRoute && !impactError && location.assetId && PLOTTED_STATES.includes(location.status) ? location.assetId : null;
+  };
+  const showRoute = (assetId) => (onShowRoute ? onShowRoute(assetId) : setImpactId(assetId));
+  const [icons, setIcons] = useState(null);
   useEffect(() => {
     let cancelled = false;
     import('leaflet').then(({ divIcon }) => {
@@ -70,7 +82,7 @@ export default function WaterQualityMap({ locations = [], relatedLocations = nul
       const icon = (kind, symbol) => divIcon({ className: `cso-marker cso-marker--${kind}`, html: `<span aria-hidden="true">${symbol}</span>`, iconSize: [30, 30], iconAnchor: [15, 15] });
       setIcons({ active: icon('active', '!'), recent: icon('recent', '≈'),
         possibleActive: icon('active cso-marker--possible', '?'), possibleRecent: icon('recent cso-marker--possible', '?') });
-    }).catch(() => setIcons({}));
+    }).catch(() => { if (!cancelled) setIcons({}); });
     return () => { cancelled = true; };
   }, []);
   const filtered = useMemo(() => locations.filter((location) => inWindow(location, windowHours, now, focusId)), [locations, now, windowHours, focusId]);
@@ -81,14 +93,14 @@ export default function WaterQualityMap({ locations = [], relatedLocations = nul
   const relatedActivity = relatedCounts ? Object.values(relatedCounts).reduce((sum, entry) => sum + entry.currentlySpilling + entry.recentlyStopped48h, 0) : 0;
   const plotted = [...filtered, ...related];
   const markerIcon = (location) => (isPossible(location)
-    ? icons[location.status === 'active' ? 'possibleActive' : 'possibleRecent'] : icons[location.status]) || undefined;
+    ? icons?.[location.status === 'active' ? 'possibleActive' : 'possibleRecent'] : icons?.[location.status]) || undefined;
   const membershipNote = membershipUnavailable(membership) ? 'Upstream outfall list unavailable.' : null;
 
   if (isPending) return <p>Loading map data…</p>;
   if (error) return <p>Unable to load map data right now.</p>;
   const hasRiverGeometry = Boolean(riverTrace?.features?.length);
   const impactPanel = impactEnabled ? <ImpactPanel impact={impactError ? null : impact} isPending={impactPending} error={impactError}
-    selectedId={selectedImpact ? impactId : ''} onSelect={setImpactId} onShowHistory={onShowHistory} /> : null;
+    selectedId={impactId} onSelect={setImpactId} onShowHistory={onShowHistory} /> : null;
   if (!locations.length && !hasRiverGeometry && !hasImpact) return <><p>No CSO location data is available.</p>{membershipNote ? <p className="small water-quality-muted mb-0">{membershipNote}</p> : null}{impactPanel}</>;
   return (
     <div>
@@ -116,11 +128,12 @@ export default function WaterQualityMap({ locations = [], relatedLocations = nul
             style={(feature) => impactReachStyle(feature, selectedImpact ? impactId : '')}
             onEachFeature={(feature, layer) => layer.on?.('click', () => {
               const ids = contributorsOf(feature);
-              setImpactId((current) => (ids.includes(current) ? current : ids[0] ?? ''));
+              setImpactId(ids.includes(impactId) ? impactId : ids[0] ?? '');
             })} /> : null}
           {selectedImpact ? <MapFocus latitude={selectedImpact.coordinates[1]} longitude={selectedImpact.coordinates[0]} />
             : focused ? <MapFocus latitude={focused.coordinates.y} longitude={focused.coordinates.x} /> : null}
-          <MarkerClusterGroup chunkedLoading>
+          {/* Markers wait for their icons, so Leaflet's default image marker never flashes up first. */}
+          {icons ? <MarkerClusterGroup chunkedLoading>
             {plotted.map((location) => (
               <Marker key={location.assetId ?? location.id} position={[location.coordinates.y, location.coordinates.x]} icon={markerIcon(location)}>
                 <Popup>
@@ -134,12 +147,12 @@ export default function WaterQualityMap({ locations = [], relatedLocations = nul
                     Duration: {formatDuration(location.eventDurationMinutes)}<br />
                     <small>Last checked: {formatTimestamp(location.observedAt)}</small>
                     {onShowHistory && !isPossible(location) ? <><br /><Button size="sm" variant="link" className="p-0" onClick={() => onShowHistory(location.id)}>Spill history for this outfall</Button></> : null}
-                    {impactFor(location)?.routed ? <><br /><Button size="sm" variant="link" className="p-0" onClick={() => setImpactId(impactFor(location).assetId)}>Show downstream route</Button></> : null}
+                    {routeTarget(location) ? <><br /><Button size="sm" variant="link" className="p-0" onClick={() => showRoute(routeTarget(location))}>Show downstream route</Button></> : null}
                   </div>
                 </Popup>
               </Marker>
             ))}
-          </MarkerClusterGroup>
+          </MarkerClusterGroup> : null}
         </MapContainer>
       )}
       {plotted.length ? <p className="small water-quality-muted mt-2 mb-0">Showing {filtered.length} locations{related.length ? ` and ${related.length} not confirmed upstream` : ''}. Locations without a current status are not plotted.</p> : null}
@@ -164,4 +177,7 @@ WaterQualityMap.propTypes = {
   impact: PropTypes.shape({ asOf: PropTypes.string, outfalls: PropTypes.array, reaches: PropTypes.object }),
   impactPending: PropTypes.bool,
   impactError: PropTypes.object,
+  impactSelectedId: PropTypes.string,
+  onImpactSelect: PropTypes.func,
+  onShowRoute: PropTypes.func,
 };

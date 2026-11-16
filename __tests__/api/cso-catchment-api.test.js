@@ -16,7 +16,7 @@ describe('CSO catchment monitoring route (#114)', () => {
     expect(getPublicCsoCatchmentMonitoring).toHaveBeenCalledWith(undefined);
     expect(res.status).toBe(200);
     expect((await res.json()).data).toEqual(available);
-    expect(res.headers['Cache-Control']).toBe('public, s-maxage=300, stale-while-revalidate=600');
+    expect(res.headers['Cache-Control']).toBe('public, s-maxage=300, stale-while-revalidate=300');
     expect(maxDuration).toBe(180);
   });
 

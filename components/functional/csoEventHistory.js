@@ -9,8 +9,10 @@ import useFetch from '../../libs/useFetch';
 // Recorded upstream spills from RDP's canonical event history (#121). Purely descriptive: it never changes
 // the indicator, density chart or alerts, and an empty list is only described as far as coverage allows.
 
-export const HISTORY_WINDOWS = [{ key: '24h', label: '24 hours' }, { key: '7d', label: '7 days' }, { key: '30d', label: '30 days' }];
-const FETCH_OPTIONS = { revalidateOnFocus: false, revalidateOnReconnect: false, shouldRetryOnError: false, refreshInterval: 15 * 60 * 1000 };
+// 48 hours by default: the window of the status cards and map, read from the same RDP summary.
+export const HISTORY_WINDOWS = [{ key: '48h', label: '48 hours' }, { key: '7d', label: '7 days' }, { key: '30d', label: '30 days' }];
+// The route is CDN-cached for 5 minutes; refreshing on focus means a tab left open during a spill catches up on return.
+const FETCH_OPTIONS = { revalidateOnFocus: true, focusThrottleInterval: 60 * 1000, revalidateOnReconnect: false, shouldRetryOnError: false, refreshInterval: 5 * 60 * 1000 };
 const DETAIL_OPTIONS = { revalidateOnFocus: false, revalidateOnReconnect: false, shouldRetryOnError: false };
 
 const DATE_FORMAT = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
@@ -98,7 +100,7 @@ function RevisionHistory({ revisions, truncated }) {
 }
 RevisionHistory.propTypes = { revisions: PropTypes.array.isRequired, truncated: PropTypes.bool };
 
-function EventDetail({ event, outfall, onShowOnMap }) {
+function EventDetail({ event, outfall, onShowOnMap, onShowRoute }) {
   const { data, error, isPending } = useFetch(`/api/waterquality/cso/events/${event.eventId}`, DETAIL_OPTIONS);
   const detail = data?.event ? data : null;
   const shown = detail?.event ?? event;
@@ -127,11 +129,14 @@ function EventDetail({ event, outfall, onShowOnMap }) {
           {detail.openHolds.length ? <p className="small mt-1 mb-0">{detail.openHolds.length} conflicting provider report{detail.openHolds.length === 1 ? ' is' : 's are'} awaiting review; times may change.</p> : null}
         </>
       ) : null}
-      {onShowOnMap && outfall?.coordinates ? <Button size="sm" variant="outline-info" className="mt-2" onClick={() => onShowOnMap(event.outfallId)}>Show outfall on map</Button> : null}
+      <div className="d-flex flex-wrap gap-2 mt-2">
+        {onShowOnMap && outfall?.coordinates ? <Button size="sm" variant="outline-info" onClick={() => onShowOnMap(event.outfallId)}>Show outfall on map</Button> : null}
+        {onShowRoute && event.assetId ? <Button size="sm" variant="outline-info" onClick={() => onShowRoute(event.assetId)}>Show downstream route</Button> : null}
+      </div>
     </div>
   );
 }
-EventDetail.propTypes = { event: PropTypes.object.isRequired, outfall: PropTypes.object, onShowOnMap: PropTypes.func };
+EventDetail.propTypes = { event: PropTypes.object.isRequired, outfall: PropTypes.object, onShowOnMap: PropTypes.func, onShowRoute: PropTypes.func };
 
 // One plain-language statement of what the list can and cannot support.
 export function evidenceMessages(history) {
@@ -172,8 +177,8 @@ export function evidenceMessages(history) {
   return messages;
 }
 
-export default function CsoEventHistory({ selectedOutfallId = '', onSelectOutfall, onShowOnMap }) {
-  const [windowKey, setWindowKey] = useState('24h');
+export default function CsoEventHistory({ selectedOutfallId = '', onSelectOutfall, onShowOnMap, onShowRoute }) {
+  const [windowKey, setWindowKey] = useState(HISTORY_WINDOWS[0].key);
   const [openEventId, setOpenEventId] = useState(null);
   const filterId = useId();
   const { data, error, isPending } = useFetch(`/api/waterquality/cso/events?window=${windowKey}`, FETCH_OPTIONS);
@@ -241,7 +246,7 @@ export default function CsoEventHistory({ selectedOutfallId = '', onSelectOutfal
                         {event.revision > 1 ? <> · revision {event.revision}</> : null}
                       </span>
                     </button>
-                    {open ? <div id={panelId}><EventDetail event={event} outfall={outfall} onShowOnMap={onShowOnMap} /></div> : null}
+                    {open ? <div id={panelId}><EventDetail event={event} outfall={outfall} onShowOnMap={onShowOnMap} onShowRoute={onShowRoute} /></div> : null}
                   </li>
                 );
               })}
@@ -257,4 +262,5 @@ CsoEventHistory.propTypes = {
   selectedOutfallId: PropTypes.string,
   onSelectOutfall: PropTypes.func,
   onShowOnMap: PropTypes.func,
+  onShowRoute: PropTypes.func,
 };

@@ -46,7 +46,7 @@ While the flag is off, the route returns `{ enabled: false }`, the section rende
 | Set activity pages | `hours=48`, `limit=100`; pages follow the cursor sequentially (the cursor chains them, so they cannot run in parallel); at most 25 pages (2,500 outfalls); no new page after 120 s (production pages take about 4 s each, so 1,514 outfalls take about 70 s) | Data cache 10 min, only for a **complete** walk |
 | Catalogue (locations, names, set attribution) | shared with #120/#121 (≤ 10 pages) | 6 h |
 | Legacy summaries and `csoData` in the window | ≤ 2,000 summaries; ≤ 20,000 status rows for ≤ 100 listed IDs | none (one read per CDN miss) |
-| Whole request | 170 s deadline; route `maxDuration` 180 s | CDN `s-maxage=300, stale-while-revalidate=600` when `available`, else `s-maxage=60`; errors `no-store` |
+| Whole request | 170 s deadline; route `maxDuration` 180 s | CDN `s-maxage=300, stale-while-revalidate=300` when `available`, else `s-maxage=60`; errors `no-store` |
 
 At 1,514 outfalls a walk is 16 page requests. Concurrent misses in one instance share one walk (`coalesce`), and the CDN
 and data cache mean a page view never starts a walk by itself. Only reviewed sets (`CATCHMENT_SETS`) are accepted, so the
@@ -171,8 +171,8 @@ evidence. Any replacement metric must:
 
 ## Set source
 
-`RDP_CSO_SET_SOURCE=summary` (default `walk`) reads the set from RDP's `GET /v1/cso/sets/{set}/summary` instead of walking
-16 activity pages plus the full catalogue. It serves this section and the RDP membership reads (status, map and
+The set is read from RDP's `GET /v1/cso/sets/{set}/summary` (the default) instead of walking 16 activity pages plus the
+full catalogue. `RDP_CSO_SET_SOURCE=walk` is the rollback to the paginated walk. It serves this section and the RDP membership reads (status, map and
 24-hour/7-day history), which use the same set.
 
 - **One request per window.** RDP reads every outfall at one as-of time and computes it once per 5-minute bucket; the app
@@ -187,9 +187,16 @@ evidence. Any replacement metric must:
 - **No catalogue read.** Names, coordinates, catalogue membership and attribution come with the summary. A catalogue outage
   in RDP is shown as "Outfall locations are unavailable" (`catalogueError: CATALOGUE_UNAVAILABLE`), with the counts kept.
 - **Failures** map as before: 403 `not_authorised`, `SET_NOT_FOUND` `set_not_enabled`, anything else `read_failed`.
-- **Activation:** separately approved, after the RDP read API release that adds the route and the caller IAM update for
-  `sets/*/summary` (until then RDP answers 403). Set `RDP_CSO_SET_SOURCE=summary` in Production and redeploy; the
-  response's `source` says which path served it. Rollback: unset it.
+- **Freshness.** A cached summary older than 10 minutes is read again (the walk keeps its 20-minute limit). `/api/waterquality`
+  revalidates every 5 minutes, and the events and catchment routes use `s-maxage=300, stale-while-revalidate=300`, so live
+  status on the cards, map and history is normally under 10 minutes behind RDP.
+- **One answer for cards, map and history.** The spill history's default 48-hour window is the same set read as the status
+  cards and map (`set-summary:hpp-catchment:48`), so the three show the same reports.
+- **Released 2026-11-16.** RDP production apply of `b793b1f` (#124) added the route; the production caller role
+  `river-data-platform-production-vercel-production` holds `GET /v1/cso/sets/*/summary` (read-only check). Production had
+  `RDP_CSO_SET_SOURCE=summary`; first real-data read: `source: summary`, complete, 1,514/1,514 outfalls in one request
+  (about 11 s uncached), 0 active, 64 recent, 7 unknown. The response's `source` says which path served it.
+- **Rollback:** set `RDP_CSO_SET_SOURCE=walk` in Production and redeploy.
 
 Tests check that the walk and the summary give identical section output, membership snapshot and 24-hour history for the
 same set state.

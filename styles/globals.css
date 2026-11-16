@@ -153,6 +153,8 @@ color: #8D918D;
 .legend-impact--unresolved { border-top: 3px dashed #fd7e14; }
 .legend-impact--recent { border-top-color: #ffc107; border-top-width: 3px; }
 .cso-impact-selected { border-left: 3px solid #0dcaf0; padding-left: 0.5rem; }
+/* Long route labels stay inside the panel on narrow screens. */
+.cso-impact-panel .form-select { max-width: 100%; text-overflow: ellipsis; }
 .legend-possible { display: inline-grid; place-items: center; width: 1.25rem; height: 1.25rem; margin-left: 0.35rem; border: 2px dashed white; border-radius: 50%; color: white; font-weight: 800; }
 
 /* Spill history: a plain divided list. Status is carried by the badge, not by colour on the row. */
@@ -180,6 +182,8 @@ color: #8D918D;
 }
 
 @media (max-width: 575.98px) {
-  .cso-map { height: 360px; }
+  /* Leave room above and below the map so a one-finger scroll can still move the page past it. */
+  .cso-map { height: min(360px, 55vh); }
+  .water-quality-panel { padding: 1rem 0.85rem; }
   .water-quality-stat__value { font-size: 2rem; }
 }

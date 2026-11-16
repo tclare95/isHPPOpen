@@ -17,7 +17,7 @@ describe('CSO event history routes (#121)', () => {
     expect(getPublicCsoEventHistory).toHaveBeenCalledWith('24h', { outfall: undefined });
     expect(res.status).toBe(200);
     expect((await res.json()).data).toEqual(available);
-    expect(res.headers['Cache-Control']).toBe('public, s-maxage=300, stale-while-revalidate=600');
+    expect(res.headers['Cache-Control']).toBe('public, s-maxage=300, stale-while-revalidate=300');
   });
 
   test('degraded, unavailable or disabled histories are cached briefly', async () => {

@@ -5,7 +5,7 @@ import { connectToDatabase } from "../libs/database";
 import { parseCsoCatalogue, parseCsoSetActivity, parseCsoSetSummary } from "../libs/rdp/csoContract";
 import { __resetRdpCsoStateForTests } from "../libs/rdp/csoSource";
 import {
-  CATCHMENT_MAX_PAGES, CATCHMENT_WALK_BUDGET_MS, compareWithLegacy, countLocations, getCatchmentMonitoring, readSetActivity, walkSetActivity,
+  CATCHMENT_MAX_PAGES, CATCHMENT_WALK_BUDGET_MS, compareWithLegacy, countLocations, getCatchmentMonitoring, readSetActivity, setReadSource, walkSetActivity,
 } from "../libs/rdp/csoCatchment";
 import { getPublicCsoCatchmentMonitoring, isCsoCatchmentEnabled } from "../libs/services/waterQualityService";
 import calibration from "../libs/waterQualityCalibration.json";
@@ -190,6 +190,16 @@ describe("missing pages and unavailable sets", () => {
     const summarised = await getCatchmentMonitoring();
     expect(rdp.getCsoSetSummary).toHaveBeenCalledTimes(2);
     expect(summarised.summary.states).toMatchObject({ active: 1, stale: 0 });
+
+    // A summary is one request, so a cached one is re-read after 10 minutes (the walk keeps its 20-minute limit).
+    clearDataCache();
+    await getCatchmentMonitoring();
+    expect(rdp.getCsoSetSummary).toHaveBeenCalledTimes(3);
+    jest.setSystemTime(new Date("2026-11-12T15:11:00Z"));
+    retrievedAt = "2026-11-12T15:10:30Z";
+    const refreshed = await getCatchmentMonitoring();
+    expect(rdp.getCsoSetSummary).toHaveBeenCalledTimes(4);
+    expect(refreshed.window.retrievedAt).toBe("2026-11-12T15:10:30.000Z");
   });
 
   test("concurrent requests share one walk", async () => {
@@ -444,6 +454,22 @@ describe("flag", () => {
   });
 });
 
+describe("set read source", () => {
+  test("the one-request summary is the default; only RDP_CSO_SET_SOURCE=walk reads the pages", () => {
+    const saved = process.env.RDP_CSO_SET_SOURCE;
+    try {
+      delete process.env.RDP_CSO_SET_SOURCE;
+      expect(setReadSource()).toBe("summary");
+      process.env.RDP_CSO_SET_SOURCE = "anything-else";
+      expect(setReadSource()).toBe("summary");
+      process.env.RDP_CSO_SET_SOURCE = "walk";
+      expect(setReadSource()).toBe("walk");
+    } finally {
+      process.env.RDP_CSO_SET_SOURCE = saved;
+    }
+  });
+});
+
 describe("RDP set summary as the source (RDP_CSO_SET_SOURCE=summary)", () => {
   const spilling = { reportedState: "spilling", effectiveState: "spilling", statusStart: "2026-11-12T10:00:00Z" };
   const items = [
@@ -538,7 +564,7 @@ describe("RDP set summary as the source (RDP_CSO_SET_SOURCE=summary)", () => {
     await Promise.all([readSetActivity("hpp-catchment", 48), readSetActivity("hpp-catchment", 48)]);
     await readSetActivity("hpp-catchment", 48);
     expect(rdp.getCsoSetSummary).toHaveBeenCalledTimes(1);
-    delete process.env.RDP_CSO_SET_SOURCE;
+    process.env.RDP_CSO_SET_SOURCE = "walk";
     rdp.getCsoSetActivity.mockResolvedValue(parse(setActivityResponse(items)));
     expect((await readSetActivity("hpp-catchment", 48)).source).toBeUndefined();
     expect(rdp.getCsoSetActivity).toHaveBeenCalled();

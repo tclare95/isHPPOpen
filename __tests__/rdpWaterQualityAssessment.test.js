@@ -56,7 +56,7 @@ beforeEach(() => {
   connectToDatabase.mockResolvedValue({ db: { collection: jest.fn(() => waterQuality) } });
   process.env = { ...originalEnv };
   delete process.env.RDP_WQ_ASSESSMENT;
-  delete process.env.RDP_CSO_SET_SOURCE;
+  process.env.RDP_CSO_SET_SOURCE = "walk";
 });
 afterEach(() => { jest.useRealTimers(); process.env = originalEnv; });
 

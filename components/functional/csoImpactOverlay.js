@@ -44,6 +44,8 @@ export function ImpactPanel({ impact = null, isPending = false, error = null, se
   if (!impact) return null;
   const { counts, outfalls } = impact;
   const selected = outfalls.find((outfall) => outfall.assetId === selectedId) ?? null;
+  // Chosen from a marker or the spill history, but RDP reports no recent spill (or no route) for it.
+  const missing = selectedId && !selected ? selectedId.slice(selectedId.lastIndexOf(':') + 1) : null;
   const unknown = counts.unknown;
   return (
     <div className="cso-impact-panel mt-2" aria-live="polite">
@@ -63,7 +65,7 @@ export function ImpactPanel({ impact = null, isPending = false, error = null, se
       {outfalls.length ? (
         <Form.Group controlId="cso-impact-outfall" className="mb-1">
           <Form.Label className="small mb-0">Highlight one reported spill&apos;s downstream route</Form.Label>
-          <Form.Select size="sm" value={selectedId} onChange={(e) => onSelect(e.target.value)}>
+          <Form.Select size="sm" value={selected ? selectedId : ''} onChange={(e) => onSelect(e.target.value)}>
             <option value="">All reported spills</option>
             {outfalls.map((outfall) => (
               <option key={outfall.assetId} value={outfall.assetId}>
@@ -73,6 +75,7 @@ export function ImpactPanel({ impact = null, isPending = false, error = null, se
           </Form.Select>
         </Form.Group>
       ) : <p className="small water-quality-muted mb-1">No reported spill in the last {impact.windowHours} hours has a drawable downstream route.</p>}
+      {missing ? <p className="small cso-impact-selected mb-1" role="status">No downstream route is drawn for {missing}: it has no reported spill in the last {impact.windowHours} hours.</p> : null}
       {selected ? (
         <div className="small cso-impact-selected">
           <strong>{selected.externalId}</strong>: {IMPACT_LABELS[selected.impact]}<br />

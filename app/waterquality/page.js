@@ -17,6 +17,8 @@ import RiverContext from '../../components/functional/riverContext';
 import CsoEventHistory from '../../components/functional/csoEventHistory';
 import CsoCatchmentMonitoring from '../../components/functional/csoCatchmentMonitoring';
 import AboutTheData from '../../components/functional/aboutTheData';
+import PageHeader from '../../components/layout/site/PageHeader';
+import StatusMessage from '../../components/layout/site/StatusMessage';
 import useFetch from '../../libs/useFetch';
 import { SWR_15_MINUTES } from '../../libs/dataFreshness';
 
@@ -90,11 +92,8 @@ export default function WaterQualityPage() {
   return (
     <main className="water-quality-page text-white">
       <Container className="py-4 py-lg-5">
-        <div className="mb-4">
-          <Link href="/" className="water-quality-back">← Back to home</Link>
-          <h1 className="display-5 fw-bold mt-4">Water quality indication</h1>
-          <p className="lead water-quality-intro col-lg-8">A general indication based on recent upstream storm-overflow activity and whether the river is rising. It is not a measurement of bacteria or a guarantee that the water is safe.</p>
-        </div>
+        <PageHeader title="Water quality indication"
+          lead="A general indication based on recent upstream storm-overflow activity and whether the river is rising. It is not a measurement of bacteria or a guarantee that the water is safe." />
 
         <Card className="water-quality-hero mb-4">
           <Card.Body className="p-4">
@@ -107,14 +106,14 @@ export default function WaterQualityPage() {
                 <p className="mb-1"><strong>Observed:</strong> {formatUpdated(observedAt)}</p>
                 <p className="small water-quality-muted mb-2">Spill status is checked about every 5 minutes; other sources about every 15 minutes.</p>
                 <SourceHealthBadge health={assessment?.health ?? current?.health} />
-                {(summaryError || assessmentError) ? <div className="alert alert-warning mt-3 mb-0">Some supporting data is unavailable, so the indication may be incomplete.</div> : null}
+                {(summaryError || assessmentError) ? <div className="site-state site-state--unavailable mt-3">Some supporting data is unavailable, so the indication may be incomplete.</div> : null}
               </Col>
             </Row>
           </Card.Body>
         </Card>
 
-        {summaryPending ? <p>Loading current CSO status…</p> : summaryError ? <div className="alert alert-danger">Current CSO status is unavailable. Historical activity may still be shown below.</div> : csoStatusUnavailable || noFreshStatus ? (
-          <div className="alert alert-warning mb-4" role="status">Current CSO status is temporarily unavailable{noFreshStatus ? ': no upstream outfall has an up-to-date report' : ''}. No upstream location is shown as spilling or as clear until it can be checked again. Historical activity may still be shown below.</div>
+        {summaryPending ? <StatusMessage state="loading" className="mb-4">Loading current CSO status…</StatusMessage> : summaryError ? <StatusMessage state="error" className="mb-4">Current CSO status is unavailable. Historical activity may still be shown below.</StatusMessage> : csoStatusUnavailable || noFreshStatus ? (
+          <StatusMessage state="unavailable" className="mb-4">Current CSO status is temporarily unavailable{noFreshStatus ? ': no upstream outfall has an up-to-date report' : ''}. No upstream location is shown as spilling or as clear until it can be checked again. Historical activity may still be shown below.</StatusMessage>
         ) : (
           <Row className="g-3 mb-4">
             <Col md={4}><SummaryCard value={counts.currentlySpilling ?? '—'} label="Currently spilling" detail="Upstream locations reporting an active spill." /></Col>

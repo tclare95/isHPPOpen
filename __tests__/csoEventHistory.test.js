@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
-import CsoEventHistory, { evidenceMessages, formatMinutes } from '../components/functional/csoEventHistory';
+import CsoEventHistory, { evidenceMessages, formatMinutes, pageSummary } from '../components/functional/csoEventHistory';
 import useFetch from '../libs/useFetch';
 
 jest.mock('../libs/useFetch');
@@ -151,21 +151,114 @@ describe('evidenceMessages', () => {
     expect(text).toMatch(/about 42% of this period was collected \(3 gaps\)/);
     expect(text).toMatch(/does not yet cover enough of the last 30 days/);
     expect(text).toMatch(/could not be loaded for 1 outfall;/);
-    expect(text).toMatch(/oldest events in this period are missing/);
+    // RDP pages each outfall oldest first, so a truncated read is missing the newest events, never the oldest.
+    expect(text).toMatch(/Some outfalls had more events in this period than can be read at once, so their most recent events are missing/);
     expect(text).toMatch(/2 of 5 upstream outfalls have event history; the other 2 are not monitored/);
   });
 
   it('reports outfalls that were not read separately from unmonitored ones (#114)', () => {
     const counts = { members: 50, monitored: 50, read: 40, failed: 0, notRead: 10, notMonitored: 0, unmapped: 0 };
     const text = texts(history({ window: { key: '30d', hours: 720 }, readPolicy: { limit: 40, prioritisedBy: 'events_last_7d' },
-      evidence: evidence({ outfalls: counts }), eventTotals: { total: 400, returned: 250, truncated: true } }));
+      evidence: evidence({ outfalls: counts }) }));
     expect(text).toMatch(/read for 40 of 50 upstream outfalls, those with spills in the last 7 days first\. The other 10 were not read/);
     expect(text).not.toMatch(/not monitored for events yet/);
-    expect(text).toMatch(/Showing the newest 250 of 400 recorded events\. Choose an outfall/);
   });
 
   it('formats long durations compactly', () => {
     expect(formatMinutes(3000)).toBe('2 d 2 hr');
     expect(formatMinutes(45)).toBe('45 min');
+  });
+});
+
+describe('CsoEventHistory pagination', () => {
+  const page = (overrides = {}) => ({ size: 50, offset: 0, returned: 3, total: 120, totalIsLowerBound: false, hasNewer: false, hasOlder: true,
+    nextCursor: 'cursor-1', newerSinceStart: 0, windowMoved: false, ...overrides });
+  const older = history({ events: [EVENT('d'), EVENT('e', { outfallId: 'SVT2' })], page: page({ offset: 50, returned: 2, hasNewer: true, nextCursor: 'cursor-2' }) });
+
+  // Responses keyed by request path; anything else is still loading.
+  function mockPaths(responses) {
+    useFetch.mockImplementation((path) => {
+      if (path?.startsWith('/api/waterquality/cso/events/')) return { data: detail, error: undefined, isPending: false };
+      return { data: undefined, error: undefined, isPending: path !== null, mutate: jest.fn(), ...responses[path] };
+    });
+  }
+
+  beforeEach(() => jest.clearAllMocks());
+
+  it('walks to older and back to newer events through server cursors', () => {
+    mockPaths({ '/api/waterquality/cso/events?window=48h': { data: history({ page: page() }) },
+      '/api/waterquality/cso/events?window=48h&cursor=cursor-1': { data: older } });
+    const onShowRoute = jest.fn();
+    render(<CsoEventHistory onShowRoute={onShowRoute} />);
+    expect(screen.getByText(/^Events 1–3 of 120/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Newer events' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Older events' }));
+    expect(useFetch).toHaveBeenCalledWith('/api/waterquality/cso/events?window=48h&cursor=cursor-1', expect.objectContaining({ revalidateOnFocus: false }));
+    expect(screen.getByRole('list', { name: 'Recorded spills, Events 51–52 of 120' })).toHaveFocus();
+    expect(screen.getAllByRole('listitem').map((item) => item.textContent)).toEqual([expect.stringContaining('River SVT1'), expect.stringContaining('River SVT2')]);
+    // Event details and the downstream route still work on an older page.
+    fireEvent.click(screen.getAllByRole('button', { expanded: false })[0]);
+    fireEvent.click(screen.getByRole('button', { name: 'Show downstream route' }));
+    expect(onShowRoute).toHaveBeenCalledWith('severn-trent:storm-overflow-activity:SVT1');
+    fireEvent.click(screen.getByRole('button', { name: 'Newer events' }));
+    expect(screen.getByText(/^Events 1–3 of 120/)).toBeInTheDocument();
+  });
+
+  it('restarts at the newest events when the period or outfall changes', () => {
+    mockPaths({ '/api/waterquality/cso/events?window=48h': { data: history({ page: page() }) },
+      '/api/waterquality/cso/events?window=48h&cursor=cursor-1': { data: older },
+      '/api/waterquality/cso/events?window=7d': { data: history({ window: { key: '7d', hours: 168 }, page: page({ total: 300 }) }) },
+      '/api/waterquality/cso/events?window=7d&outfall=SVT2': { data: history({ window: { key: '7d', hours: 168 }, events: [EVENT('f', { outfallId: 'SVT2' })], page: page({ returned: 1, total: 1, hasOlder: false, nextCursor: null }) }) } });
+    const { rerender } = render(<CsoEventHistory />);
+    fireEvent.click(screen.getByRole('button', { name: 'Older events' }));
+    expect(screen.getByText(/^Events 51–52 of 120/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '7 days' }));
+    expect(screen.getByText(/^Events 1–3 of 300/)).toBeInTheDocument();
+    expect(useFetch).not.toHaveBeenCalledWith(expect.stringContaining('window=7d&cursor'), expect.anything());
+    rerender(<CsoEventHistory selectedOutfallId="SVT2" />);
+    expect(useFetch).toHaveBeenLastCalledWith('/api/waterquality/cso/events?window=7d&outfall=SVT2', expect.any(Object));
+    expect(screen.getByText(/^Events 1–1 of 1/)).toBeInTheDocument();
+    expect(screen.getByText(/End of the recorded events for this period./)).toBeInTheDocument();
+  });
+
+  it('shows exhaustion with a limitation instead of a complete-looking total', () => {
+    mockPaths({ '/api/waterquality/cso/events?window=48h': { data: history({ page: page({ totalIsLowerBound: true, hasOlder: false, nextCursor: null, total: 3 }) }) } });
+    render(<CsoEventHistory />);
+    expect(screen.getByText(/Events 1–3 of 3 or more/)).toBeInTheDocument();
+    expect(screen.getByText(/End of the events that could be read for this period\. Some outfall history was not fully read/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Older events' })).not.toBeInTheDocument();
+  });
+
+  it.each([
+    [409, /changed while you were browsing/, false],
+    [410, /has expired/, false],
+    [503, /could not be loaded right now/, true],
+  ])('a %s continuation offers a way back, never an endless spinner', (status, message, retry) => {
+    const error = Object.assign(new Error('x'), { status });
+    mockPaths({ '/api/waterquality/cso/events?window=48h': { data: history({ page: page() }) },
+      '/api/waterquality/cso/events?window=48h&cursor=cursor-1': { error } });
+    render(<CsoEventHistory />);
+    fireEvent.click(screen.getByRole('button', { name: 'Older events' }));
+    expect(screen.getByText(message)).toBeInTheDocument();
+    expect(screen.queryByText('Loading events…')).not.toBeInTheDocument();
+    expect(Boolean(screen.queryByRole('button', { name: 'Try again' }))).toBe(retry);
+    fireEvent.click(screen.getByRole('button', { name: 'Back to the newest events' }));
+    expect(screen.getByText(/^Events 1–3 of 120/)).toBeInTheDocument();
+  });
+
+  it('says when newer events arrived or the moving period advanced while browsing', () => {
+    mockPaths({ '/api/waterquality/cso/events?window=48h': { data: history({ page: page() }) },
+      '/api/waterquality/cso/events?window=48h&cursor=cursor-1': { data: { ...older, window: { key: '48h', hours: 48, from: '2026-11-10T12:30:00.000Z' },
+        page: { ...older.page, newerSinceStart: 2, windowMoved: true } } } });
+    render(<CsoEventHistory />);
+    fireEvent.click(screen.getByRole('button', { name: 'Older events' }));
+    expect(screen.getByText('2 newer events have been recorded since you started browsing.')).toBeInTheDocument();
+    expect(screen.getByText(/The 48 hours period has moved on since you started browsing/)).toBeInTheDocument();
+  });
+
+  it('summarises a page', () => {
+    expect(pageSummary(null)).toBeNull();
+    expect(pageSummary(page({ returned: 0 }))).toBeNull();
+    expect(pageSummary(page({ offset: 100, returned: 20, total: 120, hasOlder: false }))).toEqual({ range: 'Events 101–120 of 120', end: 'End of the recorded events for this period.' });
   });
 });

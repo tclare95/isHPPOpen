@@ -3,9 +3,9 @@
 These are lightweight acceptance tasks, not an orchestrator checklist or prescribed implementation order.
 
 ## CSO history
-- [ ] Existing water-quality event history can navigate older records using real backend pagination/continuation rather than splitting one capped response.
-- [ ] Filters, order, detail expansion, downstream route selection and incomplete-coverage messages remain coherent while paging.
-- [ ] Focused tests cover pagination boundaries, large result sets, filters and changing/corrected events.
+- [x] Existing water-quality event history can navigate older records using real backend pagination/continuation rather than splitting one capped response.
+- [x] Filters, order, detail expansion, downstream route selection and incomplete-coverage messages remain coherent while paging.
+- [x] Focused tests cover pagination boundaries, large result sets, filters and changing/corrected events. ([RDP-CSO-HISTORY-121](../../../docs/RDP-CSO-HISTORY-121.md#browsing-older-events-wave-a-cso-history-browsing); depth beyond the bounded window reads awaits the documented RDP contract gap)
 
 ## Alerts
 - [ ] Signup, confirmation and management clearly communicate alert triggers and current subscriptions.

@@ -194,7 +194,8 @@ describe("getCsoEventHistory", () => {
     const history = await getCsoEventHistory("24h", NOW);
     expect(rdp.getCsoEvents).toHaveBeenCalledTimes(CSO_HISTORY_MAX_PAGES);
     expect(history.events).toHaveLength(CSO_HISTORY_MAX_PAGES);
-    expect(history.outfalls[0].truncated).toBe(true);
+    // RDP pages run oldest first, so the read stops with the latest events missing after `readThrough`.
+    expect(history.outfalls[0]).toMatchObject({ truncated: true, readThrough: iso(`2026-11-12T0${CSO_HISTORY_MAX_PAGES - 1}:00:00Z`) });
     expect(history.evidence).toMatchObject({ truncated: true, complete: false });
   });
 

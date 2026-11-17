@@ -20,8 +20,6 @@ export const CSO_HISTORY_WINDOWS = Object.freeze({
   "30d": { hours: 720, bucketMinutes: 60 },
 });
 export const CSO_HISTORY_MAX_OUTFALLS = 20;
-// Events returned in one response, newest first, after the optional outfall filter. The total is always reported.
-export const CSO_HISTORY_MAX_EVENTS = 250;
 export const CSO_HISTORY_PAGE_LIMIT = 200;
 export const CSO_HISTORY_MAX_PAGES = 3;
 export const CSO_HISTORY_DEADLINE_MS = 15000;
@@ -47,6 +45,13 @@ export function historyWindow(windowKey, now) {
   return { key: windowKey, hours: spec.hours, from: isoZ(new Date(to.getTime() - spec.hours * HOUR_MS)), to: isoZ(to) };
 }
 
+// Newest first; ties broken by event ID so the order is stable between requests (and pages).
+export const newestFirst = (a, b) => (a.startedAt === b.startedAt ? (a.eventId < b.eventId ? -1 : a.eventId > b.eventId ? 1 : 0) : a.startedAt < b.startedAt ? 1 : -1);
+
+// The latest start among events read. RDP pages run oldest first, so when an outfall's read stops at the budget its
+// events after this time are the ones missing.
+export const latestStart = (events) => events.reduce((latest, event) => (latest === null || event.startedAt > latest ? event.startedAt : latest), null);
+
 async function readEventPagesUncached(assetId, from, to) {
   const events = [];
   let cursor;
@@ -58,7 +63,7 @@ async function readEventPagesUncached(assetId, from, to) {
     if (!result.nextCursor) return { events, coverage: first.coverage, requestAsOf: first.requestAsOf, truncated: false };
     cursor = result.nextCursor;
   }
-  return { events, coverage: first.coverage, requestAsOf: first.requestAsOf, truncated: true };
+  return { events, coverage: first.coverage, requestAsOf: first.requestAsOf, truncated: true, readThrough: latestStart(events) };
 }
 
 async function readRevisionsUncached(eventId) {
@@ -200,9 +205,10 @@ async function readMembership() {
   return latest ? getSummaryMembership(latest) : [];
 }
 
-// Never rejects for an RDP failure: the section reports `unavailable` and the rest of the page is untouched.
-export async function getCsoEventHistory(windowKey = "24h", now = new Date()) {
-  const window = historyWindow(windowKey, now);
+// Never rejects for an RDP failure: the section reports `unavailable` and the rest of the page is untouched. A continuation
+// passes the `window` its first page was read with, so every page of one traversal reads the same (cached) window.
+export async function getCsoEventHistory(windowKey = "24h", now = new Date(), { window: pinned = null } = {}) {
+  const window = pinned ?? historyWindow(windowKey, now);
   const logger = createRequestLogger({ method: "GET" }, "rdp/cso-history");
   const legacyIds = await readMembership();
   const base = { window, retrievedAt: now.toISOString() };
@@ -236,6 +242,7 @@ export async function getCsoEventHistory(windowKey = "24h", now = new Date()) {
       Object.assign(outfall, {
         state: "read",
         truncated: result.truncated,
+        ...(result.truncated ? { readThrough: result.readThrough } : {}),
         pageIntegrity: "verified",
         coverage: summariseCoverage(result.coverage, window.from, window.to, result.requestAsOf),
         eventCount: result.events.length,
@@ -255,8 +262,7 @@ export async function getCsoEventHistory(windowKey = "24h", now = new Date()) {
 
   const failed = outfalls.filter((outfall) => outfall.state === "failed");
   if (failed.length) logger.warn(`RDP CSO history degraded ${JSON.stringify({ window: windowKey, failures: failed.map(({ assetId, errorCode: code }) => ({ assetId, code })) })}`);
-  // Newest first; ties broken by event ID so the order is stable between requests.
-  events.sort((a, b) => (a.startedAt === b.startedAt ? (a.eventId < b.eventId ? -1 : 1) : a.startedAt < b.startedAt ? 1 : -1));
+  events.sort(newestFirst);
   const evidence = assessHistory({ outfalls, events, window });
   const providers = new Set(outfalls.filter((outfall) => outfall.state === "read").map((outfall) => `${outfall.provider}:${outfall.sourceId}`));
   const sources = catalogue.catalogues.filter((entry) => providers.has(`${entry.provider}:${entry.sourceId}`))
@@ -342,17 +348,4 @@ export async function getCsoEventDetail(eventId, { resolveMember = resolveLegacy
     },
     retrievedAt: detail.retrievedAt,
   };
-}
-
-// Applied to every history response (legacy or RDP membership). `outfall` narrows the list server-side, so the newest-N
-// cap never hides a selected outfall's events. The full count is always reported.
-export function limitHistoryEvents(history, outfall) {
-  if (!Array.isArray(history.events)) return history;
-  if (outfall !== undefined && outfall !== null && !history.outfalls.some((entry) => entry.id === outfall)) {
-    throw new HttpError(400, "outfall must be an upstream member in this view");
-  }
-  const matching = outfall ? history.events.filter((event) => event.outfallId === outfall) : history.events;
-  const events = matching.slice(0, CSO_HISTORY_MAX_EVENTS);
-  return { ...history, events, outfallFilter: outfall ?? null,
-    eventTotals: { total: matching.length, returned: events.length, truncated: matching.length > events.length } };
 }

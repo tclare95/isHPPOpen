@@ -14,7 +14,7 @@ describe('CSO event history routes (#121)', () => {
   test('defaults to 24 hours and is CDN-cacheable when complete', async () => {
     getPublicCsoEventHistory.mockResolvedValue(available);
     const res = await getHistory(request());
-    expect(getPublicCsoEventHistory).toHaveBeenCalledWith('24h', { outfall: undefined });
+    expect(getPublicCsoEventHistory).toHaveBeenCalledWith('24h', { outfall: undefined, cursor: undefined });
     expect(res.status).toBe(200);
     expect((await res.json()).data).toEqual(available);
     expect(res.headers['Cache-Control']).toBe('public, s-maxage=300, stale-while-revalidate=300');
@@ -27,13 +27,33 @@ describe('CSO event history routes (#121)', () => {
       expect(res.status).toBe(200);
       expect(res.headers['Cache-Control']).toBe('public, s-maxage=60');
     }
-    expect(getPublicCsoEventHistory).toHaveBeenLastCalledWith('7d', { outfall: undefined });
+    expect(getPublicCsoEventHistory).toHaveBeenLastCalledWith('7d', { outfall: undefined, cursor: undefined });
   });
 
   test('passes one outfall through for a server-side filter (#114)', async () => {
     getPublicCsoEventHistory.mockResolvedValue(available);
     await getHistory(request('window=7d&outfall=SVT01294'));
-    expect(getPublicCsoEventHistory).toHaveBeenCalledWith('7d', { outfall: 'SVT01294' });
+    expect(getPublicCsoEventHistory).toHaveBeenCalledWith('7d', { outfall: 'SVT01294', cursor: undefined });
+  });
+
+  test('passes a continuation cursor through and caches each page by its URL', async () => {
+    getPublicCsoEventHistory.mockResolvedValue({ ...available, page: { offset: 50, nextCursor: null } });
+    const res = await getHistory(request('window=30d&outfall=SVT1&cursor=abc_-1'));
+    expect(getPublicCsoEventHistory).toHaveBeenCalledWith('30d', { outfall: 'SVT1', cursor: 'abc_-1' });
+    expect(res.status).toBe(200);
+    expect(res.headers['Cache-Control']).toBe('public, s-maxage=300, stale-while-revalidate=300');
+  });
+
+  test.each([
+    [400, 'Invalid history cursor'],
+    [409, 'The recorded events changed while browsing; start again from the newest events'],
+    [410, 'This list has expired; start again from the newest events'],
+  ])('a refused continuation is a %s that is never cached', async (status, message) => {
+    getPublicCsoEventHistory.mockRejectedValue(new HttpError(status, message));
+    const res = await getHistory(request('window=7d&cursor=x'));
+    expect(res.status).toBe(status);
+    expect((await res.json()).error.message).toBe(message);
+    expect(res.headers['Cache-Control']).toBe('no-store');
   });
 
   test('rejects an unsupported window', async () => {

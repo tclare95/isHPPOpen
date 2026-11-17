@@ -13,7 +13,7 @@ export async function GET(request) {
     const setKey = request.nextUrl.searchParams.get("set") ?? undefined;
     const monitoring = await getPublicCsoCatchmentMonitoring(setKey);
     const cache = monitoring.enabled && monitoring.state === "available"
-      ? "public, s-maxage=300, stale-while-revalidate=600" : "public, s-maxage=60";
+      ? "public, s-maxage=300, stale-while-revalidate=300" : "public, s-maxage=60";
     return sendRouteSuccess(monitoring, 200, { "Cache-Control": cache });
   } catch (error) {
     const { statusCode, message } = mapApiError(error);

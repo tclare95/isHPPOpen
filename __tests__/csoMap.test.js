@@ -40,8 +40,9 @@ describe('WaterQualityMap', () => {
     expect(screen.getByText('No CSO location data is available.')).toBeInTheDocument();
   });
 
-  it('plots valid locations, filters recent events and warns for stale data', () => {
+  it('plots valid locations, filters recent events and warns for stale data', async () => {
     render(<WaterQualityMap locations={locations} health={{ state: 'stale' }} now={now} />);
+    await screen.findAllByTestId('marker');
     expect(screen.getByTestId('map-container')).toBeInTheDocument();
     expect(screen.getAllByTestId('marker')).toHaveLength(2);
     expect(screen.getByText('Currently spilling')).toBeInTheDocument();
@@ -53,10 +54,11 @@ describe('WaterQualityMap', () => {
     expect(screen.queryByText('RECENT')).not.toBeInTheDocument();
   });
 
-  it('plots an outfall selected from the spill history and links back to it', () => {
+  it('plots an outfall selected from the spill history and links back to it', async () => {
     const onShowHistory = jest.fn();
     const idle = { id: 'IDLE', status: 'unknown', coordinates: { x: -1.1, y: 52.95 }, receivingWaterCourse: 'River Leen' };
     render(<WaterQualityMap locations={[...locations, idle]} health={{ state: 'fresh' }} now={now} focusId="IDLE" onShowHistory={onShowHistory} />);
+    await screen.findAllByTestId('marker');
     expect(screen.getAllByTestId('marker')).toHaveLength(3);
     expect(screen.getByText('Selected from spill history')).toBeInTheDocument();
     fireEvent.click(screen.getAllByRole('button', { name: 'Spill history for this outfall' })[2]);
@@ -78,9 +80,10 @@ describe('WaterQualityMap', () => {
       scopes: [{ name: 'confirmed', count: 592 }], catalogues: [{ attribution: 'Severn Trent Water' }] };
     const confirmed = locations.map((location) => ({ ...location, relationship: { category: 'confirmed' } }));
 
-    it('keeps possibly-upstream outfalls off the map until asked for, then labels them distinctly', () => {
+    it('keeps possibly-upstream outfalls off the map until asked for, then labels them distinctly', async () => {
       const onShowHistory = jest.fn();
       render(<WaterQualityMap locations={confirmed} relatedLocations={relatedLocations} membership={membership} health={{ state: 'fresh' }} now={now} onShowHistory={onShowHistory} />);
+      await screen.findAllByTestId('marker');
       expect(screen.getAllByTestId('marker')).toHaveLength(2);
       // Provenance is stated once in the page's About section, not under the map.
       expect(screen.queryByText(/River Data Platform set/)).not.toBeInTheDocument();
@@ -141,15 +144,17 @@ describe('WaterQualityMap', () => {
       expect(onShowHistory).toHaveBeenLastCalledWith('SVT00002');
     });
 
-    it('selects a route from an existing CSO marker', () => {
+    it('selects a route from an existing CSO marker', async () => {
       render(<WaterQualityMap locations={spilling} health={{ state: 'fresh' }} now={now} impactEnabled impact={compactImpact()} />);
+      await screen.findAllByTestId('marker');
       fireEvent.click(screen.getByRole('button', { name: 'Show downstream route' }));
       expect(screen.getByLabelText(/Highlight one reported spill/)).toHaveValue('severn-trent:storm-overflow-activity:SVT00001');
       expect(weights()['1']).toBeGreaterThan(weights()['3']);
     });
 
-    it('leaves the map working normally when the overlay is off, loading or unavailable', () => {
+    it('leaves the map working normally when the overlay is off, loading or unavailable', async () => {
       const { rerender } = render(<WaterQualityMap locations={locations} health={{ state: 'fresh' }} now={now} />);
+      await screen.findAllByTestId('marker');
       expect(screen.getAllByTestId('marker')).toHaveLength(2);
       expect(screen.queryByTestId('impact-layer')).not.toBeInTheDocument();
       expect(screen.queryByRole('button', { name: 'Show downstream route' })).not.toBeInTheDocument();
@@ -159,6 +164,28 @@ describe('WaterQualityMap', () => {
       expect(screen.getAllByTestId('marker')).toHaveLength(2);
       expect(screen.queryByTestId('impact-layer')).not.toBeInTheDocument();
       expect(screen.getByText(/Downstream spill impact is unavailable right now. The rest of the map is unaffected/)).toBeInTheDocument();
+    });
+
+    it('offers a marker route before the overlay is on, so the page can switch it on and select it', async () => {
+      const onShowRoute = jest.fn();
+      const marker = [{ ...spilling[0], assetId: 'severn-trent:storm-overflow-activity:SVT00001' }];
+      render(<WaterQualityMap locations={marker} health={{ state: 'fresh' }} now={now} onShowRoute={onShowRoute} />);
+      await screen.findAllByTestId('marker');
+      fireEvent.click(screen.getByRole('button', { name: 'Show downstream route' }));
+      expect(onShowRoute).toHaveBeenCalledWith('severn-trent:storm-overflow-activity:SVT00001');
+    });
+
+    it('follows a route chosen by the page and says when the chosen outfall has none', async () => {
+      const onImpactSelect = jest.fn();
+      const { rerender } = render(<WaterQualityMap locations={spilling} health={{ state: 'fresh' }} now={now} impactEnabled impact={compactImpact()}
+        impactSelectedId="severn-trent:storm-overflow-activity:SVT00002" onImpactSelect={onImpactSelect} />);
+      expect(screen.getByLabelText(/Highlight one reported spill/)).toHaveValue('severn-trent:storm-overflow-activity:SVT00002');
+      fireEvent.change(screen.getByLabelText(/Highlight one reported spill/), { target: { value: '' } });
+      expect(onImpactSelect).toHaveBeenCalledWith('');
+      rerender(<WaterQualityMap locations={spilling} health={{ state: 'fresh' }} now={now} impactEnabled impact={compactImpact()}
+        impactSelectedId="severn-trent:storm-overflow-activity:SVT09999" onImpactSelect={onImpactSelect} />);
+      expect(screen.getByText('No downstream route is drawn for SVT09999: it has no reported spill in the last 48 hours.')).toBeInTheDocument();
+      expect(screen.getByLabelText(/Highlight one reported spill/)).toHaveValue('');
     });
 
     it('says when no reported spill has a drawable route rather than drawing nothing silently', () => {

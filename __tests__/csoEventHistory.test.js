@@ -15,7 +15,7 @@ const outfall = (id, overrides = {}) => ({ id, assetId: `severn-trent:storm-over
   coverage: { gaps: [], collectedFraction: 1 }, truncated: false, ...overrides });
 const evidence = (overrides = {}) => ({ conclusion: 'events', outfalls: { members: 2, monitored: 2, read: 2, failed: 0, notRead: 0, notMonitored: 0, unmapped: 0 },
   coverage: { collectedFraction: 1, collectedHours: 24, gapCount: 0, reportingCompleteness: 'unverified', sufficient: true }, truncated: false, complete: true, ...overrides });
-const history = (overrides = {}) => ({ enabled: true, state: 'available', window: { key: '24h', hours: 24 }, outfalls: [outfall('SVT1'), outfall('SVT2')],
+const history = (overrides = {}) => ({ enabled: true, state: 'available', window: { key: '48h', hours: 48 }, outfalls: [outfall('SVT1'), outfall('SVT2')],
   events: [
     EVENT('a', { display: 'ongoing', lifecycle: 'ongoing', endedAt: null, durationMinutes: null, elapsedMinutes: 95 }),
     EVENT('b', { display: 'unresolved', lifecycle: 'unresolved', endedAt: null, durationMinutes: null, endNoLaterThan: '2026-11-12T05:00:00.000Z', maxDurationMinutes: 60, outfallId: 'SVT2' }),
@@ -66,13 +66,14 @@ describe('CsoEventHistory', () => {
     expect(within(items[2]).getByText(/revision 2/)).toBeInTheDocument();
     expect(within(items[2]).queryByText('Corrected')).not.toBeInTheDocument();
     expect(within(items[2]).getByText('Started before this period')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '24 hours' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: '48 hours' })).toHaveAttribute('aria-pressed', 'true');
   });
 
   it('opens one event with its corrections, attribution and a map link', () => {
     mockFetch({ data: history() });
     const onShowOnMap = jest.fn();
-    render(<CsoEventHistory onShowOnMap={onShowOnMap} />);
+    const onShowRoute = jest.fn();
+    render(<CsoEventHistory onShowOnMap={onShowOnMap} onShowRoute={onShowRoute} />);
     const toggle = screen.getAllByRole('button', { expanded: false })[2];
     fireEvent.click(toggle);
     expect(toggle).toHaveAttribute('aria-expanded', 'true');
@@ -85,6 +86,9 @@ describe('CsoEventHistory', () => {
     expect(screen.getByText(/1 conflicting provider report is awaiting review/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Show outfall on map' }));
     expect(onShowOnMap).toHaveBeenCalledWith('SVT1');
+    // The downstream route is chosen by the outfall's canonical asset ID, the key the impact overlay uses.
+    fireEvent.click(screen.getByRole('button', { name: 'Show downstream route' }));
+    expect(onShowRoute).toHaveBeenCalledWith('severn-trent:storm-overflow-activity:SVT1');
   });
 
   it('keeps the list when revision history is unavailable', () => {
@@ -105,7 +109,7 @@ describe('CsoEventHistory', () => {
     rerender(<CsoEventHistory selectedOutfallId="" onSelectOutfall={onSelectOutfall} />);
     fireEvent.click(screen.getByRole('button', { name: '7 days' }));
     expect(useFetch).toHaveBeenCalledWith('/api/waterquality/cso/events?window=7d', expect.any(Object));
-    expect(useFetch).toHaveBeenCalledWith('/api/waterquality/cso/events?window=24h&outfall=SVT2', expect.any(Object));
+    expect(useFetch).toHaveBeenCalledWith('/api/waterquality/cso/events?window=48h&outfall=SVT2', expect.any(Object));
   });
 
   it('lists only outfalls with events for a large RDP membership, leaving provenance to the About section', () => {
@@ -135,7 +139,7 @@ describe('evidenceMessages', () => {
 
   it('never presents an empty list as proof of no spills', () => {
     const text = texts(history({ events: [], evidence: evidence({ conclusion: 'no_reported_events' }) }));
-    expect(text).toMatch(/No reported events in the available data for the last 24 hours/);
+    expect(text).toMatch(/No reported events in the available data for the last 48 hours/);
     expect(text).toMatch(/not proof that no spills occurred/);
   });
 

@@ -44,7 +44,7 @@ export const MEMBERSHIP_CACHE_SECONDS = 6 * 3600;
 // The 30-day history is not available from the set read (at most 7 days), so it reads per outfall, bounded. Outfalls with
 // events in the last 7 days are read first; every outfall not read is reported, never treated as having no events.
 export const MEMBERSHIP_30D_MAX_OUTFALLS = 40;
-const SET_WINDOW_HOURS = { "24h": 24, "7d": 168 };
+const SET_WINDOW_HOURS = { "24h": 24, "48h": 48, "7d": 168 };
 const READ_CONCURRENCY = 4;
 const SOURCE_NAME = "river-data-platform-cso";
 const RELATED_CATEGORIES = ["candidate", "catchment-only"];

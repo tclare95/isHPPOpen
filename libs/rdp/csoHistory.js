@@ -14,6 +14,8 @@ const HOUR_MS = 3600000;
 const MINUTE_MS = 60000;
 export const CSO_HISTORY_WINDOWS = Object.freeze({
   "24h": { hours: 24, bucketMinutes: 15 },
+  // The page's default: the same 48-hour window (and, with the membership, the same set read) as the status cards and map.
+  "48h": { hours: 48, bucketMinutes: 15 },
   "7d": { hours: 168, bucketMinutes: 15 },
   "30d": { hours: 720, bucketMinutes: 60 },
 });

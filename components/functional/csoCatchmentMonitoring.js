@@ -1,8 +1,6 @@
-import Accordion from 'react-bootstrap/Accordion';
 import Card from 'react-bootstrap/Card';
 import Col from 'react-bootstrap/Col';
 import Row from 'react-bootstrap/Row';
-import Table from 'react-bootstrap/Table';
 import PropTypes from 'prop-types';
 import useFetch from '../../libs/useFetch';
 import { formatTime } from './csoEventHistory';
@@ -82,49 +80,6 @@ export function readMessages(data) {
   return messages;
 }
 
-function Comparison({ comparison }) {
-  if (comparison.state !== 'available') return <p className="mb-0">The comparison with the existing density history is unavailable right now.</p>;
-  const { memberAgreement: agreement } = comparison;
-  return (
-    <>
-      <p>Each row is one existing density observation, at its own observation time, next to what River Data Platform recorded at that same moment. The two columns use different catchment boundaries, outfall lists and denominators, so they are <strong>not interchangeable</strong>. The indicator reference levels ({comparison.legacyThresholds.elevated} and {comparison.legacyThresholds.high}) apply to the existing density only.</p>
-      {agreement ? <p className="small">Outfalls on the existing list, compared at the same time: both spilling {n(agreement.bothSpilling)}; existing only {n(agreement.legacyOnly)}; River Data Platform only {n(agreement.rdpOnly)}; neither {n(agreement.neither)}; River Data Platform end not reported {n(agreement.rdpUncertain)}; not comparable {n(agreement.notComparable)}.</p>
-        : <p className="small">Per-outfall status from the existing list is not available for this period, so only density is compared.</p>}
-      {comparison.rows.length ? (
-        <div className="table-responsive">
-          <Table size="sm" variant="dark" className="mb-0 small">
-            <caption className="text-light">{plural(comparison.observations, 'hourly observation')}; River Data Platform collected at {n(comparison.rdpCollectedObservations)} of them.</caption>
-            <thead>
-              <tr>
-                <th scope="col">Observed</th>
-                <th scope="col">Existing density (per km²)</th>
-                <th scope="col">Existing upstream count</th>
-                <th scope="col">Existing list: spilling / reporting</th>
-                <th scope="col">RDP outfalls collected</th>
-                <th scope="col">RDP spilling outfalls</th>
-                <th scope="col">RDP spilling locations</th>
-              </tr>
-            </thead>
-            <tbody>
-              {comparison.rows.map((row) => (
-                <tr key={row.observedAt}>
-                  <td><time dateTime={row.observedAt}>{formatTime(row.observedAt)}</time></td>
-                  <td>{Number.isFinite(row.legacy.numberCSOsPerKm2) ? row.legacy.numberCSOsPerKm2.toFixed(4) : '—'}</td>
-                  <td>{n(row.legacy.numberUpstreamCSOs)}</td>
-                  <td>{row.members.reporting === null ? `— of ${n(row.members.listed)}` : `${n(row.members.spilling)} / ${n(row.members.reporting)} of ${n(row.members.listed)}`}</td>
-                  <td>{row.rdp.collectedOutfalls ? n(row.rdp.collectedOutfalls) : 'Not collected'}</td>
-                  <td>{row.rdp.collectedOutfalls ? (row.rdp.spillingOutfalls.lower === row.rdp.spillingOutfalls.upper ? n(row.rdp.spillingOutfalls.lower) : `${n(row.rdp.spillingOutfalls.lower)}–${n(row.rdp.spillingOutfalls.upper)}`) : '—'}</td>
-                  <td>{row.rdp.collectedOutfalls ? n(row.rdp.spillingLocations) : '—'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </Table>
-        </div>
-      ) : <p className="mb-0">No existing density observations fall inside this period.</p>}
-    </>
-  );
-}
-Comparison.propTypes = { comparison: PropTypes.object.isRequired };
 
 export default function CsoCatchmentMonitoring() {
   const { data, error, isPending } = useFetch('/api/waterquality/cso/catchment', FETCH_OPTIONS);
@@ -171,9 +126,7 @@ export default function CsoCatchmentMonitoring() {
                 <h3 className="h6">Collection in the last {data.window.hours} hours</h3>
                 <ul className="small mb-0">
                   <li>Collected throughout: {n(summary.coverage.collectedThroughout)}; partly: {n(summary.coverage.partlyCollected)}; not collected: {n(summary.coverage.notCollected)}</li>
-                  {summary.coverage.earliestCollectedFrom ? <li>Collection began <time dateTime={summary.coverage.earliestCollectedFrom}>{formatTime(summary.coverage.earliestCollectedFrom)}</time></li> : null}
-                  <li>Typical report age {formatAge(summary.lag.sourceAgeSeconds.median)} (oldest {formatAge(summary.lag.sourceAgeSeconds.max)}); read {formatAge(summary.lag.readAgeSeconds)} ago</li>
-                  <li>Reporting completeness is unverified: the provider publishes only each outfall&apos;s latest event.</li>
+                  <li>Typical report age {formatAge(summary.lag.sourceAgeSeconds.median)}; read {formatAge(summary.lag.readAgeSeconds)} ago. Short spills between checks can be missed.</li>
                 </ul>
               </Col>
             </Row>
@@ -192,12 +145,6 @@ export default function CsoCatchmentMonitoring() {
                 </ul>
               </details>
             ) : null}
-            <Accordion className="mt-3">
-              <Accordion.Item eventKey="comparison">
-                <Accordion.Header>Compare with the existing density history (read-only)</Accordion.Header>
-                <Accordion.Body className="text-start"><Comparison comparison={data.comparison} /></Accordion.Body>
-              </Accordion.Item>
-            </Accordion>
           </>
         );
       })() : null}

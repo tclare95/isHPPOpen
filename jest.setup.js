@@ -10,6 +10,8 @@ if (globalThis.TextDecoder === undefined) {
 }
 
 require('dotenv').config({ path: '.env.test' });
+// The set read defaults to RDP's one-request summary; suites that exercise the paginated walk opt back in per test.
+process.env.RDP_CSO_SET_SOURCE = 'walk';
 
 jest.mock('next-auth', () => ({
   getServerSession: jest.fn(),

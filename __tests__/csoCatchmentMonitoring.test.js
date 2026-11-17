@@ -62,17 +62,15 @@ describe('CsoCatchmentMonitoring', () => {
     expect(screen.getByText(/30 outfalls could not be collected/)).toHaveTextContent('a page failed to load');
     expect(screen.getByText(/Collection was incomplete in the last 48 hours for 1,484 outfalls/)).toBeInTheDocument();
     expect(screen.getByText('Not read (incomplete collection): 30')).toBeInTheDocument();
-    expect(screen.getByText(/Typical report age 7 min \(oldest 2 hr\); read 2 min ago/)).toBeInTheDocument();
+    expect(screen.getByText(/Typical report age 7 min; read 2 min ago/)).toBeInTheDocument();
     expect(screen.getByText(/same location as 1 other outfall/)).toBeInTheDocument();
   });
 
-  test('the comparison labels the sources as not interchangeable and shows RDP bounds', () => {
+  test('the legacy density comparison stays in the API response, not on the public page', () => {
     useFetch.mockReturnValue({ data: data(), error: undefined, isPending: false });
     render(<CsoCatchmentMonitoring />);
-    fireEvent.click(screen.getByRole('button', { name: /Compare with the existing density history/ }));
-    expect(screen.getByText(/not interchangeable/)).toBeInTheDocument();
-    const row = screen.getAllByRole('row')[1];
-    expect(within(row).getAllByRole('cell').map((cell) => cell.textContent).slice(1)).toEqual(['0.0123', '4', '1 / 5 of 5', '1,450', '3–5', '2']);
+    expect(screen.queryByRole('button', { name: /Compare with the existing density history/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
   });
 
   test.each([

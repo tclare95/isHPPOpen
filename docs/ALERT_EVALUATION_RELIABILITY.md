@@ -133,6 +133,22 @@ creates it only after approval. The subscription gate already prevents
 duplicate intents, so the index is defence in depth. A missing index makes
 runs `degraded`, not blocked.
 
+## Subscriber-facing fixes (Wave A)
+
+These gaps let a valid subscription silently stop producing alerts. They are fixed without changing
+thresholds, hysteresis, freshness rules, re-baselining or the delivery mechanism above
+(tests: `__tests__/alertSubscriberReliability.test.js`):
+
+| Gap | Fix |
+| --- | --- |
+| Forecast rules have had no `clear` state since the alert-type expansion. After one alert they stayed `triggered` forever. | The original forecast re-arm is back: it needs every forecast row to be readable and beyond the threshold by 0.03 m. A missing or empty reading is never treated as 0 m. |
+| After a re-arm, a later forecast run that predicted the same time and value reused the earlier transition identity. It was suppressed as a duplicate of the sent delivery. | Forecast transition identities now also include the forecast run time. Other alert types keep `alertKey:observedAt:value`. |
+| Water-quality marker writes (`enrol`/`advance`) sent `$unset: undefined`. The driver serialises that as null and MongoDB rejects it. Under `RDP_WQ_ASSESSMENT=rdp`, or after a rollback, existing rules would error on every run and never notify. | The operator is left out when there is nothing to unset. The test double now rejects null operators, as MongoDB does. |
+| Requesting an already-active alert again reset it to `pending_confirmation` and rotated its unsubscribe link. Anyone who knew the address could switch it off. | An active alert stays active and keeps its state and unsubscribe link. The new confirmation link says it is already active. The response is the same either way, so it does not reveal whether an alert exists. |
+| Re-subscribing after an unsubscribe kept `pendingTransitionId`, `lastTransitionId` and `wqAssessment`. The rule could stay stuck resuming an old held delivery, or be re-baselined instead of treated as new. | A re-requested inactive rule clears that transition state and starts as a new rule. Old delivery records are left as they are. |
+| A replaced, or concurrently used, confirmation link could still activate a rule, because the update matched on `alertKey` only. | Confirmation now matches the token hash and the pending status. |
+| Legacy water-quality evaluation ignored the run's injected clock. | It now uses the run's `now`. |
+
 ## Compatibility and rollback
 
 - Additive fields only: `stateRevision`, `pendingTransitionId`, `pendingSince`,

@@ -71,17 +71,44 @@ async function limitRequests(db, email, ip, now) {
   }
 }
 
+// Delivery-transition state cleared when an inactive rule is (re)requested, so a re-subscription starts
+// as a new rule: it is not stuck resuming an old pending/held delivery or re-baselined as an old one.
+const TRANSITION_STATE_UNSET = { pendingTransitionId: "", pendingSince: "", lastTransitionId: "", wqAssessment: "" };
+export const ALERT_PENDING_MESSAGE = "Almost done: open the link we emailed you within 24 hours to confirm. The alert is not active until you confirm it.";
+
 export async function createColwickAlertSubscription(payload, { now = new Date(), ip } = {}) {
   const parsed = await subscriptionSchema.validate(payload, { stripUnknown: true }); const email = normalizedEmail(parsed.email); const rule = normalizeRule(parsed); const { db } = await connectToDatabase();
-  await limitRequests(db, email, ip, now); const confirmationToken = createToken(); const unsubscribeToken = createToken(); const key = alertKey(email, rule);
-  await db.collection(ALERT_SUBSCRIPTIONS_COLLECTION).updateOne({ alertKey: key }, { $set: { ...rule, email, alertKey: key, status: "pending_confirmation", confirmationTokenHash: hashToken(confirmationToken), confirmationExpiresAt: timestamp(new Date(now.getTime() + ALERT_CONFIRMATION_MS)), unsubscribeToken, updatedAt: timestamp(now), confirmedAt: null, unsubscribedAt: null, lastConditionState: "armed", lastTriggeredAt: null, lastEvaluatedAt: null }, $unset: OBSERVATION_PROGRESS_UNSET, $setOnInsert: { createdAt: timestamp(now) }, $inc: { stateRevision: 1 } }, { upsert: true });
+  await limitRequests(db, email, ip, now); const confirmationToken = createToken(); const key = alertKey(email, rule);
+  const subscriptions = db.collection(ALERT_SUBSCRIPTIONS_COLLECTION);
+  const confirmation = { confirmationTokenHash: hashToken(confirmationToken), confirmationExpiresAt: timestamp(new Date(now.getTime() + ALERT_CONFIRMATION_MS)) };
+  // Requesting an alert that is already active must not deactivate it (anyone who knows the address could
+  // otherwise switch it off) or reset its alert state. It stays active with its existing unsubscribe link;
+  // the emailed link only reports that it is already active. The response is identical either way.
+  const existing = await subscriptions.findOne({ alertKey: key });
+  const keptActive = existing?.status === "active" && (await subscriptions.updateOne({ alertKey: key, status: "active" }, { $set: confirmation }))?.matchedCount === 1;
+  const unsubscribeToken = keptActive ? existing.unsubscribeToken : createToken();
+  if (!keptActive) {
+    await subscriptions.updateOne({ alertKey: key }, { $set: { ...rule, email, alertKey: key, status: "pending_confirmation", ...confirmation, unsubscribeToken, updatedAt: timestamp(now), confirmedAt: null, unsubscribedAt: null, lastConditionState: "armed", lastTriggeredAt: null, lastEvaluatedAt: null }, $unset: { ...OBSERVATION_PROGRESS_UNSET, ...TRANSITION_STATE_UNSET }, $setOnInsert: { createdAt: timestamp(now) }, $inc: { stateRevision: 1 } }, { upsert: true });
+  }
   await sendAlertConfirmationEmail({ email, gaugeName: nameOf(rule), source: rule.source || "status", direction: rule.direction, threshold: rule.threshold, confirmationToken, unsubscribeToken, ruleDescription: descriptionOf(rule) });
-  return { message: "Check your email to confirm this alert." };
+  return { message: ALERT_PENDING_MESSAGE };
 }
+/** Returns `{ status: "confirmed" | "already_active", message }`; an unusable link is a 404. */
 export async function confirmColwickAlertSubscription(token, { now = new Date() } = {}) {
-  if (!token) throw new HttpError(400, "Missing token parameter"); const { db } = await connectToDatabase(); const collection = db.collection(ALERT_SUBSCRIPTIONS_COLLECTION); const rule = await collection.findOne({ confirmationTokenHash: hashToken(token), status: "pending_confirmation" });
-  if (!rule || (rule.confirmationExpiresAt && new Date(rule.confirmationExpiresAt) <= now)) throw new HttpError(404, "Alert confirmation token is invalid or expired");
-  await collection.updateOne({ alertKey: rule.alertKey }, { $set: { status: "active", confirmedAt: timestamp(now), updatedAt: timestamp(now) }, $unset: { confirmationTokenHash: "", confirmationExpiresAt: "" } }); return { message: "Colwick alert confirmed." };
+  if (!token) throw new HttpError(400, "Missing token parameter"); const { db } = await connectToDatabase(); const collection = db.collection(ALERT_SUBSCRIPTIONS_COLLECTION);
+  const tokenHash = hashToken(token);
+  const rule = await collection.findOne({ confirmationTokenHash: tokenHash, status: { $in: ["pending_confirmation", "active"] } });
+  if (!rule || (rule.confirmationExpiresAt && new Date(rule.confirmationExpiresAt) <= now)) throw new HttpError(404, "This confirmation link is invalid, expired or has already been used.");
+  const consumeToken = { $unset: { confirmationTokenHash: "", confirmationExpiresAt: "" } };
+  if (rule.status === "active") {
+    // A repeated request for an active alert: nothing to activate and no alert state to change.
+    await collection.updateOne({ alertKey: rule.alertKey, confirmationTokenHash: tokenHash, status: "active" }, consumeToken);
+    return { status: "already_active", message: "This alert is already active." };
+  }
+  const result = await collection.updateOne({ alertKey: rule.alertKey, confirmationTokenHash: tokenHash, status: "pending_confirmation" }, { $set: { status: "active", confirmedAt: timestamp(now), updatedAt: timestamp(now) }, ...consumeToken });
+  // A concurrent re-request or unsubscribe replaced this link: it did not activate anything.
+  if (result?.matchedCount === 0) throw new HttpError(404, "This confirmation link is invalid, expired or has already been used.");
+  return { status: "confirmed", message: "Alert confirmed." };
 }
 export async function unsubscribeColwickAlertSubscription(token, { now = new Date() } = {}) {
   if (!token) throw new HttpError(400, "Missing token parameter"); const { db } = await connectToDatabase(); const collection = db.collection(ALERT_SUBSCRIPTIONS_COLLECTION); const rule = await collection.findOne({ unsubscribeToken: token }); if (!rule) throw new HttpError(404, "Alert unsubscribe token is invalid or expired");
@@ -94,7 +121,28 @@ export async function deleteManagedColwickAlert({ token, alertKey: key }, { now 
 
 const usable = (result) => result.status === "fulfilled" && (!result.value?.health || result.value.health.state === "fresh");
 // Forecast gauge rules only. Live gauge rules are decided from alert-safe observations (libs/alerts).
-function forecastCondition(rule, forecast) { const row = forecast?.forecast_data?.find((item) => rule.direction === "below" ? Number(item.forecast_reading) <= rule.threshold : Number(item.forecast_reading) >= rule.threshold); return row ? { met: true, value: Number(row.forecast_reading), at: row.forecast_date, forecastRunAt: forecast?.metadata?.forecast_time || null } : { met: false }; }
+/** Forecast level hysteresis, the same 0.03 m margin as live level readings. */
+const FORECAST_HYSTERESIS_M = 0.03;
+/** A forecast row's reading, or null when it is missing or not numeric (null and "" are not 0 m). */
+function forecastReading(row) {
+  const raw = row?.forecast_reading;
+  if (raw === null || raw === undefined || raw === "") return null;
+  const value = Number(raw);
+  return Number.isFinite(value) ? value : null;
+}
+/**
+ * Met when any forecast row reaches the threshold. Clear (re-arm) only when every row is readable and
+ * beyond the threshold by the hysteresis margin, as in the original forecast rule.
+ */
+function forecastCondition(rule, forecast) {
+  const rows = Array.isArray(forecast?.forecast_data) ? forecast.forecast_data : [];
+  const below = rule.direction === "below";
+  const readings = rows.map((row) => ({ row, value: forecastReading(row) }));
+  const crossing = readings.find(({ value }) => value !== null && (below ? value <= rule.threshold : value >= rule.threshold));
+  if (crossing) return { met: true, clear: false, value: crossing.value, at: crossing.row.forecast_date, forecastRunAt: forecast?.metadata?.forecast_time || null };
+  const clear = readings.length > 0 && readings.every(({ value }) => value !== null && (below ? value >= rule.threshold + FORECAST_HYSTERESIS_M : value <= rule.threshold - FORECAST_HYSTERESIS_M));
+  return { met: false, clear };
+}
 function risk(rows, now = new Date()) { const assessment = getCsoActivityAssessment(rows, now); return assessment.level === "high" ? "red" : assessment.level === "elevated" ? "amber" : assessment.level === "lower" ? "green" : null; }
 function legacyWaterRisk(sources, now) { const value = usable(sources.water) && sources.cso.status === "fulfilled" ? risk(sources.cso.value, now) : null; return value ? { lowest: value, highest: value, at: sources.water.value.ScrapeTimestamp } : null; }
 function condition(rule, sources, now) { const type = typeOf(rule); if (type === "gauge") return rule.source === "forecast" && usable(sources.forecast) ? forecastCondition(rule, sources.forecast.value) : null; if (type === "hpp_status") { const value = sources.hpp.value?.data?.currentStatus; return usable(sources.hpp) && typeof value === "boolean" ? { met: rule.desiredStatus === (value ? "open" : "closed"), clear: rule.desiredStatus !== (value ? "open" : "closed"), value: value ? "open" : "closed", at: sources.hpp.value.data.health.generatedAt } : null; } const value = usable(sources.water) && sources.cso.status === "fulfilled" ? risk(sources.cso.value, now) : null; if (!value) return null; const rank = { green: 0, amber: 1, red: 2 }; return { met: rank[value] >= rank[rule.riskLevel], clear: rank[value] < rank[rule.riskLevel], value, at: sources.water.value.ScrapeTimestamp }; }
@@ -285,7 +333,9 @@ function createEvaluation(db, now) {
 
   /** Newly met condition on an armed rule: gate, record the intent, then send. */
   async function trigger(rule, state, progress = null) {
-    const transitionId = `${rule.alertKey}:${state.at || at}:${state.value}`;
+    // A forecast crossing is also identified by its forecast run: a later run can predict the same
+    // time and value after the rule has cleared, and that new transition must not reuse a sent delivery.
+    const transitionId = `${rule.alertKey}:${state.at || at}:${state.value}${state.forecastRunAt ? `:${state.forecastRunAt}` : ""}`;
     const marker = progressUpdate(progress, "triggered", transitionId);
     const gate = await subscriptions.updateOne(
       { alertKey: rule.alertKey, status: "active", stateRevision: rule.stateRevision ?? null, lastConditionState: rule.lastConditionState ?? null, pendingTransitionId: null },
@@ -321,7 +371,8 @@ function createEvaluation(db, now) {
     const marker = progressUpdate(progress, rule.lastConditionState === "triggered" ? "triggered" : "armed", rule.lastTransitionId);
     const result = await subscriptions.updateOne(
       { alertKey: rule.alertKey, status: "active", stateRevision: rule.stateRevision ?? null, lastConditionState: rule.lastConditionState ?? null, pendingTransitionId: null },
-      { $set: { lastEvaluatedAt: at, updatedAt: at, ...marker.set }, $unset: marker.unset, $inc: { stateRevision: 1 } }
+      // Water-quality markers have no `unset`: an absent operator must be omitted, never sent as null.
+      { $set: { lastEvaluatedAt: at, updatedAt: at, ...marker.set }, ...(marker.unset && { $unset: marker.unset }), $inc: { stateRevision: 1 } }
     );
     return result?.matchedCount === 1 ? outcome : "conflict";
   }
@@ -406,7 +457,7 @@ function createEvaluation(db, now) {
       return evaluateLiveGauge(rule, read, sources.gaugeHoldReasons);
     }
     if (rule.pendingTransitionId) return resumePending(rule, null);
-    const next = condition(rule, sources);
+    const next = condition(rule, sources, now);
     if (!next) {
       await touch(rule);
       return "skipped";

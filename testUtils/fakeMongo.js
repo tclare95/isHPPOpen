@@ -30,7 +30,18 @@ function matchesValue(actual, expected) {
 
 export const matches = (doc, filter = {}) => Object.entries(filter).every(([key, expected]) => matchesValue(doc[key], expected));
 
+// The driver serialises an `undefined` operator as BSON null (ignoreUndefined defaults to false), and
+// the server rejects it ("Modifiers operate on fields but we found type null instead").
+function assertValidOperators(update) {
+  for (const [operator, value] of Object.entries(update)) {
+    if (operator.startsWith("$") && (value === null || value === undefined || typeof value !== "object")) {
+      throw Object.assign(new Error(`Modifiers operate on fields but we found type null instead: {${operator}: ${value}}`), { name: "MongoServerError", code: 9 });
+    }
+  }
+}
+
 function applyUpdate(doc, update, inserting) {
+  assertValidOperators(update);
   for (const [key, value] of Object.entries(update.$set || {})) doc[key] = clone(value);
   if (inserting) for (const [key, value] of Object.entries(update.$setOnInsert || {})) doc[key] = clone(value);
   for (const key of Object.keys(update.$unset || {})) delete doc[key];

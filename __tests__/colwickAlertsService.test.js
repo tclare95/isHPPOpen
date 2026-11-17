@@ -37,14 +37,10 @@ describe("colwickAlertsService", () => {
   });
 
   test("createColwickAlertSubscription stores a pending Colwick alert and sends confirmation", async () => {
-    const updateOne = jest.fn().mockResolvedValue({ acknowledged: true });
-    connectToDatabase.mockResolvedValue({
-      db: {
-        collection: jest.fn().mockReturnValue({ updateOne }),
-      },
-    });
+    const fake = createFakeDb();
+    connectToDatabase.mockResolvedValue({ db: fake.db });
 
-    await createColwickAlertSubscription({
+    const result = await createColwickAlertSubscription({
       email: "User@Example.com",
       gaugeKey: "4009-level",
       source: "forecast",
@@ -52,35 +48,34 @@ describe("colwickAlertsService", () => {
       threshold: 1.6789,
     }, { now: new Date("2026-03-08T12:00:00.000Z") });
 
-    expect(updateOne).toHaveBeenCalled();
-    const [, update] = updateOne.mock.calls[0];
-    expect(update.$set.email).toBe("user@example.com");
-    expect(update.$set.gaugeName).toBe("Colwick");
-    expect(update.$set.threshold).toBe(1.679);
-    expect(update.$set.status).toBe("pending_confirmation");
+    const [stored] = fake.docs("alertSubscriptions");
+    expect(stored).toMatchObject({ email: "user@example.com", gaugeName: "Colwick", threshold: 1.679, status: "pending_confirmation" });
+    expect(result.message).toMatch(/not active until you confirm/);
     expect(sendAlertConfirmationEmail).toHaveBeenCalled();
   });
 
   test("confirmColwickAlertSubscription activates a pending alert", async () => {
-    const findOne = jest.fn().mockResolvedValue({ alertKey: "user@example.com|4009-level|live|above|1.500" });
-    const updateOne = jest.fn().mockResolvedValue({ acknowledged: true });
-    connectToDatabase.mockResolvedValue({
-      db: {
-        collection: jest.fn().mockReturnValue({ findOne, updateOne }),
-      },
-    });
+    const fake = createFakeDb();
+    connectToDatabase.mockResolvedValue({ db: fake.db });
+    await createColwickAlertSubscription({ email: "user@example.com", gaugeKey: "4009-level", source: "live", direction: "above", threshold: 1.5 }, { now: new Date("2026-03-08T12:00:00.000Z") });
+    const { confirmationToken } = sendAlertConfirmationEmail.mock.calls[0][0];
 
-    const result = await confirmColwickAlertSubscription("abc123", {
+    const result = await confirmColwickAlertSubscription(confirmationToken, {
       now: new Date("2026-03-08T13:00:00.000Z"),
     });
 
-    expect(result.message).toBe("Colwick alert confirmed.");
-    expect(updateOne).toHaveBeenCalledWith(
-      { alertKey: "user@example.com|4009-level|live|above|1.500" },
-      expect.objectContaining({
-        $set: expect.objectContaining({ status: "active" }),
-      })
-    );
+    expect(result).toEqual({ status: "confirmed", message: "Alert confirmed." });
+    expect(fake.docs("alertSubscriptions")[0]).toMatchObject({ status: "active", confirmedAt: "2026-03-08T13:00:00.000Z" });
+  });
+
+  test("confirmColwickAlertSubscription rejects an expired link without activating the alert", async () => {
+    const fake = createFakeDb();
+    connectToDatabase.mockResolvedValue({ db: fake.db });
+    await createColwickAlertSubscription({ email: "user@example.com", gaugeKey: "4009-level", source: "live", direction: "above", threshold: 1.5 }, { now: new Date("2026-03-08T12:00:00.000Z") });
+    const { confirmationToken } = sendAlertConfirmationEmail.mock.calls[0][0];
+
+    await expect(confirmColwickAlertSubscription(confirmationToken, { now: new Date("2026-03-09T12:00:00.000Z") })).rejects.toMatchObject({ statusCode: 404 });
+    expect(fake.docs("alertSubscriptions")[0].status).toBe("pending_confirmation");
   });
 
   test("runColwickAlerts sends a live alert when the threshold is crossed", async () => {

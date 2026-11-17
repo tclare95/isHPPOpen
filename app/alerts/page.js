@@ -1,7 +1,6 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import Card from "react-bootstrap/Card";
 import Col from "react-bootstrap/Col";
@@ -16,6 +15,11 @@ import {
 } from "../../components/functional/alertsManager";
 import { fetcher } from "../../libs/fetcher";
 import useFetch from "../../libs/useFetch";
+import PageHeader from "../../components/layout/site/PageHeader";
+
+function AlertsPageHeader() {
+  return <PageHeader title="Email alerts" lead="Set up an alert, or manage the alerts you already have." />;
+}
 
 function AlertsPageContent() {
   const router = useRouter();
@@ -73,14 +77,9 @@ function AlertsPageContent() {
   }
 
   return (
-    <Container fluid className="bg-dark min-vh-100">
-      <Container className="text-white py-4">
-        <Row className="mb-4">
-          <Col className="text-center">
-            <h1>Alerts Centre</h1>
-            <Link href="/trentweirs" className="text-info">← Back to Trent Dashboard</Link>
-          </Col>
-        </Row>
+    <Container fluid as="main" className="site-page">
+      <Container className="text-white py-4 py-lg-5">
+        <AlertsPageHeader />
 
         <Row className="justify-content-center mb-4">
           <Col lg={8}>
@@ -138,14 +137,9 @@ function AlertsPageContent() {
 
 function AlertsPageFallback() {
   return (
-    <Container fluid className="bg-dark min-vh-100">
-      <Container className="text-white py-4">
-        <Row className="mb-4">
-          <Col className="text-center">
-            <h1>Alerts Centre</h1>
-            <Link href="/trentweirs" className="text-info">← Back to Trent Dashboard</Link>
-          </Col>
-        </Row>
+    <Container fluid as="main" className="site-page">
+      <Container className="text-white py-4 py-lg-5">
+        <AlertsPageHeader />
       </Container>
     </Container>
   );

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import Row from "react-bootstrap/Row";
 import Accordion from "react-bootstrap/Accordion";
 import Card from "react-bootstrap/Card";
@@ -55,8 +56,9 @@ export default function WeirInfo() {
       <Row className="justify-content-center mb-3">
         <h2>Trent Weirs</h2>
         <p>
-          When the Trent is at the correct level for a weir to work, it will be displayed below the level at the top of the page. Tap on the weir name below for more info about levels, directions, and general info.
+          Weirs that are at a working level are listed under the river level at the top of the page. Open a weir for its levels and location.
         </p>
+        <p><Link href="/trentweirs" className="text-info">Compare Trent gauges →</Link></p>
       </Row>
       <Accordion className="mb-4">
         {weirs.map((weir) => (
@@ -77,8 +79,8 @@ export default function WeirInfo() {
                     Google Maps Link
                   </a>
                 </ListGroup.Item>
-                <ListGroup.Item className="bg-secondary text-white text-muted">
-                  Weirs can be dangerous! Always check them yourself before committing!
+                <ListGroup.Item className="bg-secondary text-white">
+                  Weirs can be dangerous. Always inspect a weir yourself before paddling it.
                 </ListGroup.Item>
                 <ListGroup.Item className="bg-secondary">
                   <a

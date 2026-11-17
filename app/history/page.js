@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import StatusMessage from "../../components/layout/site/StatusMessage";
 import HistoryExplorer from "../../components/history/HistoryExplorer";
 
 export const metadata = {
@@ -8,7 +9,7 @@ export const metadata = {
 
 export default function HistoryPage() {
   return (
-    <Suspense fallback={<main className="history-page text-white"><p className="container py-5">Loading river history…</p></main>}>
+    <Suspense fallback={<main className="history-page text-white"><div className="container py-5"><StatusMessage state="loading">Loading river history…</StatusMessage></div></main>}>
       <HistoryExplorer />
     </Suspense>
   );

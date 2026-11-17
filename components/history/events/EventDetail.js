@@ -14,6 +14,9 @@ import { formatDate, formatDateTime, formatDuration, formatLevel } from "../../.
 import { londonParts } from "../../../libs/history/ukCalendar";
 import LevelChart from "../LevelChart";
 import { ErrorNotice, HISTORY_SWR, LoadingBlock, useSlow } from "../StatusBlocks";
+import PageHeader from "../../layout/site/PageHeader";
+
+const EVENT_BREADCRUMB = [{ href: "/history", label: "Level history" }, { href: "/history/events", label: "High-water events" }];
 
 const threshold = `${COLWICK_HISTORY.thresholdMetres.toFixed(1)} m`;
 const ordinal = (n) => `${n}${["th", "st", "nd", "rd"][(n % 100 > 10 && n % 100 < 14) ? 0 : n % 10] ?? "th"}`;
@@ -66,8 +69,7 @@ export default function EventDetail({ id }) {
     return (
       <main className="history-page text-white">
         <Container className="py-4 py-lg-5">
-          <Link href="/history/events" className="history-back">← All high-water events</Link>
-          <h1 className="display-6 fw-bold mt-3 mb-4">High-water event</h1>
+          <PageHeader title="High-water event" breadcrumb={EVENT_BREADCRUMB} />
           {notFound ? (
             <div className="history-empty">
               <h2 className="h5">Event not found</h2>
@@ -92,17 +94,13 @@ export default function EventDetail({ id }) {
   return (
     <main className="history-page text-white">
       <Container className="py-4 py-lg-5">
-        <header className="mb-4">
-          <Link href={`/history/events?year=${startParts.year}`} className="history-back">← High-water events in {startParts.year}</Link>
-          <p className="history-eyebrow mt-3 mb-1">Observed high-water event · Colwick</p>
-          <h1 className="display-6 fw-bold mb-2">{eventDateRange(event)}</h1>
-          <p className="lead history-intro mb-0">
-            Peaked at {formatLevel(event.peak.value)} on {formatDate(event.peak.at)}; at or above {threshold} for {eventDurationText(event)}.
-          </p>
+        <PageHeader title={eventDateRange(event)} eyebrow="Observed high-water event · Colwick"
+          breadcrumb={[...EVENT_BREADCRUMB, { href: `/history/events?year=${startParts.year}`, label: String(startParts.year) }]}
+          lead={<>Peaked at {formatLevel(event.peak.value)} on {formatDate(event.peak.at)}; at or above {threshold} for {eventDurationText(event)}.</>}>
           {event.limitations.length ? (
-            <p className="events-row__badges mt-2 mb-0">{event.limitations.map((item) => <span key={item} className="events-badge events-badge--warning">{LIMITATION_TEXT[item]}</span>)}</p>
-          ) : <p className="events-row__badges mt-2 mb-0"><span className="events-badge events-badge--ok">Fully observed</span></p>}
-        </header>
+            <p className="events-row__badges mb-0">{event.limitations.map((item) => <span key={item} className="events-badge events-badge--warning">{LIMITATION_TEXT[item]}</span>)}</p>
+          ) : <p className="events-row__badges mb-0"><span className="events-badge events-badge--ok">Fully observed</span></p>}
+        </PageHeader>
 
         {data.match === "moved" ? (
           <p className="history-notice history-notice--warning">This event now starts at {formatDateTime(event.firstAboveAt)} (link: {formatDateTime(parseEventId(id))}).</p>

@@ -22,6 +22,7 @@ import { ErrorNotice, HISTORY_SWR, LoadingBlock, useSlow } from "./StatusBlocks"
 import ShareBars from "./ShareBars";
 import SummaryTiles from "./SummaryTiles";
 import TodayContext from "./TodayContext";
+import PageHeader from "../layout/site/PageHeader";
 
 const threshold = `${COLWICK_HISTORY.thresholdMetres.toFixed(1)} m`;
 
@@ -160,12 +161,10 @@ export default function HistoryExplorer() {
   return (
     <main className="history-page text-white">
       <Container className="py-4 py-lg-5">
-        <header className="mb-4">
-          <Link href="/" className="history-back">← Back to home</Link>
-          <h1 className="display-6 fw-bold mt-3 mb-2">River level history</h1>
-          <p className="lead history-intro mb-0">Explore observed river levels at Colwick since {COLWICK_HISTORY.firstYear}, how often they reached HPP&apos;s {threshold} level rule, and how today compares with past seasons.</p>
-          <Link href="/history/events" className="history-cta mt-3">Browse past high-water events →</Link>
-        </header>
+        <PageHeader title="River level history"
+          lead={<>Observed Colwick river levels since {COLWICK_HISTORY.firstYear}: how often they reached HPP&apos;s {threshold} level rule, and how today compares with past seasons.</>}>
+          <Link href="/history/events" className="history-cta">Browse past high-water events →</Link>
+        </PageHeader>
 
         <TodayContext overview={overview.data} overviewError={overview.error} latest={latest} levelsError={levels.error}
           currentMonth={current.month} onExplore={() => setPeriod(current)} />

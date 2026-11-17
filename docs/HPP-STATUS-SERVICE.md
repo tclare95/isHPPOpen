@@ -6,19 +6,16 @@ so isHPPOpen remains the single "app": rules, state, history, public status
 and alerts are all in one place. RDP stays the canonical observation source
 and holds no HPP logic.
 
-**Status:** shadow runs in Production. The cron `/api/internal/hpp/run`
-(at 7, 22, 37 and 52 minutes past each hour, `CRON_SECRET`) evaluates once
-when `HPP_STATUS_SOURCE` is `shadow` or `authoritative` and
-`VERCEL_ENV=production`. It does nothing otherwise, and `legacy` is the
-default. An authoritative writer is implemented but **inactive**. It writes
-`openIndicator` only when **both** of these hold:
-
-- `HPP_STATUS_SOURCE=authoritative`
-- the writer control document names the app, after an operator handover
-
-Today there is no control document, so the legacy scraper is the only
-`openIndicator` writer. `/api/hppstatus` and HPP alerts read `openIndicator`
-in every mode. Evidence is at the authenticated `/api/admin/hpp-shadow`.
+**Status: authoritative since 17 November 2026, 21:08:23Z (control epoch 1).**
+The app is the only `openIndicator` writer. The cron `/api/internal/hpp/run`
+runs at 7, 22, 37 and 52 minutes past each hour, using `CRON_SECRET`. It runs
+in Production with `HPP_STATUS_SOURCE=authoritative`, and
+`hppWriterControl/openIndicator` names the app. The legacy scraper reads the
+same control, skips its insert and acknowledges each run with `wrote: false`.
+It is the standby writer for `to-legacy` rollback. `/api/hppstatus`, the
+closure windows and HPP alerts still read `openIndicator`. Shadow evidence and
+the acceptance report remain at the authenticated `/api/admin/hpp-shadow`. The
+deployment record is below.
 
 ## Production shadow evidence (reviewed 13 November 2026)
 
@@ -169,7 +166,7 @@ How the scheduling slice handles these constraints:
    60 seconds stays below the 5-minute lease. The report has its own admin
    route, so the operational-health contract is unchanged.
 
-## Single-writer control (implemented, inactive)
+## Single-writer control (active since 17 November 2026)
 
 | Piece | Role |
 | --- | --- |
@@ -239,7 +236,7 @@ How the scheduling slice handles these constraints:
 
 ## Cutover acceptance criteria
 
-### Proposed risk-based gate (17 November 2026; requires owner approval on #89)
+### Risk-based gate (approved by the owner on #89, 17 November 2026)
 
 The extended shadow period was meant to observe real crossings and a stable
 service. Colwick has not reached 2.2 m since March, so waiting for a crossing
@@ -311,7 +308,7 @@ crossing falls inside the handover hold, the record lands up to about 20
 minutes late, and the alert follows it once. The level guard makes that
 unlikely.
 
-### Original gate (superseded on owner approval)
+### Original gate (superseded 17 November 2026)
 
 At least one real crossing in each direction, or a waiver on #89, plus
 section A. The scraper half was control-aware, and the decision was recorded
@@ -340,21 +337,27 @@ with the operator and the accepted duplicate-email risk.
 
 ## Deployment and rollback record
 
-Fill in each row as the step is done, with evidence links, and copy the
-record to #89.
+Activation was approved by the owner and recorded on
+[#89](https://github.com/tclare95/isHPPOpen/issues/89#issuecomment-6960372176).
+All times are UTC on 17 November 2026. No historical `openIndicator` record was
+changed: the count is still 126, and the latest is still
+`69b70df668a3f3c6376052a6` (open, 2026-03-15T19:52:22Z).
 
-| Step | When (UTC) | Evidence |
+| Step | When | Evidence |
 | --- | --- | --- |
-| Scraper #12 merged | | PR merge commit |
-| Scraper prepare / apply | | Prepare run id; apply run id; change set Modify-only |
-| First scraper run after release, unchanged | | Log line; `hppWriterControl` absent; `openIndicator` count 126 |
-| Owner approves the risk-based gate and the switch on #89 | | Comment link |
-| `HPP_STATUS_SOURCE=authoritative` (Production) + redeploy | | New and previous deployment ids |
-| `to-app --expect-latest <id>` dry run, then `--apply` | | Plan JSON; epoch; `switchedAt` |
-| Scraper ack `wrote: false` for the epoch; fence passed | | `status` output; scraper log |
-| Two authoritative app runs; `/api/hppstatus` unchanged | | Run summaries |
-| 24-hour check | | `status` and shadow report |
-| Rollback (only if triggered): `to-legacy --apply` | | Epoch; reason; scraper resume log |
+| Gate and test PR #143 merged | 20:38 | `4c8d9f5`. Real-series replay test on `main` CI. |
+| Scraper #12 merged | 20:38 | ishppopenScraper `3625c29` |
+| Scraper prepare / apply | 20:40 / 20:45 | [44171773538](https://github.com/tclare95/ishppopenScraper/actions/runs/44171773538) / [44172483614](https://github.com/tclare95/ishppopenScraper/actions/runs/44172483614). Modify only: function `Code`, plus dynamic ARN cascades on the rules and permissions. |
+| First scraper run after release | 20:52 | `OpenIndicator status unchanged: HPP remains OPEN (level: 1.675m)`. No control document yet; the deployed bundle contains the gate. |
+| `HPP_STATUS_SOURCE=authoritative` + redeploy | 20:54 | `dpl_342ShuxFQmGq68MeKhFxNkmaHQD2`; previous `dpl_G6QvGKZ23989hEhA78qXa2n2ujgH`. The 21:07 run reported `writer: legacy, authoritative: false`. |
+| Level guard | 21:08 | 1.675 m at 20:30, +0.039 m in the previous hour. |
+| `to-app --expect-latest 69b70df668a3f3c6376052a6` | 21:08:23 | Dry run `ok`, then `applied: true`. Epoch 1; seed is that record, with its timestamp kept. |
+| Scraper ack | 21:22:23 | `legacyAck { epoch: 1, observedOwner: app, runStartedAt: 21:22:21.889Z, wrote: false }`. Log: `legacy write skipped (level 1.686m, legacy rule: OPEN)`. The fence passed at 21:13:23, and `appWriter.allowed` is true. |
+| Authoritative app runs | 21:22:32, 21:37:32 | `writer: app, authoritative: true, action: none, reason: unchanged`, open. The 21:37 scraper run also acknowledged `wrote: false`. |
+| `/api/hppstatus` | 21:38 | Keys and values identical to the 20:54 baseline (open; 0/0/0/97 closures). |
+| 24-hour check | due 18 Nov 21:08 | `hpp:writer -- status` and `hpp:shadow-report`, against the rollback triggers. |
+| First natural crossing | pending | The scraper's logged legacy verdict must flip on the same or the adjacent run as app record `#1`. |
+| Rollback | not triggered | `npm run hpp:writer -- to-legacy`, then the same with `--apply`. See below. |
 
 ## Rollback
 

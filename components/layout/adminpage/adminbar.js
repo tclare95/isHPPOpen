@@ -18,15 +18,19 @@ export default function AdminBar() {
           <Navbar.Toggle />
           <Navbar.Collapse>
             <Nav className="me-auto gap-lg-2">
-              <Nav.Link as={Link} href="/admin">Overview</Nav.Link>
-              <Nav.Link as={Link} href="/admin/events">Events</Nav.Link>
-              <Nav.Link as={Link} href="/admin/message">Site banner</Nav.Link>
+              {session.user?.isAdmin ? (
+                <>
+                  <Nav.Link as={Link} href="/admin">Overview</Nav.Link>
+                  <Nav.Link as={Link} href="/admin/events">Events</Nav.Link>
+                  <Nav.Link as={Link} href="/admin/message">Site banner</Nav.Link>
+                </>
+              ) : null}
             </Nav>
             <div className="d-flex align-items-center gap-3 mt-3 mt-lg-0">
               <Navbar.Text className="text-secondary">
                 Signed in as {session.user?.name || session.user?.email}
               </Navbar.Text>
-              <Button variant="outline-light" onClick={signOut}>Sign out</Button>
+              <Button variant="outline-light" onClick={() => signOut()}>Sign out</Button>
             </div>
           </Navbar.Collapse>
         </Container>
@@ -44,7 +48,7 @@ export default function AdminBar() {
         <Navbar.Collapse className="justify-content-end">
           <div className="d-flex align-items-center gap-3 mt-3 mt-lg-0">
             <Navbar.Text className="text-secondary">Sign in to edit events and site messaging.</Navbar.Text>
-            <Button onClick={signIn}>Sign in</Button>
+            <Button onClick={() => signIn()}>Sign in</Button>
           </div>
         </Navbar.Collapse>
       </Container>

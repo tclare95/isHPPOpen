@@ -18,6 +18,9 @@ Create `.env.local` with values for:
 - `AUTH0_CLIENT_SECRET`
 - `AUTH0_DOMAIN`
 - `NEXTAUTH_SECRET` (preferred; legacy `SECRET` fallback should be treated as temporary)
+- `ADMIN_AUTH0_SUBS` (required for admin access: comma-separated Auth0 `sub` values; unset/empty denies every admin
+  action). Set it in each Vercel environment **before** deploying code that enforces it. See
+  [docs/ADMIN-AUTHORIZATION.md](docs/ADMIN-AUTHORIZATION.md).
 
 Without MongoDB env vars, imports from `libs/database.js` throw immediately.
 
@@ -72,8 +75,11 @@ Keep this file focused on actionable guardrails. If architecture behavior change
 - For App Router route handlers, export per-method handlers (`GET`, `POST`, etc), keep one route-level `try/catch`, and map errors via `mapApiError()`.
 - For homepage-critical operational `GET` endpoints, prefer intentional fallback payloads over hard failures during transient Mongo outages when that avoids client breakage.
 - Preserve unauthenticated `GET` for public data endpoints unless explicitly requested otherwise.
-- Use `requireRouteSession()` for protected writes and return `401` when unauthenticated.
+- Use `requireRouteAdmin()` for admin pages' APIs and privileged writes: `401` when unauthenticated, `403` for
+  authenticated non-admins. `requireRouteSession()` alone is not authorization. Classify every new mutating or
+  `app/api/admin/*` handler in `__tests__/api/admin-authorization.test.js`.
 - Use `403` only for authenticated users who lack permission.
+- Never log tokens, emails or session contents; audit admin actions by Auth0 `sub` only.
 - Prefer `{ message: "..." }` for error payloads.
 - Prefer shared request logging helpers over inline `console.*` formatting in routes.
 - If adding new API behavior, add/update a corresponding test in `__tests__/api/`.

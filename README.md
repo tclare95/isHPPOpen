@@ -16,6 +16,8 @@ The site provides a quick way to check if the Holme Pierrepont whitewater course
    - `AUTH0_DOMAIN`
    - `NEXTAUTH_SECRET` (`SECRET` is legacy-only fallback during migration)
    - `NEXTAUTH_URL` (for local development use `http://localhost:3000` including the scheme)
+   - `ADMIN_AUTH0_SUBS` (comma-separated Auth0 `sub` values allowed to use `/admin`; unset denies everyone — see
+     [docs/ADMIN-AUTHORIZATION.md](docs/ADMIN-AUTHORIZATION.md))
    - `S3_FORECAST_URL`
    - `SITE_URL` (preferred canonical app URL used in email links)
    - `RESEND_API_KEY` (for operational email alerts)

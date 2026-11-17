@@ -43,7 +43,7 @@ describe('Events API route handler', () => {
   });
 
   test('POST updates event when authenticated', async () => {
-    getServerSession.mockResolvedValue({ user: { email: 'admin@test.com' } });
+    getServerSession.mockResolvedValue({ user: { id: 'auth0|test-admin', email: 'admin@test.com' } });
     eventsService.upsertEvent.mockResolvedValue({ acknowledged: true, modifiedCount: 1, matchedCount: 1, upsertedCount: 0 });
 
     const res = await POST(makeRequest('http://localhost/api/events', {
@@ -63,7 +63,7 @@ describe('Events API route handler', () => {
   });
 
   test('POST returns success when event content is unchanged', async () => {
-    getServerSession.mockResolvedValue({ user: { email: 'admin@test.com' } });
+    getServerSession.mockResolvedValue({ user: { id: 'auth0|test-admin', email: 'admin@test.com' } });
     eventsService.upsertEvent.mockResolvedValue({ acknowledged: true, modifiedCount: 0, matchedCount: 1, upsertedCount: 0 });
 
     const res = await POST(makeRequest('http://localhost/api/events', {
@@ -79,7 +79,7 @@ describe('Events API route handler', () => {
     expect(payload.data.message).toBe('Event updated');
   });
   test('POST returns 400 on validation error', async () => {
-    getServerSession.mockResolvedValue({ user: { email: 'admin@test.com' } });
+    getServerSession.mockResolvedValue({ user: { id: 'auth0|test-admin', email: 'admin@test.com' } });
     eventsService.upsertEvent.mockRejectedValue(new ValidationError('Validation failed'));
 
     const res = await POST(makeRequest('http://localhost/api/events', { new_event_name: 'Race' }));
@@ -90,7 +90,7 @@ describe('Events API route handler', () => {
   });
 
   test('DELETE returns 404 when event does not exist', async () => {
-    getServerSession.mockResolvedValue({ user: { email: 'admin@test.com' } });
+    getServerSession.mockResolvedValue({ user: { id: 'auth0|test-admin', email: 'admin@test.com' } });
     eventsService.deleteEventById.mockResolvedValue({ deletedCount: 0 });
 
     const res = await DELETE(makeRequest('http://localhost/api/events?id=abc'));
@@ -102,7 +102,7 @@ describe('Events API route handler', () => {
   });
 
   test('successful DELETE immediately invalidates event and homepage tags', async () => {
-    getServerSession.mockResolvedValue({ user: { email: 'admin@test.com' } });
+    getServerSession.mockResolvedValue({ user: { id: 'auth0|test-admin', email: 'admin@test.com' } });
     eventsService.deleteEventById.mockResolvedValue({ deletedCount: 1 });
     const res = await DELETE(makeRequest('http://localhost/api/events?id=event-1'));
     expect(res.status).toBe(200);
@@ -111,7 +111,7 @@ describe('Events API route handler', () => {
   });
 
   test('a failed invalidation does not undo a persisted write or skip the next tag', async () => {
-    getServerSession.mockResolvedValue({ user: { email: 'admin@test.com' } });
+    getServerSession.mockResolvedValue({ user: { id: 'auth0|test-admin', email: 'admin@test.com' } });
     eventsService.upsertEvent.mockResolvedValue({ acknowledged: true, modifiedCount: 1, matchedCount: 1 });
     revalidateTag.mockImplementationOnce(() => { throw new Error('Cache unavailable'); });
     const res = await POST(makeRequest('http://localhost/api/events', { new_event_id: 'event-1', new_event_name: 'Saved event' }));

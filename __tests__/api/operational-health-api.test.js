@@ -26,7 +26,7 @@ describe('Operational health API route handler', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.useFakeTimers({ now: startedAt });
-    getServerSession.mockResolvedValue({ user: { email: 'admin@test.com' } });
+    getServerSession.mockResolvedValue({ user: { id: 'auth0|test-admin', email: 'admin@test.com' } });
     for (const [name, check, delay] of sources) {
       check.mockImplementation(() => new Promise((resolve) => setTimeout(() => {
         const snapshot = { health: healthFor(name) };

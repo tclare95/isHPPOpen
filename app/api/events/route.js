@@ -6,7 +6,7 @@ import {
 import { HttpError, mapApiError } from "../../../libs/api/http";
 import {
   parseJsonObjectBody,
-  requireRouteSession,
+  requireRouteAdmin,
   sendRouteError,
   sendRouteSuccess,
 } from "../../../libs/api/httpApp";
@@ -35,8 +35,8 @@ export async function GET(request) {
 export async function POST(request) {
   const logger = createRequestLogger({ method: "POST" }, "api/events");
   try {
+    const session = await requireRouteAdmin();
     const payload = await parseJsonObjectBody(request);
-    const session = await requireRouteSession();
     const result = await upsertEvent(payload);
     const savedId = payload.new_event_id || result.upsertedId?.toString?.() || null;
 
@@ -45,7 +45,7 @@ export async function POST(request) {
         logger,
         context: "events-post",
       });
-      logger.info("Event modified", { actor: session?.user?.email, eventId: payload.new_event_id });
+      logger.info("Event modified", { actor: session?.user?.id, eventId: payload.new_event_id });
       return sendRouteSuccess({
         message: payload.new_event_id ? "Event updated" : "Event created",
         id: savedId,
@@ -63,10 +63,10 @@ export async function POST(request) {
 export async function DELETE(request) {
   const logger = createRequestLogger({ method: "DELETE" }, "api/events");
   try {
+    const session = await requireRouteAdmin();
     const id = request.nextUrl.searchParams.get("id");
     if (!id) throw new HttpError(400, "Missing id parameter");
 
-    const session = await requireRouteSession();
     const result = await deleteEventById(id);
 
     if (result.deletedCount === 1) {
@@ -74,7 +74,7 @@ export async function DELETE(request) {
         logger,
         context: "events-delete",
       });
-      logger.info("Event deleted", { actor: session?.user?.email, eventId: id });
+      logger.info("Event deleted", { actor: session?.user?.id, eventId: id });
       return sendRouteSuccess({ deleted: true, id });
     }
 

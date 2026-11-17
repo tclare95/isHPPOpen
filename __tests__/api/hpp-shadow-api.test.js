@@ -56,7 +56,7 @@ describe("HPP shadow admin report route", () => {
   });
 
   test("returns the shadow report to an authenticated operator", async () => {
-    getServerSession.mockResolvedValue({ user: { email: "admin@test.com" } });
+    getServerSession.mockResolvedValue({ user: { id: "auth0|test-admin", email: "admin@test.com" } });
     getHppShadowReport.mockResolvedValue({ mode: "shadow", status: "ok" });
     const res = await adminRoute.GET();
     expect(res.status).toBe(200);
@@ -64,7 +64,7 @@ describe("HPP shadow admin report route", () => {
   });
 
   test("downloads the acceptance timeline as CSV when asked", async () => {
-    getServerSession.mockResolvedValue({ user: { email: "admin@test.com" } });
+    getServerSession.mockResolvedValue({ user: { id: "auth0|test-admin", email: "admin@test.com" } });
     getHppShadowReport.mockResolvedValue({
       mode: "shadow", status: "ok", generatedAt: "2026-11-13T12:00:00.000Z",
       acceptance: { checks: [{ id: "evidence_window", status: "pending", detail: "0.0 of 48 hours" }], pairing: { pairs: [], unpairedLegacy: [], unpairedShadow: [] }, gaps: [], closureDays: [] },

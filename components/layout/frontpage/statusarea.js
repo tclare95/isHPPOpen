@@ -4,6 +4,7 @@ import SourceHealthBadge from "../../functional/sourceHealthBadge";
 import useFetch from "../../../libs/useFetch";
 import { SWR_15_MINUTES } from "../../../libs/dataFreshness";
 import HistoricalConditions from "./historicalConditions";
+import { getRecordedHppStatus } from "../../../libs/hpp/hppHomeStatus";
 
 const toPercent = (value, total) => {
   if (!Number.isFinite(value) || !Number.isFinite(total) || total <= 0) {
@@ -55,7 +56,19 @@ export default function StatusArea() {
     isPending: statusPending,
   } = useFetch("/api/hppstatus", SWR_15_MINUTES);
 
-  if (statusPending || statusData === undefined || statusData === null) {
+  // Checked before the pending state: a failed first request has no data and must not spin forever.
+  if (statusError && !statusData) {
+    return (
+      <div className="mt-4" id="stats">
+        <Alert variant="danger" className="text-center mb-0">
+          We couldn&apos;t load closure stats right now. Please try again shortly.
+        </Alert>
+        <HistoricalConditions />
+      </div>
+    );
+  }
+
+  if (statusPending || !statusData) {
     return (
       <div className="mt-4 text-white text-center" id="stats" aria-live="polite">
         <Spinner animation="border" role="status" size="sm" className="mr-2" />
@@ -64,26 +77,20 @@ export default function StatusArea() {
     );
   }
 
-  if (statusError) {
+  const recordedStatus = getRecordedHppStatus(statusData);
+  // The route's fallback payload (status store unreachable) is not an empty history.
+  if (recordedStatus === "unavailable") {
     return (
-      <div className="mt-4" id="stats">
-        <Alert variant="danger" className="text-center mb-0">
-          We couldn&apos;t load closure stats right now. Please try again shortly.
+      <div className="mt-4 text-white text-center" id="stats">
+        <Alert variant="warning" className="text-center mb-0">
+          HPP status and closure stats are unavailable right now. Please try again shortly.
         </Alert>
+        <HistoricalConditions />
       </div>
     );
   }
 
-  const hasStatus = typeof statusData.currentStatus === "boolean";
-  let currentStatus = "Unknown";
-
-  if (hasStatus) {
-    if (statusData.currentStatus === true) {
-      currentStatus = "Open";
-    } else {
-      currentStatus = "Closed";
-    }
-  }
+  const currentStatus = { open: "Open", closed: "Closed" }[recordedStatus] ?? "Unknown";
   const lastOpenDate = statusData.lastChangedAt ?? statusData.lastChangedDate;
   const lastOpenDaysAgo = getDaysAgo(lastOpenDate);
   let lastOpenAgoText = "";
@@ -95,11 +102,12 @@ export default function StatusArea() {
     lastOpenAgoText = ` (${lastOpenDaysAgo} ${dayLabel} ago)`;
   }
 
-  const closureWindows = [
-    { days: 7, closures: statusData.closuresInLast7Days ?? 0 },
-    { days: 28, closures: statusData.closuresInLast28Days ?? 0 },
-    { days: 182, closures: statusData.closuresInLast182Days ?? 0 },
-  ];
+  // No records, or a missing count, is not "closed for 0 days".
+  const closureWindows = statusData.isEmpty ? [] : [
+    { days: 7, closures: statusData.closuresInLast7Days },
+    { days: 28, closures: statusData.closuresInLast28Days },
+    { days: 182, closures: statusData.closuresInLast182Days },
+  ].filter(({ closures }) => Number.isFinite(closures));
 
   return (
     <div
@@ -120,43 +128,45 @@ export default function StatusArea() {
         <p>Note: this only accounts for river level - not any other closures</p>
       </Row>
       <Row className="justify-content-center">
-        {statusData.currentStatus === false && !statusData.isEmpty && (
+        {recordedStatus === "closed" && (
           <p>
             HPP was last open on: {formatDisplayDate(lastOpenDate)}
             {lastOpenAgoText}
           </p>
         )}
       </Row>
-      <Row className="justify-content-center mt-4">
-        <div className="text-center w-100">
-          <p className="font-weight-bold mb-1">HPP has been closed for:</p>
-          <p className="small mb-4">From HPP&apos;s recorded status changes.</p>
-          {closureWindows.map(({ days, closures }) => {
-            const roundedClosures = Math.max(0, Math.min(days, Math.round(closures)));
-            const percentage = toPercent(roundedClosures, days);
+      {closureWindows.length > 0 && (
+        <Row className="justify-content-center mt-4">
+          <div className="text-center w-100">
+            <p className="font-weight-bold mb-1">HPP has been closed for:</p>
+            <p className="small mb-4">From HPP&apos;s recorded status changes.</p>
+            {closureWindows.map(({ days, closures }) => {
+              const roundedClosures = Math.max(0, Math.min(days, Math.round(closures)));
+              const percentage = toPercent(roundedClosures, days);
 
-            return (
-            <Row className="justify-content-center mb-3" key={days}>
-              <div className="text-center w-100">
-                <p>
-                  <span className="font-weight-bold">{roundedClosures}</span>
-                  {` of the last ${days} days (`}
-                  <span className="font-weight-bold">{`${percentage}%`}</span>
-                  {`)`}
-                </p>
-                <ProgressBar
-                  variant="danger"
-                  now={percentage}
-                  className="w-50 mx-auto"
-                  label={`${percentage}%`}
-                  aria-label={`HPP closed ${percentage}% of the last ${days} days`}
-                />
-              </div>
-            </Row>
-            );
-          })}
-        </div>
-      </Row>
+              return (
+              <Row className="justify-content-center mb-3" key={days}>
+                <div className="text-center w-100">
+                  <p>
+                    <span className="font-weight-bold">{roundedClosures}</span>
+                    {` of the last ${days} days (`}
+                    <span className="font-weight-bold">{`${percentage}%`}</span>
+                    {`)`}
+                  </p>
+                  <ProgressBar
+                    variant="danger"
+                    now={percentage}
+                    className="w-50 mx-auto"
+                    label={`${percentage}%`}
+                    aria-label={`HPP closed ${percentage}% of the last ${days} days`}
+                  />
+                </div>
+              </Row>
+              );
+            })}
+          </div>
+        </Row>
+      )}
       <HistoricalConditions />
     </div>
   );

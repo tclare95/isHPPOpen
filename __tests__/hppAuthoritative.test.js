@@ -325,3 +325,63 @@ describe("Rollback and repeated activation", () => {
     expect(t.control()).toMatchObject({ owner: "legacy", epoch: 2 });
   });
 });
+
+// Recent real Colwick readings (EA 4009-level-stage-i-15_min-mASD, 17 November
+// 2026 14:15–19:45Z, 15-minute steps). Colwick has not reached 2.2 m since
+// March, so the cutover replays this real rise shifted by a fixed +0.598 m.
+// The shift makes 17:45 exactly 2.200 m and 17:30 2.196 m. The fall is the
+// same rise reversed. Values are pre-rounded so no float sum touches the rule.
+const REAL_COLWICK_RISE = [1.483, 1.483, 1.483, 1.502, 1.525, 1.556, 1.567, 1.579, 1.579, 1.579, 1.583, 1.586,
+  1.583, 1.598, 1.602, 1.606, 1.606, 1.61, 1.621, 1.629, 1.632, 1.632, 1.636];
+const SHIFT_MM = 598;
+const shifted = (value) => Math.round(value * 1000 + SHIFT_MM) / 1000;
+
+describe("Cutover acceptance: a real Colwick series replayed across 2.2 m", () => {
+  it("records exactly one closing and one opening, matching the legacy rule run by run, with no duplicate and compatible status", async () => {
+    const t = setup();
+    const series = [...REAL_COLWICK_RISE, ...[...REAL_COLWICK_RISE].reverse()].map(shifted);
+    expect(series[14]).toBe(2.2);
+    expect(series[13]).toBe(2.196);
+
+    // The legacy rule's verdict per reading (the oracle): open strictly below 2.2 m.
+    const legacyOpen = series.map((value) => value < 2.2);
+    const expectedChanges = legacyOpen.flatMap((open, i) => (i > 0 && open !== legacyOpen[i - 1] ? [[i, open]] : []));
+    expect(expectedChanges).toEqual([[14, false], [32, true]]);
+
+    const start = await t.cutOver({ level: series[0], from: -15 });
+    const readingAt = (i) => at(15 * i);
+    const rows = [];
+    const decisions = [];
+    for (let i = 0; i < series.length; i += 1) {
+      rows.push(row(series[i], readingAt(i)));
+      // RDP returns the last two hours; the scraper runs on its own cadence and stays fenced.
+      const runAt = new Date(Math.max(readingAt(i).getTime() + 7 * MINUTE, start.getTime()));
+      t.setEvidence({ integrity: "verified", rows: rows.filter((r) => runAt - Date.parse(r.observedAt) <= 2 * 60 * MINUTE) });
+      decisions.push(await t.cron(runAt));
+      expect(await t.legacy(series[i], new Date(runAt.getTime() + 2 * MINUTE))).toEqual({ wrote: false, skipped: true });
+    }
+
+    expect(decisions.every((d) => d.authoritative === true)).toBe(true);
+    const transitions = decisions.flatMap((d, i) => (d.action === "transition" ? [[i, d.transitionId]] : []));
+    expect(transitions).toEqual([[14, `${RULE}#1`], [32, `${RULE}#2`]]);
+    expect(decisions.filter((d) => d.action === "hold")).toEqual([]);
+
+    // openIndicator: the legacy seed plus exactly the two app records, dated by observation time.
+    expect(t.openIndicator()).toHaveLength(3);
+    expect(t.appRecords().map((r) => [r._id, r.value, r.level, r.timestamp])).toEqual([
+      [`${RULE}#1`, false, 2.2, readingAt(14).toISOString()],
+      [`${RULE}#2`, true, 2.196, readingAt(32).toISOString()],
+    ]);
+
+    // Public status and closure statistics read the app's records unchanged.
+    const snapshot = (await getHppStatusSnapshot({ now: readingAt(series.length) })).data;
+    expect(snapshot).toMatchObject({ currentStatus: true, lastChangedAt: readingAt(14).toISOString(), closuresInLast7Days: 1 });
+
+    // A rerun of the last cron is a replay no-op; a rollback hands back without duplicating #2.
+    expect(await t.cron(new Date(readingAt(series.length - 1).getTime() + 22 * MINUTE))).toMatchObject({ action: "none" });
+    const back = readingAt(series.length + 2);
+    expect((await t.toLegacy(back)).result).toEqual({ applied: true });
+    expect(await t.legacy(series[series.length - 1], new Date(back.getTime() + 6 * MINUTE))).toEqual({ wrote: false, skipped: false });
+    expect(t.openIndicator()).toHaveLength(3);
+  });
+});

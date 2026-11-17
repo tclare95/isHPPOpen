@@ -41,6 +41,33 @@ in every mode. Evidence is at the authenticated `/api/admin/hpp-shadow`.
   30 minutes of the legacy timestamp, and reports both deltas.
 - `openIndicator` has 126 records and is unchanged; nothing in shadow wrote it.
 
+## Production shadow evidence (reviewed 17 November 2026, 20:05Z)
+
+The `identity_mismatch` fix (#128) has been live since the first eligible run at
+2026-11-13T13:37:32Z. These figures come from read-only `hpp:shadow-report` and
+`hpp:writer -- status`:
+
+- **Window and cadence.** 102.5 hours of eligible evidence (gate: 48). There were
+  1,371 of ~1,372 expected runs since 3 November, and 361 eligible runs.
+- **State and side effects.** Service and legacy agree that HPP is open. Closure
+  days differ by 0 at 7, 28, 182 and 365 days. The sequence is contiguous (0
+  transitions). There are no review-class holds. There is no control document and
+  no `hppStatusState`. `openIndicator` is unchanged at 126 records, and its latest
+  record is `69b70df668a3f3c6376052a6` (2026-03-15T19:52:22Z, open).
+- **Crossings: none, and none possible.** Colwick stayed between 0.869 and
+  1.939 m over the 30 days to 17 November (EA 15-minute series). That is at least
+  0.26 m below the threshold. A natural crossing could take months.
+- **Holds.** All 19 holds in the window are `stale`, totalling 49 runs. Shadow
+  held the last-known `open` throughout and recorded nothing. Eighteen were
+  shorter than 2 hours. One, 2026-11-17 15:22–19:07Z (15 runs), is flagged
+  `review`. The EA series for that period is now complete at 15-minute steps
+  (1.483 → 1.636 m), and the hold ended at 19:07Z. Fresh observations
+  arrived late, and the service behaved as specified. The level
+  was more than 0.5 m below the threshold for the whole hold.
+- Typical observation age at evaluation is about 22 minutes, inside the
+  30-minute freshness limit. The stale holds are EA/RDP delivery lag, not
+  service faults.
+
 ## Reading and exporting the evidence
 
 - `GET /api/admin/hpp-shadow` (signed in): the full report. Its
@@ -212,30 +239,83 @@ How the scheduling slice handles these constraints:
 
 ## Cutover acceptance criteria
 
-All of these must hold before `to-app --apply`:
+### Proposed risk-based gate (17 November 2026; requires owner approval on #89)
 
-1. **Shadow evidence.** `acceptance.ready` is true, or every blocking check
-   is explained on #89:
-   - at least 48 hours since `firstEligibleAt` (owner decision, 13 November
-     2026; previously 14 days)
-   - at least one real crossing in each direction, or a waiver recorded on
-     #89
-   - contiguous transitions
-   - every gap explained
-   - no unresolved `orphaned_transition` or `sequence_conflict`
-   - `currentStatus` agrees
-   - every legacy change paired
-   - closure days within ±1
-   - cadence at least 95%
-   - source age reviewed
-2. **Zero authoritative side effects in shadow.** The `openIndicator`
-   count and latest record change only with legacy scraper writes. There are
-   no service-originated alert or email changes.
-3. **Scraper control-aware.** The scraper release that reads
-   `hppWriterControl` and writes `legacyAck` is deployed and verified. With
-   no control document present, it behaves exactly as before.
-4. **Cutover decision recorded on #89**, naming the operator and the
-   accepted duplicate-email risk.
+The extended shadow period was meant to observe real crossings and a stable
+service. Colwick has not reached 2.2 m since March, so waiting for a crossing
+proves nothing extra. The proposed gate keeps every check that real
+observations can evidence. It replaces the natural-crossing requirement with
+deterministic crossing tests and keeps the writer fencing as the safety net.
+
+**A. Shadow evidence (met on 17 November, see above):**
+
+- at least 48 hours since `firstEligibleAt`
+- cadence at least 95%
+- contiguous sequence
+- no unresolved `orphaned_transition` or `sequence_conflict`
+- `currentStatus` agrees
+- every legacy change paired
+- closure days within ±1
+- no shadow side effects
+
+Each `stale` hold longer than 2 hours is explained when the later RDP/EA series
+fills the hold and shows no 2.2 m crossing inside it. The one review hold is
+explained above.
+
+**B. Deterministic crossings instead of a natural crossing.** These must pass on
+`main` CI:
+
+- `hppAuthoritative.test.js` "Cutover acceptance: a real Colwick series
+  replayed across 2.2 m". The real 17 November rise, shifted +0.598 m and then
+  reversed, runs through the real cron, handover, writer guard and the fenced
+  legacy writer. It must produce exactly one closing at the exact 2.200 m
+  reading and one opening at 2.196 m. Those must match the legacy rule reading
+  by reading. The test also checks no holds, no duplicate on replay,
+  `getHppStatusSnapshot` closure counts, and a rollback without a duplicate.
+- The existing 2.2 m equality, stale/missing/unverified/source-error hold,
+  no-synthesis-across-gap, overlap, interrupted-write, foreign-writer and
+  rollback/re-activation tests.
+- Scraper `npm test`: the gate stops the legacy insert while the app owns
+  `openIndicator`, an unreadable control writes nothing, and the hand-back fence
+  holds.
+
+**C. At the switch:**
+
+1. The control-aware scraper release (ishppopenScraper #12) is deployed. One
+   scheduled run since then is verified as unchanged, and `hppWriterControl`
+   is still absent.
+2. `hpp:writer -- status` shows shadow fresh, not holding and agreeing, and
+   the `to-app` dry run returns `ok: true`.
+3. **Level guard.** The latest Colwick reading is below 2.0 m and has not risen
+   by more than 0.1 m in the last hour. This keeps a real crossing out of the
+   ≤20-minute handover window, when neither side writes.
+4. The owner's approval of this gate and of the switch is recorded on #89.
+
+**D. After the switch (short acceptance instead of an extended wait):**
+
+1. The first scraper run after the switch logs `legacy write skipped (level …,
+   legacy rule: …)`, and `status` shows `legacyAck` with the current epoch and
+   `wrote: false`.
+2. After the fence, two consecutive app runs report `authoritative: true` with
+   `action: none` or a real `transition`, and `/api/hppstatus` is unchanged in
+   shape and values.
+3. For the next 24 hours, check the rollback triggers below once at least, and
+   again before the first natural crossing is relied on.
+4. At the **first natural crossing** after cutover, the scraper's logged legacy
+   verdict must flip on the same or the adjacent run as the app record. That is
+   post-cutover parity. A mismatch is a rollback trigger.
+
+**Accepted risk.** HPP alerts follow `currentStatus` in the snapshot, not the
+writer. The switch itself creates no record, so it sends no email. If a real
+crossing falls inside the handover hold, the record lands up to about 20
+minutes late, and the alert follows it once. The level guard makes that
+unlikely.
+
+### Original gate (superseded on owner approval)
+
+At least one real crossing in each direction, or a waiver on #89, plus
+section A. The scraper half was control-aware, and the decision was recorded
+with the operator and the accepted duplicate-email risk.
 
 ## Cutover procedure (one writer at every step)
 
@@ -257,6 +337,24 @@ All of these must hold before `to-app --apply`:
    its shape and values.
 6. Afterwards, exactly one writer: scraper logs show no `openIndicator`
    inserts, and new records carry `provenance: hpp-status-service`.
+
+## Deployment and rollback record
+
+Fill in each row as the step is done, with evidence links, and copy the
+record to #89.
+
+| Step | When (UTC) | Evidence |
+| --- | --- | --- |
+| Scraper #12 merged | | PR merge commit |
+| Scraper prepare / apply | | Prepare run id; apply run id; change set Modify-only |
+| First scraper run after release, unchanged | | Log line; `hppWriterControl` absent; `openIndicator` count 126 |
+| Owner approves the risk-based gate and the switch on #89 | | Comment link |
+| `HPP_STATUS_SOURCE=authoritative` (Production) + redeploy | | New and previous deployment ids |
+| `to-app --expect-latest <id>` dry run, then `--apply` | | Plan JSON; epoch; `switchedAt` |
+| Scraper ack `wrote: false` for the epoch; fence passed | | `status` output; scraper log |
+| Two authoritative app runs; `/api/hppstatus` unchanged | | Run summaries |
+| 24-hour check | | `status` and shadow report |
+| Rollback (only if triggered): `to-legacy --apply` | | Epoch; reason; scraper resume log |
 
 ## Rollback
 

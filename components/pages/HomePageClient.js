@@ -8,11 +8,10 @@ import EventsArea from "../layout/frontpage/eventsarea";
 import WaterQuality from "../layout/frontpage/waterquality";
 import WeirInfo from "../layout/frontpage/weirinfo";
 import StatusArea from "../layout/frontpage/statusarea";
-import Footer from "../layout/frontpage/footer";
 
 export default function HomePageClient({ events, message }) {
   return (
-    <Container fluid>
+    <Container fluid className="site-page pb-4">
       <Header message={message} />
       <Container>
         <TopContent cachedEvents={events} />
@@ -21,7 +20,6 @@ export default function HomePageClient({ events, message }) {
         <WeirInfo />
         <StatusArea />
       </Container>
-      <Footer />
     </Container>
   );
 }

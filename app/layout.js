@@ -6,6 +6,8 @@ import "../styles/globals.css";
 import "../styles/history.css";
 import PropTypes from "prop-types";
 import Providers from "./providers";
+import SiteNav from "../components/layout/site/SiteNav";
+import SiteFooter from "../components/layout/site/SiteFooter";
 
 export const metadata = {
   title: "Is HPP Open",
@@ -29,7 +31,11 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body suppressHydrationWarning>
-        <Providers>{children}</Providers>
+        <Providers>
+          <SiteNav />
+          <div id="content" tabIndex={-1}>{children}</div>
+          <SiteFooter />
+        </Providers>
       </body>
     </html>
   );

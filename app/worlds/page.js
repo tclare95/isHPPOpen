@@ -4,20 +4,17 @@ import Container from "react-bootstrap/Container";
 import Col from "react-bootstrap/Col";
 import Row from "react-bootstrap/Row";
 import Header from "../../components/layout/frontpage/header";
-import Link from "next/link";
 import Table from "react-bootstrap/Table";
 import Accordion from "react-bootstrap/Accordion";
-import Footer from "../../components/layout/frontpage/footer";
 
 export default function WorldsPage() {
   return (
-    <Container fluid className="bg-dark">
+    <Container fluid className="site-page">
       <Header message="This page will have specific information about the Nottingham Worlds 2022 - more info will be added as it is released" />
       <Container className="text-white text-center">
         <Row className="mb-5">
           <Col>
             <h1>Nottingham Worlds 2022</h1>
-            <Link href="/" className="navHeader">← Back to Main Page</Link>
           </Col>
         </Row>
         <Row>
@@ -43,7 +40,6 @@ export default function WorldsPage() {
           </Col>
         </Row>
       </Container>
-      <Footer />
     </Container>
   );
 }

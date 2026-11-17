@@ -1,28 +1,25 @@
 "use client";
 
-import Link from "next/link";
 import { Suspense } from "react";
-import Alert from "react-bootstrap/Alert";
-import { Col, Container, Row } from "react-bootstrap";
+import Container from "react-bootstrap/Container";
 import TrentDashboard from "../../components/functional/trentDashboard";
+import PageHeader from "../../components/layout/site/PageHeader";
+import StatusMessage from "../../components/layout/site/StatusMessage";
 
 function TrentWeirsPageFallback() {
-  return <Alert variant="secondary">Loading Trent dashboard…</Alert>;
+  return <StatusMessage state="loading">Loading Trent gauges…</StatusMessage>;
 }
 
 export default function TrentWeirsPage() {
   return (
-    <Container fluid className="bg-dark">
-      <Container className="text-white text-center">
-        <Row className="mb-5">
-          <Col>
-            <h1>Trent Gauge Dashboard</h1>
-            <Link href="/" className="navHeader">← Back to Main Page</Link>
-          </Col>
-        </Row>
-        <Suspense fallback={<TrentWeirsPageFallback />}>
-          <TrentDashboard />
-        </Suspense>
+    <Container fluid as="main" className="site-page">
+      <Container className="py-4 py-lg-5">
+        <PageHeader title="Trent gauges" lead="Recent levels at gauges along the Trent, and a chart to compare them." />
+        <div className="text-center">
+          <Suspense fallback={<TrentWeirsPageFallback />}>
+            <TrentDashboard />
+          </Suspense>
+        </div>
       </Container>
     </Container>
   );

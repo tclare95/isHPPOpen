@@ -279,3 +279,8 @@ color: #8D918D;
 .site-footer details summary { color: var(--site-link); cursor: pointer; }
 .site-footer p { max-width: 52rem; }
 #content:focus { outline: none; }
+
+/* Bootstrap cards on content pages share the panel surface. */
+.site-card { --bs-card-bg: var(--site-surface); --bs-card-border-color: var(--site-border); --bs-card-cap-bg: rgba(255, 255, 255, 0.04); --bs-card-border-radius: var(--site-radius); --bs-card-inner-border-radius: calc(var(--site-radius) - 1px); color: var(--site-text); box-shadow: var(--site-shadow); }
+.site-disclosure { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; width: 100%; padding: 0; color: inherit; font: inherit; text-align: left; background: none; border: 0; }
+.site-disclosure:focus-visible { outline: 2px solid var(--site-accent); outline-offset: 4px; border-radius: 0.25rem; }

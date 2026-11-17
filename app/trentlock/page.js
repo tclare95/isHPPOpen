@@ -4,11 +4,12 @@ import { Formik } from "formik";
 import Container from "react-bootstrap/Container";
 import Col from "react-bootstrap/Col";
 import Row from "react-bootstrap/Row";
-import Link from "next/link";
 import Form from "react-bootstrap/Form";
 import Button from "react-bootstrap/Button";
 import { useState } from "react";
 import axios from "axios";
+import PageHeader from "../../components/layout/site/PageHeader";
+import StatusMessage from "../../components/layout/site/StatusMessage";
 
 const validate = (values) => {
   const errors = {};
@@ -22,16 +23,11 @@ export default function TrentLockPage() {
   const [error, setError] = useState(false);
 
   return (
-    <Container fluid className="bg-dark">
-      <Container className="text-white text-center">
-        <Row className="mb-5">
-          <Col>
-            <h1>Trent Lock Levels</h1>
-            <Link href="/" className="navHeader">← Back to Main Page</Link>
-          </Col>
-        </Row>
+    <Container fluid as="main" className="site-page">
+      <Container className="py-4 py-lg-5">
+        <PageHeader title="Log a Trent Lock session" lead="Record the wave conditions you found at Trent Lock." />
         <Row>
-          <Col>
+          <Col lg={8} xl={6}>
             <Formik
               validate={validate}
               initialValues={{ range: 3 }}
@@ -45,7 +41,7 @@ export default function TrentLockPage() {
                 axios.post("/api/trentlockapi", JSON.stringify(dataArray)).then((response) => {
                   if (response.status === 200) setSuccess(true);
                   else setError(true);
-                });
+                }).catch(() => setError(true));
               }}
             >
               {(formik) => (
@@ -67,8 +63,8 @@ export default function TrentLockPage() {
                 </Form>
               )}
             </Formik>
-            {success && <h5>Log successfully added!</h5>}
-            {error && <div>Error adding log!</div>}
+            {success && <p className="mt-3 fw-semibold" role="status">Log added. Thank you.</p>}
+            {error && <StatusMessage state="error" className="mt-3">The log could not be saved. Please try again.</StatusMessage>}
           </Col>
         </Row>
       </Container>

@@ -192,13 +192,18 @@ a {
 #content:focus { outline: none; }
 #content p a:not([class]), #content li a:not([class]) { color: #a9dff8; text-decoration: underline; }
 
-/* Site menu: one muted "Menu" line that opens a plain list; it shares the history page background. */
-.site-menu { background: #16222a; padding: 0.5rem 0 0; }
-.site-menu__toggle { padding: 0.25rem 0; color: #b4c1c9; background: none; border: 0; font-size: 0.95rem; }
-.site-menu__toggle:hover { color: #fff; }
-.site-menu__toggle:focus-visible { outline: 2px solid #7cc8ef; outline-offset: 2px; border-radius: 0.25rem; }
-.site-menu__list { display: flex; flex-wrap: wrap; gap: 0.25rem 1.25rem; margin: 0.25rem 0 0; padding: 0 0 0.5rem; list-style: none; }
-.site-menu__list a { display: inline-block; padding: 0.35rem 0; color: #a9dff8; }
-.site-menu__list a:hover { color: #fff; text-decoration: underline; }
-.site-menu__list a[aria-current="page"] { color: #fff; font-weight: 650; text-decoration: underline; text-underline-offset: 0.3em; }
+/* Site top row: transparent over the page (no background or border of its own) with "← Home" and a menu icon.
+   It overlays the page's first element, which gets extra top padding so its own background runs underneath. */
+.site-topbar { position: absolute; top: 0; left: 0; right: 0; z-index: 20; }
+.site-topbar__row { position: relative; display: flex; justify-content: space-between; align-items: center; padding-top: 0.5rem; }
+.site-topbar ~ #content > :first-child { padding-top: 3.25rem !important; }
+.site-topbar__home { color: #a9dff8; font-size: 0.95rem; }
+.site-topbar__home:hover { color: #fff; }
+.site-topbar__toggle { display: inline-grid; place-items: center; width: 2.5rem; height: 2.5rem; padding: 0; color: #d7e2e8; background: none; border: 0; border-radius: 0.4rem; }
+.site-topbar__toggle:hover { color: #fff; }
+.site-topbar__toggle:focus-visible { outline: 2px solid #7cc8ef; outline-offset: 2px; }
+.site-topbar__list { position: absolute; top: 100%; right: calc(var(--bs-gutter-x, 1.5rem) * 0.5); min-width: 13rem; margin: 0.25rem 0 0; padding: 0.5rem 1rem; list-style: none; background: #16222a; border: 1px solid rgba(130, 205, 239, 0.2); border-radius: 0.6rem; box-shadow: 0 1rem 2.4rem rgba(0, 0, 0, 0.3); }
+.site-topbar__list a { display: block; padding: 0.4rem 0; color: #a9dff8; }
+.site-topbar__list a:hover { color: #fff; text-decoration: underline; }
+.site-topbar__list a[aria-current="page"] { color: #fff; font-weight: 650; text-decoration: underline; text-underline-offset: 0.3em; }
 .site-footer { background: #16222a; }

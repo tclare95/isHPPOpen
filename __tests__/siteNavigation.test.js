@@ -53,7 +53,9 @@ describe("site navigation", () => {
   test("the menu is one collapsed disclosure that opens, closes on a choice and on Escape", async () => {
     const user = userEvent.setup();
     render(<SiteNav />);
-    const toggle = screen.getByRole("button", { name: /Menu/ });
+    const toggle = screen.getByRole("button", { name: "Menu" });
+    expect(toggle.querySelector("svg")).not.toBeNull();
+    expect(toggle).toHaveTextContent("");
     const list = document.getElementById("site-menu-list");
     expect(toggle).toHaveAttribute("aria-controls", "site-menu-list");
     expect(toggle).toHaveAttribute("aria-expanded", "false");
@@ -67,6 +69,16 @@ describe("site navigation", () => {
     await user.keyboard("{Escape}");
     expect(toggle).toHaveAttribute("aria-expanded", "false");
     expect(toggle).toHaveFocus();
+  });
+
+  test("subsidiary pages link back to the homepage; the homepage does not", () => {
+    pathname = "/history/events";
+    const { unmount } = render(<SiteNav />);
+    expect(screen.getByRole("link", { name: "← Home" })).toHaveAttribute("href", "/");
+    unmount();
+    pathname = "/";
+    render(<SiteNav />);
+    expect(screen.queryByRole("link", { name: "← Home" })).not.toBeInTheDocument();
   });
 
   test("offers a skip link to the page content", () => {
@@ -117,7 +129,7 @@ describe("status message", () => {
     ["empty", "status", "history-empty"],
     ["stale", "status", "history-notice--warning"],
     ["unavailable", "status", "history-notice--warning"],
-    ["error", "alert", "alert-warning"],
+    ["error", "alert", "history-notice--warning"],
   ])("%s is announced as %s in the history style", (state, role, className) => {
     render(<StatusMessage state={state} title="Title.">Body text</StatusMessage>);
     const message = screen.getByRole(role);

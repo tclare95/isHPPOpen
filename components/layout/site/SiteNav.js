@@ -5,7 +5,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { SITE_AREAS, activeAreaKey, isPublicPath } from "./siteNavigation";
 
-// A quiet, collapsed "Menu" disclosure rather than a header bar. Not sticky, so it never covers maps or charts.
+const ICON_PROPS = { width: 24, height: 24, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round", "aria-hidden": true, focusable: "false" };
+const MenuIcon = () => <svg {...ICON_PROPS}><path d="M4 7h16M4 12h16M4 17h16" /></svg>;
+const CloseIcon = () => <svg {...ICON_PROPS}><path d="M6 6l12 12M18 6L6 18" /></svg>;
+
+// A transparent top row over the page: "← Home" on subsidiary pages and a menu icon that opens a plain list.
+// It has no background of its own and is not sticky, so it never covers maps or charts.
 export default function SiteNav() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -22,14 +27,15 @@ export default function SiteNav() {
   };
 
   return (
-    <div className="site-menu">
+    <div className="site-topbar">
       <a href="#content" className="visually-hidden-focusable">Skip to content</a>
-      <nav aria-label="Main" className="container" onKeyDown={onKeyDown}>
-        <button ref={toggleRef} type="button" className="site-menu__toggle" aria-expanded={open} aria-controls="site-menu-list"
-          onClick={() => setOpen((value) => !value)}>
-          Menu <span aria-hidden="true">{open ? "▴" : "▾"}</span>
+      <nav aria-label="Main" className="container site-topbar__row" onKeyDown={onKeyDown}>
+        {active === "home" ? <span /> : <Link href="/" className="site-topbar__home">← Home</Link>}
+        <button ref={toggleRef} type="button" className="site-topbar__toggle" aria-label="Menu" aria-expanded={open}
+          aria-controls="site-menu-list" onClick={() => setOpen((value) => !value)}>
+          {open ? <CloseIcon /> : <MenuIcon />}
         </button>
-        <ul id="site-menu-list" className="site-menu__list" hidden={!open}>
+        <ul id="site-menu-list" className="site-topbar__list" hidden={!open}>
           {SITE_AREAS.map((area) => (
             <li key={area.key}>
               <Link href={area.href} onClick={close} aria-current={active === area.key ? "page" : undefined}>{area.label}</Link>

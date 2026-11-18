@@ -7,7 +7,7 @@ const CLASSES = {
   empty: "history-empty",
   stale: "history-notice history-notice--warning",
   unavailable: "history-notice history-notice--warning",
-  error: "alert alert-warning",
+  error: "history-notice history-notice--warning",
 };
 
 export default function StatusMessage({ state, title, children, className }) {

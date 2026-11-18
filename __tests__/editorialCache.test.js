@@ -1,7 +1,7 @@
 /** @jest-environment node */
 // Exercise Next's actual cache boundary and request-completion invalidation, not a mocked cache.
 globalThis.AsyncLocalStorage = require('node:async_hooks').AsyncLocalStorage;
-jest.mock('../libs/services/eventsService', () => ({ fetchUpcomingEvents: jest.fn(), upsertEvent: jest.fn(), deleteEventById: jest.fn() }));
+jest.mock('../libs/services/eventsService', () => ({ fetchUpcomingEvents: jest.fn(), createEvent: jest.fn(), updateEventById: jest.fn(), deleteEventById: jest.fn() }));
 jest.mock('../libs/services/siteBannerService', () => ({ getBanners: jest.fn(), upsertBanner: jest.fn() }));
 jest.mock('../components/pages/HomePageClient', () => function MockHomePage() { return null; });
 
@@ -15,7 +15,8 @@ const { getServerSession } = require('next-auth');
 const eventsService = require('../libs/services/eventsService');
 const bannerService = require('../libs/services/siteBannerService');
 const { default: HomePage } = require('../app/page');
-const eventsRoute = require('../app/api/events/route');
+const eventsRoute = require('../app/api/admin/events/route');
+const eventRoute = require('../app/api/admin/events/[id]/route');
 const bannerRoute = require('../app/api/sitebanner/route');
 
 describe('Editorial writes across the real Next.js cache boundary', () => {
@@ -38,11 +39,15 @@ describe('Editorial writes across the real Next.js cache boundary', () => {
     getServerSession.mockResolvedValue({ user: { id: 'auth0|test-admin', email: 'admin@test.com' } });
     eventsService.fetchUpcomingEvents.mockImplementation(async () => ({ eventsArray: events }));
     bannerService.getBanners.mockImplementation(async () => [banner]);
-    eventsService.upsertEvent.mockImplementation(async ({ new_event_name }) => {
-      events = [{ _id: 'event-1', event_name: new_event_name }];
-      return { acknowledged: true, matchedCount: 1, modifiedCount: 1 };
+    eventsService.createEvent.mockImplementation(async ({ name }) => {
+      events = [...events, { _id: 'event-2', event_name: name }];
+      return { id: 'event-2', name };
     });
-    eventsService.deleteEventById.mockImplementation(async () => { events = []; return { deletedCount: 1 }; });
+    eventsService.updateEventById.mockImplementation(async (id, { name }) => {
+      events = [{ _id: id, event_name: name }];
+      return { event: { id, name }, changed: true };
+    });
+    eventsService.deleteEventById.mockImplementation(async (id) => { events = []; return { id }; });
     bannerService.upsertBanner.mockImplementation(async (payload) => { banner = payload; return { modifiedCount: 1 }; });
   });
 
@@ -58,7 +63,7 @@ describe('Editorial writes across the real Next.js cache boundary', () => {
   }
   const body = (payload) => ({ async json() { return payload; } });
 
-  test.each(['event update', 'event deletion', 'banner update'])('%s is visible on the first subsequent homepage read', async (operation) => {
+  test.each(['event creation', 'event update', 'event deletion', 'banner update'])('%s is visible on the first subsequent homepage read', async (operation) => {
     const original = await request(HomePage);
     expect(console.error).not.toHaveBeenCalled();
     // A second request must hit the cache even after backing content changes.
@@ -69,13 +74,17 @@ describe('Editorial writes across the real Next.js cache boundary', () => {
     expect(bannerService.getBanners).toHaveBeenCalledTimes(1);
 
     clock += 1; // Next expires entries only when the tag timestamp is strictly newer.
-    const response = await request(() => operation === 'event update'
-      ? eventsRoute.POST(body({ new_event_id: 'event-1', new_event_name: 'Saved event' }))
-      : operation === 'event deletion'
-        ? eventsRoute.DELETE({ nextUrl: new URL('http://localhost/api/events?id=event-1') })
-        : bannerRoute.POST(body({ banner_message: 'Saved notice', banner_enabled: true })));
-    expect(response.status).toBe(200);
+    const context = { params: Promise.resolve({ id: 'event-1' }) };
+    const response = await request(() => operation === 'event creation'
+      ? eventsRoute.POST(body({ name: 'New event' }))
+      : operation === 'event update'
+        ? eventRoute.PUT(body({ name: 'Saved event' }), context)
+        : operation === 'event deletion'
+          ? eventRoute.DELETE({ nextUrl: new URL('http://localhost/api/admin/events/event-1') }, context)
+          : bannerRoute.POST(body({ banner_message: 'Saved notice', banner_enabled: true })));
+    expect(response.status).toBe(operation === 'event creation' ? 201 : 200);
     const fresh = (await request(HomePage)).props;
+    if (operation === 'event creation') expect(fresh.events.map((item) => item.event_name)).toEqual(['Changed outside the write route', 'New event']);
     if (operation === 'event update') expect(fresh.events[0].event_name).toBe('Saved event');
     if (operation === 'event deletion') expect(fresh.events).toEqual([]);
     if (operation === 'banner update') expect(fresh.message.banner_message).toBe('Saved notice');
@@ -90,9 +99,9 @@ describe('Editorial writes across the real Next.js cache boundary', () => {
   test('unauthenticated writes leave the warmed homepage cache untouched', async () => {
     const original = (await request(HomePage)).props;
     getServerSession.mockResolvedValue(null);
-    expect((await request(() => eventsRoute.POST(body({ new_event_name: 'Unauthorized' })))).status).toBe(401);
+    expect((await request(() => eventsRoute.POST(body({ name: 'Unauthorized' })))).status).toBe(401);
     expect((await request(() => bannerRoute.POST(body({ banner_message: 'Unauthorized' })))).status).toBe(401);
-    expect(eventsService.upsertEvent).not.toHaveBeenCalled();
+    expect(eventsService.createEvent).not.toHaveBeenCalled();
     expect(bannerService.upsertBanner).not.toHaveBeenCalled();
     expect((await request(HomePage)).props).toEqual(original);
     expect(eventsService.fetchUpcomingEvents).toHaveBeenCalledTimes(1);

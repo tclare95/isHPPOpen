@@ -13,7 +13,7 @@ export default function AdminEventsPage() {
         <div className="mb-4">
           <h1 className="mb-2">Events</h1>
           <p className="text-secondary mb-0">
-            Select an existing event to edit it, or start a new one. Deletes require confirmation.
+            Browse upcoming, current and past events to edit one, or create a new event. Deletes require confirmation.
           </p>
         </div>
         <EventsTable />

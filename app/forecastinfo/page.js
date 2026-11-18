@@ -15,6 +15,7 @@ import useFetch from "../../libs/useFetch";
 import ForecastChartWithConfidence from "../../components/functional/forecastChart";
 import StabilityChart from "../../components/functional/stabilityChart";
 import GraphContext from "../../libs/context/graphcontrol";
+import { FORECAST_RANGE_DESCRIPTION, FORECAST_RANGE_LABEL } from "../../libs/forecastRange";
 
 const formatMetric = (value, decimals = 3) => {
   if (value === null || value === undefined) return "N/A";
@@ -204,13 +205,21 @@ export default function ForecastInfoPage() {
             <Form.Check
               type="switch"
               id="confidence-toggle"
-              label="Show 95% confidence interval"
+              label={FORECAST_RANGE_LABEL}
               checked={showConfidence}
               onChange={(e) => setShowConfidence(e.target.checked)}
               className="text-white"
             />
           </Col>
         </Row>
+
+        {showConfidence && (
+          <Row className="justify-content-center mb-3">
+            <Col md={10} lg={8}>
+              <p className="text-white-50 small text-center mb-0">{FORECAST_RANGE_DESCRIPTION}</p>
+            </Col>
+          </Row>
+        )}
 
         {s3Data?.metadata && (
           <Row className="justify-content-center mb-3">
@@ -233,7 +242,6 @@ export default function ForecastInfoPage() {
                   graphForeCastData={s3ForecastRows}
                   lowerBound={lowerBound}
                   upperBound={upperBound}
-                  accuracyData={accuracyData?.accuracy_data}
                   showConfidence={showConfidence}
                 />
                 <Button className="mt-2" size="sm" data-lowerbound="0.98" data-upperbound="2.2" onClick={updateBounds}>
@@ -255,7 +263,7 @@ export default function ForecastInfoPage() {
                   <div className="text-center py-3"><Spinner animation="border" role="status" size="sm" /></div>
                 ) : accuracyData?.accuracy_data?.length > 0 ? (
                   <>
-                    <p className="text-muted mb-3"><small>Last evaluated: {new Date(accuracyData.evaluation_time).toLocaleString()}</small></p>
+                    <p className="text-muted mb-3"><small>Last evaluated: {new Date(accuracyData.evaluation_time).toLocaleString()}. Each row scores the forecasts issued over the previous day at exactly that lead time against the observed level.</small></p>
                     <Table variant="dark" striped bordered hover responsive size="sm">
                       <thead>
                         <tr>

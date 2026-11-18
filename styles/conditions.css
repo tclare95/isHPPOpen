@@ -1,0 +1,27 @@
+/* Homepage "Conditions now and next 24 hours" summary (Wave C / C3). Mobile first: one column, then two. */
+.conditions-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.75rem; }
+@media (min-width: 768px) {
+  .conditions-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.conditions-tile { padding: 0.9rem 1rem; border-radius: 0.75rem; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(130, 205, 239, 0.14); min-width: 0; }
+.conditions-tile__title { font-size: 0.8rem; font-weight: 650; letter-spacing: 0.05em; text-transform: uppercase; color: #7cc8ef; margin-bottom: 0.4rem; }
+.conditions-value { font-size: 1.6rem; font-weight: 750; line-height: 1.15; }
+.conditions-value--small { font-size: 1.25rem; }
+/* Reading and forecast times are shown as prominently as the values beside them. */
+.conditions-age { font-size: 0.95rem; font-weight: 600; color: #e6edf1; }
+.conditions-detail { font-size: 0.88rem; color: #c3cfd6; }
+.conditions-note { color: #f3d48a; }
+.conditions-gauges { margin: 0; }
+.conditions-gauge { padding: 0.45rem 0; border-top: 1px solid rgba(130, 205, 239, 0.12); }
+.conditions-gauge:first-child { border-top: 0; padding-top: 0; }
+.conditions-gauge__head { display: flex; justify-content: space-between; align-items: baseline; gap: 0.5rem; flex-wrap: wrap; }
+.conditions-gauge__name { font-weight: 650; }
+.conditions-gauge__value { font-weight: 700; font-size: 1.1rem; }
+.conditions-gauge .conditions-age { font-size: 0.85rem; }
+.conditions-links { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.conditions-link { display: inline-block; padding: 0.4rem 0.8rem; min-height: 2.25rem; border-radius: 999px; border: 1px solid rgba(130, 205, 239, 0.35); color: #a9dff8; text-decoration: none; font-size: 0.9rem; }
+.conditions-link:hover, .conditions-link:focus-visible { color: #fff; border-color: #7cc8ef; }
+
+/* Collapsed homepage disclosure for the conditions summary. */
+.conditions-disclosure > summary { cursor: pointer; text-align: center; }
+.conditions-disclosure[open] > summary { margin-bottom: 0.75rem; }

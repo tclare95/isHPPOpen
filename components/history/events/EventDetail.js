@@ -9,6 +9,7 @@ import { COLWICK_HISTORY } from "../../../libs/history/config";
 import {
   describeEnd, describePeak, describeStart, eventDateRange, eventDurationText, gapReasonText, LIMITATION_TEXT,
 } from "../../../libs/history/eventPresent";
+import { compareHref } from "../../../libs/history/eventCompare";
 import { parseEventId } from "../../../libs/history/events";
 import { formatDate, formatDateTime, formatDuration, formatLevel } from "../../../libs/history/present";
 import { londonParts } from "../../../libs/history/ukCalendar";
@@ -165,6 +166,15 @@ export default function EventDetail({ id }) {
           <Link href={`/history?year=${startParts.year}&month=${startParts.month}`} className="events-nav__center history-back">View month</Link>
           <Neighbour item={data.next} direction="next" />
         </nav>
+
+        <section className="history-panel events-compare-entry" aria-labelledby="event-compare">
+          <h2 id="event-compare" className="h6 mb-2">Compare with…</h2>
+          <div className="events-compare-entry__links">
+            {data.previous ? <Link href={compareHref(event.id, data.previous.id)} className="history-cta">The previous event · {formatDate(data.previous.firstAboveAt)}</Link> : null}
+            {data.next ? <Link href={compareHref(event.id, data.next.id)} className="history-cta">The next event · {formatDate(data.next.firstAboveAt)}</Link> : null}
+            <Link href={compareHref(event.id)} className="history-cta">Another event…</Link>
+          </div>
+        </section>
 
         <p className="history-muted small mb-0">
           EA Colwick (station {COLWICK_HISTORY.providerStationId}), {COLWICK_HISTORY.unit} · {r.total.toLocaleString("en-GB")} readings

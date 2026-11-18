@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import TopContent from '../components/layout/frontpage/topcontent';
 import GraphContext from '../libs/context/graphcontrol';
 import useFetch from '../libs/useFetch';
@@ -16,6 +16,8 @@ jest.mock('../components/functional/weirlevels', () => ({ currentLevel }) => (
 jest.mock('../components/functional/forecastChart', () => ({ graphData, graphForeCastData, accuracyData }) => (
   <div data-testid="forecast-chart">{`${graphData.length}:${graphForeCastData.length}:${accuracyData.length}`}</div>
 ));
+
+jest.mock('../components/layout/frontpage/currentConditions', () => () => <div data-testid="current-conditions" />);
 
 const mockUseFetch = useFetch;
 
@@ -252,5 +254,18 @@ describe('TopContent', () => {
       expect(screen.getByTestId('forecast-chart')).toHaveTextContent('1:1:1');
       expect(screen.queryByText(/forecast is unavailable/)).not.toBeInTheDocument();
     });
+  });
+  it('keeps the detailed conditions summary collapsed until a visitor opens it', () => {
+    mockResponses({});
+    const { container } = renderWithGraphContext(<TopContent cachedEvents={[]} />);
+
+    const details = container.querySelector('details.conditions-disclosure');
+    expect(details).not.toBeNull();
+    expect(details.open).toBe(false);
+    expect(screen.queryByTestId('current-conditions')).toBeNull();
+
+    details.open = true;
+    fireEvent(details, new Event('toggle'));
+    expect(screen.getByTestId('current-conditions')).toBeInTheDocument();
   });
 });

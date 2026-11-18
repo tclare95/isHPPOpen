@@ -4,6 +4,7 @@ import "react-leaflet-cluster/dist/assets/MarkerCluster.css";
 import "react-leaflet-cluster/dist/assets/MarkerCluster.Default.css";
 import "../styles/globals.css";
 import "../styles/history.css";
+import "../styles/conditions.css";
 import PropTypes from "prop-types";
 import Providers from "./providers";
 import SiteNav from "../components/layout/site/SiteNav";

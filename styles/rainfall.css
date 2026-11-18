@@ -1,0 +1,28 @@
+/* Observed rainfall on /trentweirs#rainfall (Wave C C2). Builds on the /history panel and chart styles. */
+#rainfall { scroll-margin-top: 5rem; }
+.rainfall-table { --bs-table-bg: transparent; font-size: 0.9rem; }
+.rainfall-table caption { caption-side: bottom; }
+.rainfall-table th[scope="row"] { font-weight: 650; min-width: 9rem; }
+.rainfall-table td { min-width: 7.5rem; }
+.rainfall-total { font-weight: 700; font-size: 1.05rem; }
+.rainfall-total--partial { font-weight: 600; color: #e9d7a6; }
+.rainfall-detail { color: #b4c1c9; font-size: 0.8rem; }
+.rainfall-notes { color: #c3cdd3; font-size: 0.84rem; padding-left: 1.1rem; margin-bottom: 0; }
+.rainfall-gauge-picker { display: flex; gap: 0.35rem; overflow-x: auto; padding-bottom: 0.5rem; scrollbar-width: thin; }
+.rainfall-chart__bar { fill: #7cc8ef; }
+.rainfall-chart__bar--unverified { stroke: #7cc8ef; stroke-width: 0.5; }
+.rainfall-chart__bar--unverified-bg { fill: rgba(124, 200, 239, 0.25); }
+.rainfall-chart__hatch { stroke: #7cc8ef; stroke-width: 2; }
+.rainfall-chart__gap { fill: rgba(214, 224, 230, 0.12); }
+.rainfall-chart__pending { fill: rgba(237, 161, 0, 0.08); }
+.rainfall-chart__baseline { stroke: rgba(214, 224, 230, 0.4); }
+.rainfall-chart__panel-label { font-weight: 600; }
+.rainfall-legend__bar { background: #7cc8ef; }
+.rainfall-legend__bar--unverified { background: repeating-linear-gradient(45deg, #7cc8ef 0 2px, rgba(124, 200, 239, 0.25) 2px 4px); }
+.rainfall-legend__pending { background: rgba(237, 161, 0, 0.25); }
+@media (max-width: 576px) {
+  .rainfall-table { font-size: 0.82rem; }
+  .rainfall-table th[scope="row"] { min-width: 7rem; }
+  .rainfall-table td { min-width: 6rem; }
+  .rainfall-total { font-size: 0.95rem; }
+}

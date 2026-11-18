@@ -112,6 +112,16 @@ describe('CsoEventHistory', () => {
     expect(useFetch).toHaveBeenCalledWith('/api/waterquality/cso/events?window=48h&outfall=SVT2', expect.any(Object));
   });
 
+  it('links a history entry and a filtered outfall to the outfall detail by canonical id (C4)', () => {
+    mockFetch({ data: history() });
+    render(<CsoEventHistory selectedOutfallId="SVT2" />);
+    expect(screen.getByRole('link', { name: 'Outfall details' })).toHaveAttribute('href', '/waterquality/cso/severn-trent:storm-overflow-activity:SVT2');
+    fireEvent.click(screen.getByRole('button', { expanded: false }));
+    const links = screen.getAllByRole('link', { name: 'Outfall details' });
+    expect(links).toHaveLength(2);
+    expect(links[1]).toHaveAttribute('href', '/waterquality/cso/severn-trent:storm-overflow-activity:SVT1');
+  });
+
   it('lists only outfalls with events for a large RDP membership, leaving provenance to the About section', () => {
     const many = Array.from({ length: 30 }, (_, i) => outfall(`Q${i}`, { eventCount: 0 }));
     mockFetch({ data: history({ outfalls: [outfall('SVT1', { eventCount: 2 }), outfall('SVT2', { eventCount: 1 }), ...many],

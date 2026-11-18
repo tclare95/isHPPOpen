@@ -13,6 +13,7 @@ import PropTypes from "prop-types";
 import { SWR_15_MINUTES } from "../../../libs/dataFreshness";
 import StatusMessage from "../../layout/site/StatusMessage";
 import { describeForecast } from "../../../libs/forecastDisplay";
+import CurrentConditions from "./currentConditions";
 import {
   formatLevelMetres,
   formatReadingAge,
@@ -94,6 +95,23 @@ function renderForecastContent({
     </>
   );
 }
+
+// Optional detail: collapsed by default so the headline stays simple; the summary (and its extra
+// gauge reads) only mounts once a visitor opens it.
+function MoreRiverDetail({ cachedEvents, eventsUnavailable }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <details className="conditions-disclosure mt-3 text-start" onToggle={(event) => setOpen(event.currentTarget.open)}>
+      <summary className="history-muted small">More river detail: trend, forecast range and upstream gauges</summary>
+      {open ? <CurrentConditions cachedEvents={cachedEvents} eventsUnavailable={eventsUnavailable} /> : null}
+    </details>
+  );
+}
+
+MoreRiverDetail.propTypes = {
+  cachedEvents: PropTypes.array,
+  eventsUnavailable: PropTypes.bool,
+};
 
 export default function TopContent(props) {
   const { data: levelData, isPending } = useFetch("/api/levels", SWR_15_MINUTES);
@@ -181,6 +199,7 @@ export default function TopContent(props) {
             Need kit? <a href="https://www.flowkayaks.co.uk/" target="_blank" rel="noopener noreferrer">Flow Kayaks</a> is just over the river.
           </p>
       </section>
+      <MoreRiverDetail cachedEvents={props.cachedEvents} eventsUnavailable={props.eventsUnavailable} />
     </div>
   );
 }

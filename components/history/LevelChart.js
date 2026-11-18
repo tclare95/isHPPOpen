@@ -13,7 +13,7 @@ const DAY_MS = 24 * HOUR_MS;
 const MARGIN = { top: 14, right: 14, bottom: 30, left: 46 };
 const MIN_ZOOM_MS = 2 * HOUR_MS;
 
-function useElementWidth() {
+export function useElementWidth() {
   const ref = useRef(null);
   const [width, setWidth] = useState(0);
   useEffect(() => {
@@ -29,7 +29,7 @@ function useElementWidth() {
   return [ref, width];
 }
 
-function niceStep(span, target) {
+export function niceStep(span, target) {
   const raw = span / Math.max(1, target);
   return [0.05, 0.1, 0.2, 0.25, 0.5, 1, 2].find((step) => step >= raw) ?? 2;
 }
@@ -83,7 +83,7 @@ function lowerBound(points, t) {
 }
 
 // Splits points wherever consecutive times are further apart than maxGap.
-function runs(points, maxGap, accept = () => true) {
+export function runs(points, maxGap, accept = () => true) {
   const result = [];
   let current = [];
   points.forEach((point, index) => {

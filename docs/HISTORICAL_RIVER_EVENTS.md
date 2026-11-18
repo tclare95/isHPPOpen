@@ -135,8 +135,54 @@ cutting it at the calendar boundary. The longest event is 26 Oct – 2 Dec 2019 
 - **Multi-gauge comparison** (OpenSpec "later" section) is not implemented: it awaits verified Shardlow/Kegworth
   imports and measure equivalence (RDP #42).
 
+## Comparing two events (Wave C / C1)
+
+Implements the [historical-event-comparison](../openspec/changes/wave-c-rdp-product-features/specs/historical-event-comparison/spec.md)
+first slice: two Colwick events side by side, using exactly the identification, eligibility, limitations and
+revision semantics above. No new store, index or RDP endpoint.
+
+| Surface | What it shows |
+| --- | --- |
+| `/history/events/compare?a={id}&b={id}[&align=start]` | Two pickers (every identified event, newest first), a card per event (dates linking to its detail page, limitation badges, start/peak/end wording, rank "of N identified"), the two observed level curves overlaid against time from each event's **highest reading** (default) or **first reading at or above 2.2 m** (`align=start`), a side-by-side table and "What the readings support". Selections and alignment live in the URL, so a comparison can be shared or bookmarked. |
+| Entry points | `/history/events`: "Compare two events" and "Compare the two highest" (spotlight). `/history/events/{id}`: "Compare with…" the previous event, the next event or another event (`?a={id}`, second picker empty). Detail pages and their deep links are unchanged. |
+| `GET /api/history/colwick/events/compare?a=&b=` | `400` for a missing/malformed id, `400 { reason: "same_event" }` for the same id twice. Otherwise `200` with `ready`, `sameEvent` and `events: [slot, slot]`; each slot is `{ requested, found, match, event, rank, inProgress }` plus `window`/`readings` when `ready`. Read failures map to the fixed public reasons above. |
+
+- **Resolution.** Each id is resolved with the detail page's `findEvent` (exact → `moved` → not found). A moved link is
+  compared as the event now containing it, with a notice and an "update this comparison's link" link to the current
+  ids. A link that no longer resolves, or two links that now resolve to the same event (`sameEvent`), are **not**
+  compared: the page asks for a replacement and no readings are read for the pair (`ready: false`).
+- **Bounded reads.** Readings are only read when both resolve, from the same cached month evidence as the detail page.
+  Each event gets its own window: neighbouring below/gap evidence plus **1 day** either side, capped at **60 days**
+  (`trimmed`, disclosed; the longest identified event is ~35 days), so a comparison is at most ~2 × 5,800 readings.
+  CDN: `3600` for two completed events, `900` if either touches the current month, `60` when `ready` is false or any
+  month failed (so revisions and retried reads settle quickly).
+- **Alignment is presentational.** Each curve is drawn against time from its own alignment point; the axis is signed
+  hours/days, the tooltip shows each reading's actual date and the key names each event's dates. The page says it is
+  not a travel time or prediction.
+- **Uncertainty survives comparison.** Lines break at unsupported intervals (> 30 min), and a lane per event under the
+  plot shows its charted window, first-to-last reading at or above (solid) and gaps (hatched). Provisional readings are
+  dashed. Table values reuse the event wording: "at least" for time at or above when a boundary is unobserved or
+  readings are missing; rise "at least" when the start is not `observed`; recovery "at least" when the end is not
+  `observed`, "No end yet" when ongoing; "highest observed" / "provisional" on peaks. Differences are stated only as
+  far as the bounds allow: an observed value that is only a lower bound is never ranked below an exact one ("not
+  known"), and a lower bound that already exceeds an exact value is stated as "at least … higher/longer".
+- **Colwick only.** Cross-gauge comparison remains unavailable until verified imports and measure equivalence exist
+  (see Limitations); no other series is substituted.
+- Code: `libs/history/eventCompare.js` (client-safe URL state, rows and difference wording),
+  `getEventComparison` in `historyService.js`, `components/history/events/EventComparison.js` and `CompareChart.js`
+  (reuses `LevelChart`'s exported `useElementWidth`/`niceStep`/`runs`), styles in the delimited block at the end of
+  `styles/history.css`. Narrow screens stack the pickers and cards, shorten the chart and keep the three-column table
+  within the viewport (fixed layout, wrapping cells).
+
 ## Tests
 
+- `__tests__/historyEventCompareService.test.js` — differing durations with own bounded windows, gaps and provisional
+  flags preserved, corrected start (`moved`), revised-away link (no substitute, no readings), same resolved event,
+  failed month disclosure, read failure propagation.
+- `__tests__/api/history-events-compare-api.test.js` — id validation, same-event rejection, cache windows, error mapping.
+- `__tests__/historyEventCompare.test.js` — bounded difference wording, qualified table rows, URL state, chart
+  overlay/provisional/gap rendering, alignment toggle, moved/not-found/same-event/invalid selections, read failure,
+  trimmed windows, entry points from the explorer and detail page.
 - `__tests__/historyEvents.test.js` — threshold equality, well-supported events, agreement with #104 month totals,
   month/year-edge stitching and period overlap, gaps before/within/after events, long gaps, excluded readings,
   isolated readings, dips and grouping, ongoing vs failed-month ends, provisional/edited/revised counts, corrected

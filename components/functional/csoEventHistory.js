@@ -1,4 +1,4 @@
-import { useId, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import Badge from 'react-bootstrap/Badge';
 import Button from 'react-bootstrap/Button';
 import ButtonGroup from 'react-bootstrap/ButtonGroup';
@@ -14,6 +14,8 @@ export const HISTORY_WINDOWS = [{ key: '48h', label: '48 hours' }, { key: '7d', 
 // The route is CDN-cached for 5 minutes; refreshing on focus means a tab left open during a spill catches up on return.
 const FETCH_OPTIONS = { revalidateOnFocus: true, focusThrottleInterval: 60 * 1000, revalidateOnReconnect: false, shouldRetryOnError: false, refreshInterval: 5 * 60 * 1000 };
 const DETAIL_OPTIONS = { revalidateOnFocus: false, revalidateOnReconnect: false, shouldRetryOnError: false };
+// An older page is one point in a traversal: refreshing it in the background could only turn it into a "list changed" notice.
+const PAGE_OPTIONS = DETAIL_OPTIONS;
 
 const DATE_FORMAT = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 
@@ -161,7 +163,13 @@ export function evidenceMessages(history) {
     messages.push({ tone: 'warning', text: 'Event monitoring does not yet cover enough of the last 30 days for a full 30-day history. The list shows what was recorded.' });
   }
   if (counts.failed > 0) messages.push({ tone: 'warning', text: `History could not be loaded for ${counts.failed} outfall${counts.failed === 1 ? '' : 's'}; their events are missing from this list.` });
-  if (evidence.truncated) messages.push({ tone: 'warning', text: 'Some outfalls had more events than can be shown here; the oldest events in this period are missing.' });
+  // RDP returns each outfall's events oldest first, so a read that stops at its budget is missing that outfall's latest events.
+  if (evidence.truncated) {
+    const truncated = (history.outfalls ?? []).filter((outfall) => outfall.truncated);
+    const after = truncated.map((outfall) => outfall.readThrough).filter(Boolean).sort()[0];
+    const who = truncated.length > 1 ? `${truncated.length} outfalls` : truncated.length ? 'One outfall' : 'Some outfalls';
+    messages.push({ tone: 'warning', text: `${who} had more events in this period than can be read at once, so ${truncated.length === 1 ? 'its' : 'their'} most recent events${after ? ` (after ${formatTime(after)})` : ''} are missing from this list.` });
+  }
   // Not read is not the same as not monitored: those outfalls may have events that this list does not include.
   if (counts.notRead > 0) {
     const policy = history.readPolicy;
@@ -171,30 +179,85 @@ export function evidenceMessages(history) {
   }
   const unmonitored = counts.notMonitored + counts.unmapped;
   if (unmonitored > 0) messages.push({ tone: 'secondary', text: `${counts.read} of ${counts.members} upstream outfalls have event history; the other ${unmonitored} ${unmonitored === 1 ? 'is' : 'are'} not monitored for events yet.` });
-  if (history.eventTotals?.truncated) {
-    messages.push({ tone: 'secondary', text: `Showing the newest ${history.eventTotals.returned} of ${history.eventTotals.total} recorded events. Choose an outfall to see all of its events.` });
-  }
   return messages;
+}
+
+const plural = (count, word) => `${count} ${word}${count === 1 ? '' : 's'}`;
+
+// Where this page sits in the list, and whether the list ends here because history ended or because of a limitation.
+export function pageSummary(page) {
+  if (!page || !page.returned) return null;
+  const range = `Events ${page.offset + 1}–${page.offset + page.returned} of ${page.total}${page.totalIsLowerBound ? ' or more' : ''}`;
+  let end = null;
+  if (!page.hasOlder) {
+    end = page.totalIsLowerBound
+      ? 'End of the events that could be read for this period. Some outfall history was not fully read (see the notes above), so other events may exist.'
+      : 'End of the recorded events for this period.';
+  }
+  return { range, end };
+}
+
+const HISTORY_ERRORS = {
+  409: "The recorded events changed while you were browsing (for example, a spill's times were corrected or a late report arrived), so this page cannot continue without risking repeated or skipped events.",
+  410: 'This list was opened a while ago and has expired.',
+};
+
+function PageNavigation({ page, canGoNewer, onNewer, onOlder, onNewest }) {
+  const summary = pageSummary(page);
+  return (
+    <nav className="cso-history-pager mt-3" aria-label="Spill history pages">
+      {summary ? <p className="small mb-2">{summary.range}{summary.end ? <><br />{summary.end}</> : null}</p> : null}
+      {page?.newerSinceStart > 0 ? <p className="small mb-2">{plural(page.newerSinceStart, 'newer event')} {page.newerSinceStart === 1 ? 'has' : 'have'} been recorded since you started browsing.</p> : null}
+      {canGoNewer || page?.hasOlder ? (
+        <div className="d-flex flex-wrap gap-2">
+          {canGoNewer ? <Button size="sm" variant="outline-light" onClick={onNewest}>Newest events</Button> : null}
+          {canGoNewer ? <Button size="sm" variant="outline-light" onClick={onNewer}>Newer events</Button> : null}
+          {page?.hasOlder ? <Button size="sm" variant="outline-info" onClick={onOlder}>Older events</Button> : null}
+        </div>
+      ) : null}
+    </nav>
+  );
+}
+PageNavigation.propTypes = { page: PropTypes.object, canGoNewer: PropTypes.bool, onNewer: PropTypes.func, onOlder: PropTypes.func, onNewest: PropTypes.func };
+
+function historyPath(windowKey, outfall, cursor) {
+  return `/api/waterquality/cso/events?window=${windowKey}${outfall ? `&outfall=${encodeURIComponent(outfall)}` : ''}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`;
 }
 
 export default function CsoEventHistory({ selectedOutfallId = '', onSelectOutfall, onShowOnMap, onShowRoute }) {
   const [windowKey, setWindowKey] = useState(HISTORY_WINDOWS[0].key);
   const [openEventId, setOpenEventId] = useState(null);
+  // The cursors of the pages visited, for one query. A changed period or outfall starts again at the newest events.
+  const [trail, setTrail] = useState({ query: null, cursors: [] });
+  const listRef = useRef(null);
+  const moved = useRef(false);
   const filterId = useId();
-  const { data, error, isPending } = useFetch(`/api/waterquality/cso/events?window=${windowKey}`, FETCH_OPTIONS);
+  const { data, error, isPending } = useFetch(historyPath(windowKey), FETCH_OPTIONS);
   const outfalls = useMemo(() => new Map((data?.outfalls ?? []).map((outfall) => [outfall.id, outfall])), [data]);
   const readable = useMemo(() => (data?.outfalls ?? []).filter((outfall) => outfall.state === 'read'), [data]);
   const filter = outfalls.get(selectedOutfallId)?.state === 'read' ? selectedOutfallId : '';
-  // One outfall's events are read server-side, so the newest-events cap never hides them (#114 larger membership).
-  const { data: filteredData } = useFetch(filter ? `/api/waterquality/cso/events?window=${windowKey}&outfall=${encodeURIComponent(filter)}` : null, FETCH_OPTIONS);
+  const query = `${windowKey}|${filter}`;
+  const cursors = trail.query === query ? trail.cursors : [];
+  const cursor = cursors.at(-1) ?? null;
+  // One outfall's events, and every older page, are paged server-side from the same bounded reads (#114 larger membership).
+  const { data: pageData, error: pageError, mutate: retryPage } = useFetch(filter || cursor ? historyPath(windowKey, filter, cursor) : null, cursor ? PAGE_OPTIONS : FETCH_OPTIONS);
+  // After a page change, move focus to the new list so keyboard and screen-reader users land on it.
+  useEffect(() => {
+    if (moved.current && (pageData || data)) { moved.current = false; listRef.current?.focus(); }
+  }, [pageData, data, cursor]);
   // A large membership lists only outfalls with events (plus the selected one); the rest are summarised in the messages.
   const options = useMemo(() => readable.filter((outfall) => !Number.isFinite(outfall.eventCount) || outfall.eventCount > 0 || outfall.id === filter),
     [readable, filter]);
 
   if (data && data.enabled === false) return null;
 
-  const events = ((filter ? filteredData?.events : null) ?? data?.events ?? []).filter((event) => !filter || event.outfallId === filter);
+  const paged = Boolean(filter || cursor);
+  const shown = paged ? pageData : data;
+  const events = (shown?.events ?? []).filter((event) => !filter || event.outfallId === filter);
   const available = data?.state === 'available';
+  const pageAvailable = !paged || pageData?.state === 'available';
+  const go = (next) => { moved.current = true; setOpenEventId(null); setTrail({ query, cursors: next }); };
+  const period = HISTORY_WINDOWS.find((option) => option.key === windowKey)?.label ?? windowKey;
 
   return (
     <section className="water-quality-panel mb-4" aria-labelledby="cso-history-heading" id="cso-history">
@@ -224,11 +287,22 @@ export default function CsoEventHistory({ selectedOutfallId = '', onSelectOutfal
       {available ? (
         <>
           <div role="status" aria-live="polite">
-            {evidenceMessages(filter && filteredData?.state === 'available' ? filteredData : data).map((message) => <div key={message.text} className={`alert alert-${message.tone} py-2 mb-2`}>{message.text}</div>)}
+            {evidenceMessages(paged && pageData?.state === 'available' ? pageData : data).map((message) => <div key={message.text} className={`alert alert-${message.tone} py-2 mb-2`}>{message.text}</div>)}
+            {shown?.page?.windowMoved ? <div className="alert alert-secondary py-2 mb-2">The {period} period has moved on since you started browsing. It now begins <Time value={shown.window.from} />, so events that ended before then are no longer listed.</div> : null}
           </div>
-          {filter && !events.length && data.events.length ? <p>No reported events for this outfall in the available data.</p> : null}
-          {events.length ? (
-            <ol className="cso-event-list list-unstyled mb-0" aria-label={`Recorded spills, ${events.length} shown`}>
+          {paged && !pageData && !pageError ? <p role="status">Loading events…</p> : null}
+          {paged && (pageError || (pageData && !pageAvailable)) ? (
+            <div className="alert alert-secondary" role="status">
+              <p className="mb-2">{HISTORY_ERRORS[pageError?.status] ?? 'These events could not be loaded right now.'}</p>
+              <div className="d-flex flex-wrap gap-2">
+                {cursor ? <Button size="sm" variant="outline-dark" onClick={() => go([])}>Back to the newest events</Button> : null}
+                {!HISTORY_ERRORS[pageError?.status] ? <Button size="sm" variant="outline-dark" onClick={() => retryPage()}>Try again</Button> : null}
+              </div>
+            </div>
+          ) : null}
+          {filter && pageAvailable && pageData && !events.length && !cursor ? <p>No reported events for this outfall in the available data.</p> : null}
+          {events.length && pageAvailable ? (
+            <ol ref={listRef} tabIndex={-1} className="cso-event-list list-unstyled mb-0" aria-label={`Recorded spills, ${pageSummary(shown.page)?.range ?? `${events.length} shown`}`}>
               {events.map((event) => {
                 const outfall = outfalls.get(event.outfallId);
                 const open = openEventId === event.eventId;
@@ -251,6 +325,10 @@ export default function CsoEventHistory({ selectedOutfallId = '', onSelectOutfal
                 );
               })}
             </ol>
+          ) : null}
+          {shown && pageAvailable ? (
+            <PageNavigation page={shown.page} canGoNewer={cursors.length > 0}
+              onNewer={() => go(cursors.slice(0, -1))} onOlder={() => go([...cursors, shown.page.nextCursor])} onNewest={() => go([])} />
           ) : null}
         </>
       ) : null}

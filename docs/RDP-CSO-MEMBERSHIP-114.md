@@ -85,7 +85,7 @@ per-category counts.
 | Map, cards, `/api/waterquality` | The relationship set (cached 6 h) plus one 48 h `hpp-catchment` walk. The walk is shared with the catchment section's cache (600 s; only complete walks are cached) | At most 25 pages and 2,500 outfalls. No new page is started after 120 s, and the route `maxDuration` is 180 s |
 | History, 24 h and 7 d | One walk of the same set at 24 h or 168 h | As above. No per-outfall event reads |
 | History, 30 d | Per-outfall event pages for at most 40 confirmed members: those with events in the last 7 days first, then member order | Not-read members are `not_read` with `notReadReason: read_limit`, and the page says so |
-| History list | The newest 250 events after an optional `?outfall=` filter | `eventTotals` reports total, returned and truncated. The dropdown lists only outfalls with events |
+| History list | 50 events per page, newest first, after an optional `?outfall=` filter; `?cursor=` continues from the same reads ([browsing](RDP-CSO-HISTORY-121.md#browsing-older-events-wave-a-cso-history-browsing)) | `page` reports offset, total, `totalIsLowerBound` and `nextCursor`. The dropdown lists only outfalls with events |
 
 The old caps were 60 status members and 20 event reads. They still apply to legacy membership, but they no longer
 limit the RDP population. Anything not read is counted and explained; it is never treated as clear or as having no

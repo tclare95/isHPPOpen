@@ -10,7 +10,8 @@ import {
 import { buildUnavailableRdpSnapshot, classifyRdpLocation, coalesce, errorCode, getClient, mapLimit, withDeadline } from "./csoSource.js";
 import { CATCHMENT_READ_DEADLINE_MS, CATCHMENT_WINDOW_HOURS, readSetActivity } from "./csoCatchment.js";
 import {
-  assessHistory, CSO_HISTORY_DEADLINE_MS, describeEvent, getCsoEventDetail, historyWindow, providerLabel, readEventPages, summariseCoverage,
+  assessHistory, CSO_HISTORY_DEADLINE_MS, describeEvent, getCsoEventDetail, historyWindow, latestStart, newestFirst, providerLabel, readEventPages,
+  summariseCoverage,
 } from "./csoHistory.js";
 import { RELATIONSHIP_SCOPES } from "./relationshipContract.js";
 import { RdpError } from "./errors.js";
@@ -221,8 +222,6 @@ function memberSummary(member) {
   };
 }
 
-const newestFirst = (a, b) => (a.startedAt === b.startedAt ? (a.eventId < b.eventId ? -1 : 1) : a.startedAt < b.startedAt ? 1 : -1);
-
 function sourcesFor(set, outfalls) {
   const read = new Set(outfalls.filter((outfall) => outfall.state === "read").map((outfall) => `${outfall.provider}:${outfall.sourceId}`));
   return set.catalogues.filter((entry) => read.has(`${entry.providerId}:${entry.sourceId}`))
@@ -241,7 +240,8 @@ function historyFromWalk(members, walk) {
     const page = walk.pages[item.page];
     events.push(...item.events.events.map((event) => ({ ...describeEvent(event, { from: walk.from, asOf: page.retrievedAt }),
       outfallId: member.id, assetId: member.assetId, asOf: page.retrievedAt })));
-    return { ...summary, state: "read", truncated: item.events.truncated, coverage: summariseCoverage(item.events.coverage, walk.from, page.to, page.retrievedAt),
+    return { ...summary, state: "read", truncated: item.events.truncated,
+      ...(item.events.truncated ? { readThrough: latestStart(item.events.events) } : {}), coverage: summariseCoverage(item.events.coverage, walk.from, page.to, page.retrievedAt),
       eventCount: item.events.events.length };
   });
   return { outfalls, events };
@@ -271,7 +271,7 @@ async function historyFromOutfallReads(members, window, logger) {
     try {
       const result = await readEventPages(outfall.assetId, window.from, window.to);
       if (timedOut) return;
-      Object.assign(outfall, { state: "read", truncated: result.truncated, pageIntegrity: "verified",
+      Object.assign(outfall, { state: "read", truncated: result.truncated, ...(result.truncated ? { readThrough: result.readThrough } : {}), pageIntegrity: "verified",
         coverage: summariseCoverage(result.coverage, window.from, window.to, result.requestAsOf), eventCount: result.events.length });
       events.push(...result.events.map((event) => ({ ...describeEvent(event, { from: window.from, asOf: result.requestAsOf }),
         outfallId: outfall.id, assetId: outfall.assetId, asOf: result.requestAsOf })));
@@ -288,9 +288,10 @@ async function historyFromOutfallReads(members, window, logger) {
   return { outfalls, events, readPolicy: { limit: MEMBERSHIP_30D_MAX_OUTFALLS, prioritisedBy } };
 }
 
-// Never rejects for an RDP failure: the section reports `unavailable` and the rest of the page is untouched.
-export async function getMembershipEventHistory(windowKey = "24h", now = new Date()) {
-  const window = historyWindow(windowKey, now);
+// Never rejects for an RDP failure: the section reports `unavailable` and the rest of the page is untouched. A 30-day
+// continuation passes the `window` its first page read; the set read (24 h to 7 d) always answers for its own moving window.
+export async function getMembershipEventHistory(windowKey = "24h", now = new Date(), { window: pinned = null } = {}) {
+  const window = (windowKey === "30d" ? pinned : null) ?? historyWindow(windowKey, now);
   const logger = createRequestLogger({ method: "GET" }, "rdp/cso-membership-history");
   const base = { window, retrievedAt: now.toISOString() };
   const empty = (membership, code) => ({ ...base, state: "unavailable", errorCode: code, membership, outfalls: [], events: [],

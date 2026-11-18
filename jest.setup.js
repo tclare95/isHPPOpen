@@ -12,7 +12,7 @@ if (globalThis.TextDecoder === undefined) {
 require('dotenv').config({ path: '.env.test' });
 // The set read defaults to RDP's one-request summary; suites that exercise the paginated walk opt back in per test.
 process.env.RDP_CSO_SET_SOURCE = 'walk';
-// Admin authorization fails closed; suites use this test-only admin subject (see testUtils/adminSessions.js).
+// Suites run with the optional admin allowlist set to this test-only subject (see testUtils/adminSessions.js).
 process.env.ADMIN_AUTH0_SUBS = 'auth0|test-admin';
 
 jest.mock('next-auth', () => ({

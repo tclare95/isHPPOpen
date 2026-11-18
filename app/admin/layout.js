@@ -9,8 +9,8 @@ import AdminAccessNotice from "../../components/layout/adminpage/adminaccessnoti
 export const dynamic = "force-dynamic";
 
 /**
- * Server-side gate for every page under /admin: admin UI renders only for identities in
- * ADMIN_AUTH0_SUBS. Signed-out visitors and signed-in non-admins see an access notice instead.
+ * Server-side gate for every page under /admin: admin UI renders only for admins (see
+ * libs/auth/adminAccess.js). Signed-out visitors and signed-in non-admins see an access notice instead.
  * The admin APIs enforce the same rule independently via requireRouteAdmin().
  */
 export default async function AdminLayout({ children }) {
@@ -26,7 +26,7 @@ export default async function AdminLayout({ children }) {
     <Container fluid className="bg-dark min-vh-100">
       <AdminBar />
       <Container fluid="lg" className="pb-5">
-        <AdminAccessNotice state={session ? access : "signed-out"} subject={subject} />
+        <AdminAccessNotice state={session ? "denied" : "signed-out"} subject={subject} />
       </Container>
     </Container>
   );

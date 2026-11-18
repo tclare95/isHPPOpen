@@ -96,12 +96,13 @@ Editorial writes use the shared `libs/cache/revalidate.js` helper with `revalida
 
 ### AuthN/AuthZ
 - NextAuth is configured in `app/api/auth/[...nextauth]/route.js` using shared options from `libs/auth/authOptions.js`.
-- Authentication is not authorization: an Auth0 identity is an admin only when its stable `sub` is in `ADMIN_AUTH0_SUBS`
-  (fails closed when unset/empty). See [ADMIN-AUTHORIZATION.md](ADMIN-AUTHORIZATION.md).
+- Admin authorization is one policy in `libs/auth/adminAccess.js`: with `ADMIN_AUTH0_SUBS` unset any authenticated
+  session is admin (trust relies on the Auth0 tenant restricting sign-up); when set, only the listed stable `sub`s are
+  admins. See [ADMIN-AUTHORIZATION.md](ADMIN-AUTHORIZATION.md).
 - Privileged handlers (events POST/DELETE, site banner POST, every `app/api/admin/*` route) use `requireRouteAdmin()` from
   `libs/api/httpApp.js`; `requireRouteSession()` alone only proves sign-in and must not guard admin actions.
 - Unauthenticated requests return `401` with `{ message: "Unauthorized" }`; authenticated non-admins return `403`
-  (`Forbidden`, or `Admin access is not configured` when the allowlist is empty).
+  with `{ message: "Forbidden" }`.
 - `app/admin/layout.js` gates every `/admin` page server-side and shows a not-authorised state instead of admin UI.
 - `__tests__/api/admin-authorization.test.js` inventories `app/api`; classify any new mutating or admin handler there.
 

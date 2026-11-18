@@ -24,10 +24,9 @@ export default function AdminBody (props) {
     }
 
     if (!session?.user?.isAdmin) {
-        const state = !session ? 'signed-out' : session.user?.adminAccess === 'unconfigured' ? 'unconfigured' : 'denied'
         return (
             <Container fluid="lg" className="pb-5">
-                <AdminAccessNotice state={state} subject={session?.user?.id || null} />
+                <AdminAccessNotice state={session ? 'denied' : 'signed-out'} subject={session?.user?.id || null} />
             </Container>
         )
     }

@@ -14,10 +14,6 @@ const NOTICES = {
     title: "Not authorised",
     text: "You are signed in, but this account does not have admin access. If you should have access, ask the site owner to add your account ID to the admin list.",
   },
-  unconfigured: {
-    title: "Admin access is not configured",
-    text: "No administrator accounts are configured for this deployment, so admin access is disabled for everyone. The site owner needs to configure the admin list.",
-  },
 };
 
 /** Shown in place of admin UI to signed-out visitors and to signed-in users who are not admins. */
@@ -44,6 +40,6 @@ export default function AdminAccessNotice({ state, subject = null }) {
 }
 
 AdminAccessNotice.propTypes = {
-  state: PropTypes.oneOf(["signed-out", "denied", "unconfigured"]).isRequired,
+  state: PropTypes.oneOf(["signed-out", "denied"]).isRequired,
   subject: PropTypes.string,
 };

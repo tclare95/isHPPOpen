@@ -53,19 +53,14 @@ export async function requireRouteSession() {
 }
 
 /**
- * Requires an authenticated administrator: `401` without a session, `403` for an authenticated
- * identity outside ADMIN_AUTH0_SUBS (including when the allowlist is unset, which fails closed).
+ * Requires an administrator: `401` without a session; `403` for an authenticated identity outside
+ * ADMIN_AUTH0_SUBS when that optional allowlist is set (see libs/auth/adminAccess.js).
  * Use this, not requireRouteSession(), for every admin page API and privileged mutation.
  */
 export async function requireRouteAdmin() {
   const session = await requireRouteSession();
-  const access = getAdminAccess(session.user?.id);
 
-  if (access === ADMIN_ACCESS.UNCONFIGURED) {
-    throw new HttpError(403, "Admin access is not configured");
-  }
-
-  if (access !== ADMIN_ACCESS.GRANTED) {
+  if (getAdminAccess(session.user?.id) !== ADMIN_ACCESS.GRANTED) {
     throw new HttpError(403, "Forbidden");
   }
 

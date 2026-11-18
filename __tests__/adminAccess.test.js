@@ -14,7 +14,7 @@ const { TEST_ADMIN_SUB } = require("../testUtils/adminSessions");
 describe("admin allowlist", () => {
   beforeEach(() => {
     resetAdminAccessDiagnosticsForTests();
-    jest.spyOn(console, "error").mockImplementation(() => {});
+    jest.spyOn(console, "info").mockImplementation(() => {});
   });
 
   afterEach(() => jest.restoreAllMocks());
@@ -38,12 +38,14 @@ describe("admin allowlist", () => {
     expect(isAdminSubject("admin@test.com", { ADMIN_AUTH0_SUBS: "auth0|a" })).toBe(false);
   });
 
-  test("fails closed and logs one redacted diagnostic per process when unconfigured", () => {
-    expect(getAdminAccess("auth0|a", {})).toBe(ADMIN_ACCESS.UNCONFIGURED);
-    expect(getAdminAccess("auth0|a", { ADMIN_AUTH0_SUBS: "" })).toBe(ADMIN_ACCESS.UNCONFIGURED);
-    expect(isAdminSubject("auth0|a", {})).toBe(false);
-    expect(console.error).toHaveBeenCalledTimes(1);
-    expect(console.error.mock.calls[0][0]).toBe("[auth] ADMIN_AUTH0_SUBS is not configured; admin access is denied for every user.");
+  test("without an allowlist every authenticated subject is admin, with one redacted info line per process", () => {
+    expect(getAdminAccess("auth0|a", {})).toBe(ADMIN_ACCESS.GRANTED);
+    expect(getAdminAccess(null, { ADMIN_AUTH0_SUBS: "" })).toBe(ADMIN_ACCESS.GRANTED);
+    expect(isAdminSubject("auth0|b", { ADMIN_AUTH0_SUBS: " , " })).toBe(true);
+    expect(console.info).toHaveBeenCalledTimes(1);
+    expect(console.info.mock.calls[0]).toEqual([
+      "[auth] ADMIN_AUTH0_SUBS is not set; any authenticated user is an admin, relying on the Auth0 tenant restricting sign-up.",
+    ]);
   });
 });
 
@@ -58,13 +60,12 @@ describe("NextAuth session callback", () => {
       email: "someone@test.com",
       id: TEST_ADMIN_SUB,
       isAdmin: true,
-      adminAccess: "granted",
     });
     expect(result.expires).toBe(session.expires);
   });
 
   test("marks other subjects and missing subjects as non-admin", () => {
-    expect(callback({ session, token: { sub: "auth0|other" } }).user).toMatchObject({ isAdmin: false, adminAccess: "denied" });
+    expect(callback({ session, token: { sub: "auth0|other" } }).user).toMatchObject({ isAdmin: false });
     expect(callback({ session, token: {} }).user).toMatchObject({ id: null, isAdmin: false });
   });
 

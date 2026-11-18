@@ -1,10 +1,13 @@
 /**
- * Admin authorization: an authenticated Auth0 identity is an administrator only when its stable
- * Auth0 subject (`sub`, shown as "user_id" in the Auth0 dashboard, e.g. `auth0|abc123`) is listed
- * in ADMIN_AUTH0_SUBS (comma- or whitespace-separated). Authentication alone grants nothing.
+ * Admin authorization policy. This module (with the NextAuth session callback and requireRouteAdmin())
+ * is the single seam to replace if the identity provider changes.
  *
- * Fails closed: an unset or empty allowlist denies every user and logs one redacted configuration
- * error per process. Identities, emails and tokens are never logged.
+ * - ADMIN_AUTH0_SUBS unset/empty: every authenticated session is an admin. Admin trust then depends on
+ *   the Auth0 tenant keeping sign-up and social connections closed and not being shared with other apps.
+ * - ADMIN_AUTH0_SUBS set (comma- or whitespace-separated Auth0 `sub` values, e.g. `auth0|abc123`): only
+ *   those exact subjects are admins (optional hardening).
+ *
+ * Callers must establish that a session exists first. Identities, emails and tokens are never logged.
  */
 
 export const ADMIN_ALLOWLIST_ENV = "ADMIN_AUTH0_SUBS";
@@ -12,10 +15,9 @@ export const ADMIN_ALLOWLIST_ENV = "ADMIN_AUTH0_SUBS";
 export const ADMIN_ACCESS = Object.freeze({
   GRANTED: "granted",
   DENIED: "denied",
-  UNCONFIGURED: "unconfigured",
 });
 
-let reportedUnconfigured = false;
+let reportedOpenPolicy = false;
 
 export function getAdminAllowlist(env = process.env) {
   const raw = env[ADMIN_ALLOWLIST_ENV];
@@ -23,16 +25,16 @@ export function getAdminAllowlist(env = process.env) {
   return new Set(raw.split(/[\s,]+/).map((entry) => entry.trim()).filter(Boolean));
 }
 
-/** Resolves the admin access state for an Auth0 subject against the current allowlist. */
+/** Resolves admin access for the Auth0 subject of an authenticated session. */
 export function getAdminAccess(subject, env = process.env) {
   const allowlist = getAdminAllowlist(env);
 
   if (allowlist.size === 0) {
-    if (!reportedUnconfigured) {
-      reportedUnconfigured = true;
-      console.error(`[auth] ${ADMIN_ALLOWLIST_ENV} is not configured; admin access is denied for every user.`);
+    if (!reportedOpenPolicy) {
+      reportedOpenPolicy = true;
+      console.info(`[auth] ${ADMIN_ALLOWLIST_ENV} is not set; any authenticated user is an admin, relying on the Auth0 tenant restricting sign-up.`);
     }
-    return ADMIN_ACCESS.UNCONFIGURED;
+    return ADMIN_ACCESS.GRANTED;
   }
 
   return typeof subject === "string" && subject.length > 0 && allowlist.has(subject)
@@ -44,7 +46,7 @@ export function isAdminSubject(subject, env = process.env) {
   return getAdminAccess(subject, env) === ADMIN_ACCESS.GRANTED;
 }
 
-/** Test-only: allows the one-time configuration error to be asserted again. */
+/** Test-only: allows the one-time policy log line to be asserted again. */
 export function resetAdminAccessDiagnosticsForTests() {
-  reportedUnconfigured = false;
+  reportedOpenPolicy = false;
 }

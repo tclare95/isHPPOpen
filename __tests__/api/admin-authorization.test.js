@@ -27,7 +27,7 @@ const { getHppShadowReport } = require("../../libs/services/hppShadowCronService
 const { getCsoShadowReport } = require("../../libs/rdp/csoSource");
 const { getLatestLevelsSnapshot } = require("../../libs/services/levelsService");
 const { resetAdminAccessDiagnosticsForTests } = require("../../libs/auth/adminAccess");
-const { TEST_ADMIN_SUB, adminSession, nonAdminSession } = require("../../testUtils/adminSessions");
+const { adminSession, nonAdminSession } = require("../../testUtils/adminSessions");
 
 const API_ROOT = path.join(__dirname, "../../app/api");
 const MUTATING = ["POST", "PUT", "PATCH", "DELETE"];
@@ -156,6 +156,7 @@ describe.each(ADMIN_ROUTES.map((entry) => [`${entry.method} /api/${entry.route}`
     jest.clearAllMocks();
     jest.spyOn(console, "log").mockImplementation(() => {});
     jest.spyOn(console, "error").mockImplementation(() => {});
+    jest.spyOn(console, "info").mockImplementation(() => {});
     resetAdminAccessDiagnosticsForTests();
     process.env.ADMIN_AUTH0_SUBS = originalAllowlist;
     entry.arrange();
@@ -165,6 +166,11 @@ describe.each(ADMIN_ROUTES.map((entry) => [`${entry.method} /api/${entry.route}`
 
   afterAll(() => { process.env.ADMIN_AUTH0_SUBS = originalAllowlist; });
 
+  const setAllowlist = (value) => {
+    if (value === undefined) delete process.env.ADMIN_AUTH0_SUBS;
+    else process.env.ADMIN_AUTH0_SUBS = value;
+  };
+
   test("returns 401 when unauthenticated and does no work", async () => {
     getServerSession.mockResolvedValue(null);
     const res = await call();
@@ -173,7 +179,14 @@ describe.each(ADMIN_ROUTES.map((entry) => [`${entry.method} /api/${entry.route}`
     expect(entry.work()).not.toHaveBeenCalled();
   });
 
-  test("returns 403 for an authenticated non-admin and does no work", async () => {
+  test("allowlist set: allows a member", async () => {
+    getServerSession.mockResolvedValue(adminSession());
+    const res = await call();
+    expect(res.status).toBe(200);
+    expect(entry.work()).toHaveBeenCalled();
+  });
+
+  test("allowlist set: returns 403 for an authenticated non-member and does no work", async () => {
     getServerSession.mockResolvedValue(nonAdminSession());
     const res = await call();
     expect(res.status).toBe(403);
@@ -181,34 +194,36 @@ describe.each(ADMIN_ROUTES.map((entry) => [`${entry.method} /api/${entry.route}`
     expect(entry.work()).not.toHaveBeenCalled();
   });
 
-  test("returns 403 for a session without a stable subject, even with an admin's email", async () => {
+  test("allowlist set: returns 403 for a session without a stable subject, even with an admin's email", async () => {
     getServerSession.mockResolvedValue({ user: { email: "admin@test.com" } });
     const res = await call();
     expect(res.status).toBe(403);
     expect(entry.work()).not.toHaveBeenCalled();
   });
 
-  test.each([["unset", undefined], ["empty", ""], ["separators only", " , ,"]])(
-    "fails closed with a redacted diagnostic when the allowlist is %s",
-    async (_case, value) => {
-      if (value === undefined) delete process.env.ADMIN_AUTH0_SUBS;
-      else process.env.ADMIN_AUTH0_SUBS = value;
-      getServerSession.mockResolvedValue(adminSession());
-      const res = await call();
-      expect(res.status).toBe(403);
-      expect(await res.json()).toEqual({ ok: false, error: { message: "Admin access is not configured" } });
-      expect(entry.work()).not.toHaveBeenCalled();
-      const logged = console.error.mock.calls.flat().map(String).join("\n");
-      expect(logged).toContain("ADMIN_AUTH0_SUBS is not configured");
-      expect(logged).not.toContain(TEST_ADMIN_SUB);
-      expect(logged).not.toContain("admin@test.com");
-    },
-  );
+  describe.each([["unset", undefined], ["empty", ""], ["separators only", " , ,"]])("allowlist %s", (_case, value) => {
+    beforeEach(() => setAllowlist(value));
 
-  test("allows an allowlisted admin", async () => {
-    getServerSession.mockResolvedValue(adminSession());
-    const res = await call();
-    expect(res.status).toBe(200);
-    expect(entry.work()).toHaveBeenCalled();
+    test("returns 401 when unauthenticated and does no work", async () => {
+      getServerSession.mockResolvedValue(null);
+      const res = await call();
+      expect(res.status).toBe(401);
+      expect(entry.work()).not.toHaveBeenCalled();
+    });
+
+    test.each([
+      ["any authenticated user", nonAdminSession],
+      ["a session without a subject", () => ({ user: { email: "visitor@test.com" } })],
+    ])("allows %s, logging one redacted info line", async (_who, session) => {
+      getServerSession.mockResolvedValue(session());
+      const res = await call();
+      expect(res.status).toBe(200);
+      expect(entry.work()).toHaveBeenCalled();
+      const logged = console.info.mock.calls.flat().map(String).join(" | ");
+      expect(logged).toContain("ADMIN_AUTH0_SUBS is not set");
+      expect(logged).not.toContain("auth0|someone-else");
+      expect(logged).not.toContain("visitor@test.com");
+      expect(console.error).not.toHaveBeenCalled();
+    });
   });
 });

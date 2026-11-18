@@ -15,7 +15,7 @@ const { TEST_ADMIN_SUB, adminSession, nonAdminSession } = require("../testUtils/
 // Mirrors what the NextAuth session callback adds for the client.
 const clientSession = (session, adminAccess) => ({
   ...session,
-  user: { ...session.user, isAdmin: adminAccess === "granted", adminAccess },
+  user: { ...session.user, isAdmin: adminAccess === "granted" },
 });
 
 const SECRET_UI = "admin editor UI";
@@ -25,7 +25,7 @@ describe("admin layout (server gate)", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    jest.spyOn(console, "error").mockImplementation(() => {});
+    jest.spyOn(console, "info").mockImplementation(() => {});
     resetAdminAccessDiagnosticsForTests();
     process.env.ADMIN_AUTH0_SUBS = originalAllowlist;
     useSession.mockReturnValue({ data: null, status: "unauthenticated" });
@@ -56,11 +56,19 @@ describe("admin layout (server gate)", () => {
     expect(screen.getAllByRole("button", { name: "Sign out" }).length).toBeGreaterThan(0);
   });
 
-  test("explains when admin access is not configured", async () => {
+  test("without an allowlist, any signed-in user sees admin pages", async () => {
     delete process.env.ADMIN_AUTH0_SUBS;
-    getServerSession.mockResolvedValue(adminSession());
+    getServerSession.mockResolvedValue(nonAdminSession());
     await renderLayout();
-    expect(screen.getByRole("heading", { name: "Admin access is not configured" })).toBeInTheDocument();
+    expect(screen.getByText(SECRET_UI)).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  test("without an allowlist, signed-out visitors are still asked to sign in", async () => {
+    delete process.env.ADMIN_AUTH0_SUBS;
+    getServerSession.mockResolvedValue(null);
+    await renderLayout();
+    expect(screen.getByRole("heading", { name: "Admin sign-in required" })).toBeInTheDocument();
     expect(screen.queryByText(SECRET_UI)).not.toBeInTheDocument();
   });
 
@@ -80,7 +88,6 @@ describe("AdminBody (client defence in depth)", () => {
   test.each([
     ["signed out", { data: null, status: "unauthenticated" }, "Admin sign-in required"],
     ["non-admin", { data: clientSession(nonAdminSession(), "denied"), status: "authenticated" }, "Not authorised"],
-    ["unconfigured", { data: clientSession(adminSession(), "unconfigured"), status: "authenticated" }, "Admin access is not configured"],
   ])("hides admin UI when %s", (_case, sessionState, heading) => {
     useSession.mockReturnValue(sessionState);
     renderBody();

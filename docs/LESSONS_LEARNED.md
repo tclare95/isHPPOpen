@@ -14,7 +14,7 @@
 ## Practical guidance for future changes
 1. **Add or modify endpoint behavior in the service first**, then keep route handlers thin.
 2. **Write/update API tests with each endpoint change**, especially around auth and validation paths.
-3. **Keep public GET endpoints explicit** and lock down privileged writes with shared `requireRouteAdmin()`: a valid sign-in is not authorization (until Wave A, any Auth0 user was effectively an admin).
+3. **Keep public GET endpoints explicit** and lock down privileged writes with shared `requireRouteAdmin()` so the admin policy (optional `ADMIN_AUTH0_SUBS` allowlist; otherwise any signed-in Auth0 user) lives in one replaceable seam.
 4. **Document new env vars immediately** in `AGENTS.md` and README.
 5. **Prefer small, incremental refactors** over broad rewrites due to mixed legacy/new patterns.
 6. **Use the shared API response envelope** (`{ ok: true, data }` / `{ ok: false, error }`) to reduce frontend branching.

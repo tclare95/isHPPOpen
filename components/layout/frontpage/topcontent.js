@@ -12,32 +12,33 @@ import GraphContext from "../../../libs/context/graphcontrol";
 import Link from "next/link";
 import PropTypes from "prop-types";
 import { SWR_15_MINUTES } from "../../../libs/dataFreshness";
+import {
+  formatLevelMetres,
+  formatReadingAge,
+  getLatestLevelReading,
+  getLevelFreshness,
+} from "../../../libs/hpp/hppHomeStatus";
 
-function formatRiverLevel(recentLevel, isPending, levelError) {
+// A loading, failed or empty level read is never shown as a number (no "0.00 m").
+function formatRiverLevel(reading, isPending) {
   if (isPending) {
-    return { value: "0.00", unit: "M" };
+    return "loading";
   }
 
-  if (levelError) {
-    return { value: "unavailable", unit: "" };
+  if (!reading) {
+    return "unavailable";
   }
 
-  return {
-    value: (Math.round((recentLevel + Number.EPSILON) * 100) / 100).toFixed(2),
-    unit: "M",
-  };
+  return formatLevelMetres(reading.level);
 }
 
-function getRiverAgeLabel(isPending, levelError, hoursOld) {
-  if (isPending) {
-    return "Loading";
+function describeReadingAge(reading, freshness, currentTime) {
+  if (!reading) {
+    return "The latest river level reading is unavailable right now.";
   }
 
-  if (levelError) {
-    return "currently unavailable";
-  }
-
-  return hoursOld;
+  const age = `The river level reading is ${formatReadingAge(reading.observedAt, currentTime)} old`;
+  return freshness === "stale" ? `${age}, so it may be out of date.` : `${age}.`;
 }
 
 function renderForecastContent({
@@ -82,10 +83,9 @@ export default function TopContent(props) {
   const { data: waterQualityAssessment, isPending: assessmentPending } = useFetch("/api/waterquality/assessment", SWR_15_MINUTES);
 
   const levelReadings = levelData?.level_data ?? [];
-  const recentEntry = isPending ? null : levelReadings[0];
   const [currentTime, setCurrentTime] = useState(() => new Date());
-  const readingTime = recentEntry?.reading_date ? new Date(recentEntry.reading_date) : currentTime;
-  const recentLevel = recentEntry ? recentEntry.reading_level : 0;
+  const reading = isPending ? null : getLatestLevelReading(levelData);
+  const freshness = getLevelFreshness(levelData, reading, currentTime);
   const { lowerBound, upperBound, updateBounds } = useContext(GraphContext);
   const hasOperationalError = Boolean(levelError || forecastError || accuracyError);
 
@@ -97,12 +97,7 @@ export default function TopContent(props) {
     return () => clearInterval(timer);
   }, []);
 
-  const readingTimeValue = readingTime.getTime();
-  const hoursOld = Number.isNaN(readingTimeValue)
-    ? 0
-    : Math.floor((currentTime.getTime() - readingTimeValue) / 1000 / 60 / 60);
-  const riverLevelDisplay = formatRiverLevel(recentLevel, isPending, levelError);
-  const riverAgeLabel = getRiverAgeLabel(isPending, levelError, hoursOld);
+  const riverLevelDisplay = formatRiverLevel(reading, isPending);
 
   return (
     <div className="text-white text-center">
@@ -115,27 +110,23 @@ export default function TopContent(props) {
       <Row className="align-items-center">
         <Col>
           <h3>
-            The River Level is {riverLevelDisplay.value} {riverLevelDisplay.unit}
+            The River Level is {riverLevelDisplay}
           </h3>
           <a href="#waterquality">
-            {isPending || levelError ? null : (
+            {!reading ? null : (
               <VomitFactor assessment={waterQualityAssessment?.current ?? null} isPending={assessmentPending} />
             )}
           </a>
         </Col>
       </Row>
       <Row className="justify-content-center">
-        {isPending ? (
-          <Spinner animation="border" role="status" />
-        ) : (
-          <WeirLevels currentLevel={recentLevel} />
-        )}
+        {isPending ? <Spinner animation="border" role="status" /> : null}
+        {reading ? <WeirLevels currentLevel={reading.level} /> : null}
       </Row>
       <Row className="justify-content-center ">
         <p>
-          The river level data is{" "}
-          {riverAgeLabel}{" "}
-          hours old. Generally HPP white water course is open below 2.2 meters
+          {isPending ? null : `${describeReadingAge(reading, freshness, currentTime)} `}
+          Generally HPP white water course is open below 2.2 meters
           on the gauge. Check the graph below for trends and a 36 hour river
           level forecast.
         </p>

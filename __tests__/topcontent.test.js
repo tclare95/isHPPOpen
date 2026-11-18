@@ -58,8 +58,51 @@ describe('TopContent', () => {
 
     renderWithGraphContext(<TopContent cachedEvents={[]} />);
 
-    expect(screen.getByText(/The River Level is/)).toHaveTextContent('The River Level is 0.00 M');
+    // Never a fabricated reading while loading.
+    expect(screen.getByText(/The River Level is/)).toHaveTextContent('The River Level is loading');
+    expect(screen.queryByText(/0\.00/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/hours? old/)).not.toBeInTheDocument();
+    expect(screen.queryByTestId('weir-levels')).not.toBeInTheDocument();
     expect(screen.getAllByRole('status').length).toBeGreaterThan(0);
+  });
+
+  it('treats the levels fallback payload as unavailable, not as 0 m', () => {
+    mockResponses({
+      '/api/levels': { data: { level_data: [], forecast_data: [], health: { state: 'unavailable' } }, error: undefined, isPending: false },
+      '/api/s3forecast': { data: { forecast_data: [] }, error: undefined, isPending: false },
+      '/api/forecastaccuracy': { data: { accuracy_data: [] }, error: undefined, isPending: false },
+      '/api/waterquality/assessment': { data: undefined, error: undefined, isPending: false },
+    });
+
+    renderWithGraphContext(<TopContent cachedEvents={[]} />);
+
+    expect(screen.getByText(/The River Level is/)).toHaveTextContent('The River Level is unavailable');
+    expect(screen.getByText(/latest river level reading is unavailable/)).toBeInTheDocument();
+    expect(screen.queryByText(/0\.00/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/0 hours/)).not.toBeInTheDocument();
+    expect(screen.queryByTestId('weir-levels')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('vomit-factor')).not.toBeInTheDocument();
+  });
+
+  it('shows the age of a fresh reading and flags a stale one', () => {
+    const at = (minutes) => new Date(Date.now() - minutes * 60000).toISOString();
+    const respond = (minutes) => mockResponses({
+      '/api/levels': { data: { level_data: [{ reading_date: at(minutes), reading_level: 2.2 }] }, error: undefined, isPending: false },
+      '/api/s3forecast': { data: { forecast_data: [] }, error: undefined, isPending: false },
+      '/api/forecastaccuracy': { data: { accuracy_data: [] }, error: undefined, isPending: false },
+      '/api/waterquality/assessment': { data: undefined, error: undefined, isPending: false },
+    });
+
+    respond(12);
+    const { unmount } = renderWithGraphContext(<TopContent cachedEvents={[]} />);
+    expect(screen.getByText(/The River Level is/)).toHaveTextContent('The River Level is 2.20 m');
+    expect(screen.getByText(/reading is 12 minutes old\./)).toBeInTheDocument();
+    expect(screen.queryByText(/may be out of date/)).not.toBeInTheDocument();
+    unmount();
+
+    respond(150);
+    renderWithGraphContext(<TopContent cachedEvents={[]} />);
+    expect(screen.getByText(/reading is 2 hours old, so it may be out of date\./)).toBeInTheDocument();
   });
 
   it('renders shared fetch data in dependent child components', () => {
@@ -90,7 +133,7 @@ describe('TopContent', () => {
 
     renderWithGraphContext(<TopContent cachedEvents={[]} />);
 
-    expect(screen.getByText(/The River Level is/)).toHaveTextContent('The River Level is 1.45 M');
+    expect(screen.getByText(/The River Level is/)).toHaveTextContent('The River Level is 1.45 m');
     // The front page shows the server's assessment; it no longer computes one from density rows (#wq-assessment).
     expect(screen.getByTestId('vomit-factor')).toHaveTextContent('elevated');
     expect(mockUseFetch.mock.calls.map(([path]) => path)).not.toContain('/api/waterquality/csodensity?hours=3');

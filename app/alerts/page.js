@@ -17,7 +17,14 @@ import useFetch from "../../libs/useFetch";
 import PageHeader from "../../components/layout/site/PageHeader";
 
 function AlertsPageHeader() {
-  return <PageHeader title="Email alerts" lead="Set up an alert, or manage the alerts you already have." />;
+  // Same centred column as the panels below, so the title lines up with the content.
+  return (
+    <Row className="justify-content-center">
+      <Col lg={8}>
+        <PageHeader title="Email alerts" lead="Set up an alert, or manage the alerts you already have." />
+      </Col>
+    </Row>
+  );
 }
 
 // Each management read replaces the link's token, so the first token must be read exactly once:

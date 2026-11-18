@@ -4,6 +4,7 @@ import Button from 'react-bootstrap/Button';
 import ButtonGroup from 'react-bootstrap/ButtonGroup';
 import PropTypes from 'prop-types';
 import { WATER_QUALITY_CALIBRATION } from '../../libs/waterQualityIndicator';
+import StatusMessage from '../layout/site/StatusMessage';
 
 const Chart = dynamic(() => import('react-google-charts').then((mod) => mod.Chart), { ssr: false });
 
@@ -30,7 +31,7 @@ const WINDOW_LABELS = { 24: '24 hours', 120: '5 days' };
 export default function CsoChart({ data = [], error = null, isPending = false, hours = 120, onHoursChange = () => {}, windows = [24, 120] }) {
   const rows = useMemo(() => hourlyRows(data, hours), [data, hours]);
   if (isPending) return <p>Loading chart…</p>;
-  if (error) return <p>Unable to load chart data right now.</p>;
+  if (error) return <StatusMessage state="unavailable">Unable to load chart data right now.</StatusMessage>;
   if (!rows.length) return <p>No chart data is available.</p>;
   const latest = rows.at(-1)?.[1];
   const previous = rows.at(-2)?.[1];

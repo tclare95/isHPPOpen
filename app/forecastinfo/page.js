@@ -244,7 +244,7 @@ export default function ForecastInfoPage() {
         </Row>
 
         <Row className="justify-content-center mb-4">
-          <Col md={10} lg={8}>
+          <Col>
             <Card text="white" className="history-panel p-0">
               <Card.Header><h2 className="h5 mb-0">Forecast Accuracy</h2></Card.Header>
               <Card.Body>
@@ -284,7 +284,7 @@ export default function ForecastInfoPage() {
         </Row>
 
         <Row className="justify-content-center mb-4">
-          <Col md={10} lg={8}>
+          <Col>
             <Card text="white" className="history-panel p-0">
               <Card.Header>
                 <h2 className="h5 mb-0">
@@ -357,7 +357,7 @@ export default function ForecastInfoPage() {
         </Row>
 
         <Row className="justify-content-center mb-4">
-          <Col md={10} lg={8}>
+          <Col>
             <Card text="white" className="history-panel p-0">
               <Card.Header>
                 <h2 className="h5 mb-0">

@@ -7,6 +7,7 @@ import Form from 'react-bootstrap/Form';
 import PropTypes from 'prop-types';
 import { membershipUnavailable } from '../../libs/csoMembershipText';
 import { contributorsOf, ImpactPanel, impactReachStyle } from './csoImpactOverlay';
+import StatusMessage from '../layout/site/StatusMessage';
 
 const MapContainer = dynamic(() => import('react-leaflet').then((mod) => mod.MapContainer), { ssr: false });
 const TileLayer = dynamic(() => import('react-leaflet').then((mod) => mod.TileLayer), { ssr: false });
@@ -97,7 +98,7 @@ export default function WaterQualityMap({ locations = [], relatedLocations = nul
   const membershipNote = membershipUnavailable(membership) ? 'Upstream outfall list unavailable.' : null;
 
   if (isPending) return <p>Loading map data…</p>;
-  if (error) return <p>Unable to load map data right now.</p>;
+  if (error) return <StatusMessage state="unavailable">Unable to load map data right now.</StatusMessage>;
   const hasRiverGeometry = Boolean(riverTrace?.features?.length);
   const impactPanel = impactEnabled ? <ImpactPanel impact={impactError ? null : impact} isPending={impactPending} error={impactError}
     selectedId={impactId} onSelect={setImpactId} onShowHistory={onShowHistory} /> : null;

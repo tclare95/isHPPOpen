@@ -137,6 +137,22 @@ export function decideGaugeRule(rule, read, now) {
   return { kind: "advance", progress, replayed: newer.length, lateCleared: newCrossing };
 }
 
+/**
+ * Where an edited or resumed live gauge rule starts: the condition of the newest eligible fresh observation,
+ * recorded as a new marker without a transition. A rule already beyond its threshold starts `triggered`, so it
+ * notifies only after the reading clears and crosses again. Unusable evidence returns the usual skip or hold.
+ */
+export function decideGaugeBaseline(rule, read, now) {
+  const { latest, failure } = usableLatest(read, now);
+  if (failure) return failure;
+  if (read.conflicts.some((time) => time >= latest.time)) return hold("conflicting_history");
+  return {
+    kind: "baseline",
+    state: thresholdState(rule, latest.value).met ? "triggered" : "armed",
+    progress: { at: latest.at, value: latest.value, source: read.source, measurementId: read.measurementId },
+  };
+}
+
 /** A pending live-gauge delivery is re-sent only while the newest eligible fresh observation still meets the rule. */
 export function gaugeRetryGate(rule, read, now) {
   const { latest, failure } = usableLatest(read, now);

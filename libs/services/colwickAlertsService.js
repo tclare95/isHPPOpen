@@ -9,10 +9,10 @@ import { alertDescriptionOf as descriptionOf, alertNameOf as nameOf, alertStatio
 import { sendAlertConfirmationEmail, sendManageAlertsAccessEmail, sendThresholdAlertEmail } from "./alertMailerService";
 import { getCsoActivityAssessment } from "../waterQualityIndicator";
 import { alertRisk, ASSESSMENT_METHOD } from "../waterQualityAssessment";
-import { decideWaterQualityRule, summariseWaterQualityDecisions } from "../alerts/waterQualityAlertDecision";
+import { decideWaterQualityBaseline, decideWaterQualityRule, summariseWaterQualityDecisions } from "../alerts/waterQualityAlertDecision";
 import { getRdpAlertAssessment, getWaterQualityAssessmentMode, LEGACY_ASSESSMENT_VERSION } from "./waterQualityAssessmentService";
 import { createRequestLogger } from "../api/logger";
-import { decideGaugeRule, describeGaugeRead, gaugeRetryGate, getGaugeAlertSourceMode, isLiveGaugeRule } from "../alerts/gaugeAlertDecision";
+import { decideGaugeBaseline, decideGaugeRule, describeGaugeRead, gaugeRetryGate, getGaugeAlertSourceMode, isLiveGaugeRule } from "../alerts/gaugeAlertDecision";
 import { compareGaugeAlertShadow } from "../alerts/gaugeAlertShadow";
 
 export const ALERT_SUBSCRIPTIONS_COLLECTION = "alertSubscriptions";
@@ -44,7 +44,9 @@ function normalizeRule(payload) {
   return { alertType, gaugeKey: payload.gaugeKey, gaugeName: station.gaugeName, stationId: station.stationId, measureType: station.measureType, source: payload.source, direction: payload.direction, threshold: Number(Number(payload.threshold).toFixed(3)) };
 }
 function alertKey(email, rule) { return [email, rule.alertType, rule.gaugeKey || rule.desiredStatus || rule.riskLevel, rule.source || "", rule.direction || "", rule.threshold ?? ""].join("|"); }
-function managedRule(rule, now) { return { alertKey: rule.alertKey, alertType: typeOf(rule), gaugeName: nameOf(rule), source: rule.source || null, direction: rule.direction || null, threshold: rule.threshold ?? null, desiredStatus: rule.desiredStatus || null, riskLevel: rule.riskLevel || null, status: rule.status, createdAt: rule.createdAt || null, updatedAt: rule.updatedAt || null, confirmedAt: rule.confirmedAt || null, lastTriggeredAt: rule.lastTriggeredAt || null, description: descriptionOf(rule),
+function managedRule(rule, now, latestRun) { return { alertKey: rule.alertKey, alertType: typeOf(rule), gaugeName: nameOf(rule), source: rule.source || null, direction: rule.direction || null, threshold: rule.threshold ?? null, unit: unitOf(rule), desiredStatus: rule.desiredStatus || null, riskLevel: rule.riskLevel || null, status: rule.status, createdAt: rule.createdAt || null, updatedAt: rule.updatedAt || null, confirmedAt: rule.confirmedAt || null, pausedAt: rule.status === "paused" ? rule.pausedAt || null : null, lastTriggeredAt: rule.lastTriggeredAt || null, description: descriptionOf(rule),
+  // Edited or resumed, and not yet re-baselined by an evaluation run (see `rebaseline` below).
+  restarting: rule.status === "active" && Boolean(rule.rebaseline), evidence: evidenceOf(rule, latestRun, now),
   // A pending alert whose confirmation link has expired can never become active; the subscriber must request it again.
   confirmationExpired: rule.status === "pending_confirmation" && Boolean(rule.confirmationExpiresAt) && new Date(rule.confirmationExpiresAt) <= now }; }
 
@@ -72,8 +74,9 @@ export async function createColwickAlertSubscription(payload, { now = new Date()
   // Requesting an alert that is already active must not deactivate it (anyone who knows the address could
   // otherwise switch it off) or reset its alert state. It stays active with its existing unsubscribe link;
   // the emailed link only reports that it is already active. The response is identical either way.
+  // A paused alert is kept in the same way: re-requesting it neither resets nor resumes it.
   const existing = await subscriptions.findOne({ alertKey: key });
-  const keptActive = existing?.status === "active" && (await subscriptions.updateOne({ alertKey: key, status: "active" }, { $set: confirmation }))?.matchedCount === 1;
+  const keptActive = LIVE_STATUSES.includes(existing?.status) && (await subscriptions.updateOne({ alertKey: key, status: existing.status }, { $set: confirmation }))?.matchedCount === 1;
   const unsubscribeToken = keptActive ? existing.unsubscribeToken : createToken();
   if (!keptActive) {
     await subscriptions.updateOne({ alertKey: key }, { $set: { ...rule, email, alertKey: key, status: "pending_confirmation", ...confirmation, unsubscribeToken, updatedAt: timestamp(now), confirmedAt: null, unsubscribedAt: null, lastConditionState: "armed", lastTriggeredAt: null, lastEvaluatedAt: null }, $unset: { ...OBSERVATION_PROGRESS_UNSET, ...TRANSITION_STATE_UNSET }, $setOnInsert: { createdAt: timestamp(now) }, $inc: { stateRevision: 1 } }, { upsert: true });
@@ -81,17 +84,18 @@ export async function createColwickAlertSubscription(payload, { now = new Date()
   await sendAlertConfirmationEmail({ email, gaugeName: nameOf(rule), source: rule.source || "status", direction: rule.direction, threshold: rule.threshold, confirmationToken, unsubscribeToken, ruleDescription: descriptionOf(rule) });
   return { message: ALERT_PENDING_MESSAGE };
 }
-/** Returns `{ status: "confirmed" | "already_active", message }`; an unusable link is a 404. */
+/** Returns `{ status: "confirmed" | "already_active" | "already_paused", message }`; an unusable link is a 404. */
 export async function confirmColwickAlertSubscription(token, { now = new Date() } = {}) {
   if (!token) throw new HttpError(400, "Missing token parameter"); const { db } = await connectToDatabase(); const collection = db.collection(ALERT_SUBSCRIPTIONS_COLLECTION);
   const tokenHash = hashToken(token);
-  const rule = await collection.findOne({ confirmationTokenHash: tokenHash, status: { $in: ["pending_confirmation", "active"] } });
+  const rule = await collection.findOne({ confirmationTokenHash: tokenHash, status: { $in: ["pending_confirmation", ...LIVE_STATUSES] } });
   if (!rule || (rule.confirmationExpiresAt && new Date(rule.confirmationExpiresAt) <= now)) throw new HttpError(404, "This confirmation link is invalid, expired or has already been used.");
   const consumeToken = { $unset: { confirmationTokenHash: "", confirmationExpiresAt: "" } };
-  if (rule.status === "active") {
-    // A repeated request for an active alert: nothing to activate and no alert state to change.
-    await collection.updateOne({ alertKey: rule.alertKey, confirmationTokenHash: tokenHash, status: "active" }, consumeToken);
-    return { status: "already_active", message: "This alert is already active." };
+  if (LIVE_STATUSES.includes(rule.status)) {
+    // A repeated request for an active or paused alert: nothing to activate and no alert state to change.
+    // Confirming never resumes a paused alert; only its management link does.
+    await collection.updateOne({ alertKey: rule.alertKey, confirmationTokenHash: tokenHash, status: rule.status }, consumeToken);
+    return rule.status === "paused" ? { status: "already_paused", message: "This alert is paused." } : { status: "already_active", message: "This alert is already active." };
   }
   const result = await collection.updateOne({ alertKey: rule.alertKey, confirmationTokenHash: tokenHash, status: "pending_confirmation" }, { $set: { status: "active", confirmedAt: timestamp(now), updatedAt: timestamp(now) }, ...consumeToken });
   // A concurrent re-request or unsubscribe replaced this link: it did not activate anything.
@@ -104,8 +108,141 @@ export async function unsubscribeColwickAlertSubscription(token, { now = new Dat
 }
 async function managementSession(token, now) { if (!token) throw new HttpError(400, "Missing token parameter"); const { db } = await connectToDatabase(); const sessions = db.collection(ALERT_MANAGE_SESSIONS_COLLECTION); const session = await sessions.findOne({ tokenHash: hashToken(token) }); if (!session || new Date(session.expiresAt) <= now) throw new HttpError(404, "This management link has expired or has already been used. Request a new link below."); return { db, sessions, session }; }
 export async function requestColwickAlertManagementLink(emailInput, { now = new Date(), ip } = {}) { const email = normalizedEmail(await emailSchema.validate(emailInput)); const { db } = await connectToDatabase(); await limitRequests(db, email, ip, now); const token = createToken(); await db.collection(ALERT_MANAGE_SESSIONS_COLLECTION).updateOne({ email }, { $set: { email, tokenHash: hashToken(token), createdAt: timestamp(now), expiresAt: timestamp(new Date(now.getTime() + ALERT_MANAGE_SESSION_MS)) } }, { upsert: true }); await sendManageAlertsAccessEmail({ email, manageToken: token }); return { message: "Check your email for a link to manage your alerts. It expires in 30 minutes." }; }
-export async function listColwickAlertsForManagement(token, { now = new Date() } = {}) { const { db, sessions, session } = await managementSession(token, now); const rules = await db.collection(ALERT_SUBSCRIPTIONS_COLLECTION).find({ email: session.email, status: { $ne: "unsubscribed" } }).toArray(); const nextToken = createToken(); await sessions.updateOne({ email: session.email }, { $set: { tokenHash: hashToken(nextToken), createdAt: timestamp(now), expiresAt: timestamp(new Date(now.getTime() + ALERT_MANAGE_SESSION_MS)) } }); return { email: session.email, alerts: rules.map((rule) => managedRule(rule, now)), manageToken: nextToken }; }
+export async function listColwickAlertsForManagement(token, { now = new Date() } = {}) { const { db, sessions, session } = await managementSession(token, now); const rules = await db.collection(ALERT_SUBSCRIPTIONS_COLLECTION).find({ email: session.email, status: { $ne: "unsubscribed" } }).toArray(); const latestRun = rules.some((rule) => rule.status === "active") ? await latestFinishedRun(db) : null; const nextToken = createToken(); await sessions.updateOne({ email: session.email }, { $set: { tokenHash: hashToken(nextToken), createdAt: timestamp(now), expiresAt: timestamp(new Date(now.getTime() + ALERT_MANAGE_SESSION_MS)) } }); return { email: session.email, alerts: rules.map((rule) => managedRule(rule, now, latestRun)), manageToken: nextToken }; }
 export async function deleteManagedColwickAlert({ token, alertKey: key }, { now = new Date() } = {}) { if (!key) throw new HttpError(400, "Missing alertKey"); const { db, session } = await managementSession(token, now); const result = await db.collection(ALERT_SUBSCRIPTIONS_COLLECTION).updateOne({ email: session.email, alertKey: key, status: { $ne: "unsubscribed" } }, { $set: { status: "unsubscribed", unsubscribedAt: timestamp(now), updatedAt: timestamp(now) } }); if (!result?.matchedCount) throw new HttpError(404, "Alert not found"); return { message: "Alert removed." }; }
+
+// ---------------------------------------------------------------------------
+// Subscriber controls (Wave B): edit, pause and resume through the management link.
+//
+// Every change is one conditional update scoped to the link's email address and the rule's current
+// status, so a removed rule is never brought back and a concurrent change or evaluation wins cleanly.
+// A rule with a delivery in progress (`pendingTransitionId`) is not changed until it finishes.
+// Edits and resumes set `rebaseline`: the next run records the current condition without a transition,
+// so the change alone never sends an email and nothing missed while paused is sent afterwards. Until
+// then the rule is stored as `triggered`, which is also quiet for code that predates `rebaseline`.
+// Pending (unconfirmed) rules cannot be edited, paused or resumed, so none of these can activate one.
+// See docs/ALERT_EVALUATION_RELIABILITY.md#subscriber-controls-wave-b.
+// ---------------------------------------------------------------------------
+
+const LIVE_STATUSES = ["active", "paused"];
+export const ALERT_CHANGE_MESSAGES = Object.freeze({
+  edited: "Alert updated. It restarts from the next fresh reading, so this change will not send an email by itself.",
+  unchanged: "No changes to save.",
+  paused: "Alert paused. You will not get emails for it until you resume it.",
+  alreadyPaused: "This alert is already paused.",
+  resumed: "Alert resumed. It restarts from the next fresh reading, so you will not get emails for anything that happened while it was paused.",
+  alreadyActive: "This alert is already on.",
+});
+const NOT_FOUND_MESSAGE = "This alert was not found. It may have been removed.";
+const CONFIRM_FIRST_MESSAGE = "Confirm this alert from your email before changing it.";
+const SENDING_MESSAGE = "An email for this alert is being sent. Please try again in a few minutes.";
+const CHANGED_MESSAGE = "This alert changed while you were editing it. Please check it and try again.";
+const DUPLICATE_MESSAGE = "You already have an alert with these conditions.";
+const UNSUPPORTED_CHANGE_MESSAGE = "That change is not supported. Stop this alert and set up a new one instead.";
+/** Conditions a subscriber can change per alert type; the alert type, gauge and live/forecast source stay fixed. */
+const EDITABLE_FIELDS = Object.freeze({ gauge: ["direction", "threshold"], hpp_status: ["desiredStatus"], water_quality: ["riskLevel"] });
+const editSchema = yup.object({ direction: yup.string().oneOf(["above", "below"]), threshold: yup.number().typeError("Enter a number for the threshold").min(0).max(10000), desiredStatus: yup.string().oneOf(["open", "closed"]), riskLevel: yup.string().oneOf(["amber", "red"]) });
+const rebaselineState = (reason, now) => ({ rebaseline: { reason, requestedAt: timestamp(now) }, lastConditionState: "triggered" });
+const RESTART_UNSET = { ...OBSERVATION_PROGRESS_UNSET, ...TRANSITION_STATE_UNSET };
+
+async function managedSubscription(token, key, now) {
+  if (!key) throw new HttpError(400, "Missing alertKey");
+  const { db, session } = await managementSession(token, now);
+  const subscriptions = db.collection(ALERT_SUBSCRIPTIONS_COLLECTION);
+  const rule = await subscriptions.findOne({ email: session.email, alertKey: key, status: { $ne: "unsubscribed" } });
+  if (!rule) throw new HttpError(404, NOT_FOUND_MESSAGE);
+  if (!LIVE_STATUSES.includes(rule.status)) throw new HttpError(409, CONFIRM_FIRST_MESSAGE);
+  return { subscriptions, email: session.email, rule };
+}
+
+/** Why a conditional change matched nothing, from a fresh read of the caller's own rule. */
+async function refusedChange(subscriptions, email, key) {
+  const current = await subscriptions.findOne({ email, alertKey: key, status: { $ne: "unsubscribed" } });
+  if (!current) return new HttpError(404, NOT_FOUND_MESSAGE);
+  if (current.pendingTransitionId) return new HttpError(409, SENDING_MESSAGE);
+  return new HttpError(409, CHANGED_MESSAGE);
+}
+
+async function editedRule(rule, changes) {
+  if (!changes || typeof changes !== "object" || Array.isArray(changes) || Object.keys(changes).length === 0) throw new HttpError(400, "Missing changes");
+  const editable = EDITABLE_FIELDS[typeOf(rule)] || [];
+  if (Object.keys(changes).some((field) => !editable.includes(field))) throw new HttpError(400, UNSUPPORTED_CHANGE_MESSAGE);
+  const parsed = await editSchema.validate(changes, { stripUnknown: true });
+  const current = { alertType: typeOf(rule), gaugeKey: rule.gaugeKey, source: rule.source, direction: rule.direction, threshold: rule.threshold, desiredStatus: rule.desiredStatus, riskLevel: rule.riskLevel };
+  return normalizeRule({ ...current, ...Object.fromEntries(Object.entries(parsed).filter(([, value]) => value !== undefined)) });
+}
+
+/** Change the conditions of an active or paused alert. Returns `{ message, alertKey, changed }`. */
+export async function editManagedColwickAlert({ token, alertKey: key, changes }, { now = new Date() } = {}) {
+  const { subscriptions, email, rule } = await managedSubscription(token, key, now);
+  const next = await editedRule(rule, changes);
+  // The alert key is derived from the conditions, so an edited rule moves to the key of its new conditions.
+  const nextKey = alertKey(email, next);
+  if (nextKey === key) return { message: ALERT_CHANGE_MESSAGES.unchanged, alertKey: key, changed: false };
+  if (rule.pendingTransitionId) throw new HttpError(409, SENDING_MESSAGE);
+  const at = timestamp(now);
+  const occupant = await subscriptions.findOne({ alertKey: nextKey });
+  if (occupant && occupant.status !== "unsubscribed") throw new HttpError(409, DUPLICATE_MESSAGE);
+  // A removed alert with the new conditions keeps its record under a retired key, so the alert key stays unique.
+  // (Re-subscribing to removed conditions overwrites that record instead.) Its delivery records are not touched.
+  if (occupant) await subscriptions.updateOne({ alertKey: nextKey, status: "unsubscribed" }, { $set: { alertKey: `${nextKey}|superseded:${at}`, supersededAt: at } });
+  const result = await subscriptions.updateOne(
+    { email, alertKey: key, status: rule.status, stateRevision: rule.stateRevision ?? null, pendingTransitionId: null },
+    { $set: { ...next, alertKey: nextKey, updatedAt: at, editedAt: at, ...rebaselineState("edited", now) }, $unset: { ...RESTART_UNSET, confirmationTokenHash: "", confirmationExpiresAt: "" }, $inc: { stateRevision: 1 } }
+  );
+  if (result?.matchedCount !== 1) throw await refusedChange(subscriptions, email, key);
+  return { message: ALERT_CHANGE_MESSAGES.edited, alertKey: nextKey, changed: true };
+}
+
+/** Pause an active alert. Repeating the request is harmless. */
+export async function pauseManagedColwickAlert({ token, alertKey: key }, { now = new Date() } = {}) {
+  const { subscriptions, email, rule } = await managedSubscription(token, key, now);
+  if (rule.status === "paused") return { message: ALERT_CHANGE_MESSAGES.alreadyPaused };
+  if (rule.pendingTransitionId) throw new HttpError(409, SENDING_MESSAGE);
+  const at = timestamp(now);
+  // `stateRevision` moves on, so an evaluation that read the rule before the pause cannot write a transition to it.
+  const result = await subscriptions.updateOne({ email, alertKey: key, status: "active", pendingTransitionId: null }, { $set: { status: "paused", pausedAt: at, updatedAt: at }, $inc: { stateRevision: 1 } });
+  if (result?.matchedCount !== 1) throw await refusedChange(subscriptions, email, key);
+  return { message: ALERT_CHANGE_MESSAGES.paused };
+}
+
+/** Resume a paused alert from current evidence. Repeating the request is harmless. */
+export async function resumeManagedColwickAlert({ token, alertKey: key }, { now = new Date() } = {}) {
+  const { subscriptions, email, rule } = await managedSubscription(token, key, now);
+  if (rule.status === "active") return { message: ALERT_CHANGE_MESSAGES.alreadyActive };
+  const at = timestamp(now);
+  const result = await subscriptions.updateOne(
+    { email, alertKey: key, status: "paused", pendingTransitionId: null },
+    { $set: { status: "active", resumedAt: at, updatedAt: at, ...rebaselineState("resumed", now) }, $unset: { ...RESTART_UNSET, pausedAt: "" }, $inc: { stateRevision: 1 } }
+  );
+  if (result?.matchedCount !== 1) throw await refusedChange(subscriptions, email, key);
+  return { message: ALERT_CHANGE_MESSAGES.resumed };
+}
+
+// What the latest evaluation run recorded about an active alert's sources. It is only ever a caution:
+// "current" means no recent problem was recorded, never that an email is assured.
+const EVIDENCE_RUN_STALE_MS = 45 * 60 * 1000;
+function sourcesOf(rule) {
+  const type = typeOf(rule);
+  if (type === "hpp_status") return ["hpp"];
+  if (type === "water_quality") return ["water", "cso", "wq-assessment", "wq-assessment-config"];
+  return rule.source === "forecast" ? ["forecast"] : [`gauge:${rule.gaugeKey}`, "gauge-source-config"];
+}
+async function latestFinishedRun(db) {
+  try {
+    return await db.collection(ALERT_RUNS_COLLECTION).findOne({ status: { $in: ["success", "degraded", "failed"] } }, { sort: { startedAt: -1 } });
+  } catch {
+    return null;
+  }
+}
+/** `current` | `delayed` | `unknown` for an active alert, otherwise null. */
+function evidenceOf(rule, run, now) {
+  if (rule.status !== "active") return null;
+  if (!run || run.status === "failed" || ageMs(run.startedAt, now) > EVIDENCE_RUN_STALE_MS) return "unknown";
+  if (rule.gaugeHold) return "delayed";
+  const failures = Array.isArray(run.sourceFailures) ? run.sourceFailures : [];
+  return sourcesOf(rule).some((source) => failures.includes(source)) ? "delayed" : "current";
+}
 
 const usable = (result) => result.status === "fulfilled" && (!result.value?.health || result.value.health.state === "fresh");
 // Forecast gauge rules only. Live gauge rules are decided from alert-safe observations (libs/alerts).
@@ -380,6 +517,41 @@ function createEvaluation(db, now) {
     await subscriptions.updateOne({ alertKey: rule.alertKey }, { $set: { lastEvaluatedAt: at, updatedAt: at } });
   }
 
+  /**
+   * The condition an edited or resumed rule starts from, from this run's evidence, or null when that
+   * evidence is unavailable (the rule then stays quiet and waits for a later run).
+   */
+  function baselineOf(rule, sources) {
+    if (isLiveGaugeRule(rule)) {
+      const decision = decideGaugeBaseline(rule, sources.gauges?.get(rule.gaugeKey), now);
+      return decision.kind === "baseline" ? { state: decision.state, progress: decision.progress } : null;
+    }
+    if (typeOf(rule) === "water_quality" && sources.wqMode === null) return null;
+    if (typeOf(rule) === "water_quality" && sources.wqMode === "rdp") {
+      const risk = sources.wq.status === "fulfilled" ? sources.wq.risk : null;
+      const decision = decideWaterQualityBaseline(rule, risk);
+      if (decision.kind !== "baseline") return null;
+      return { state: "armed", progress: { kind: "wq", version: ASSESSMENT_METHOD.version, at: risk.at, lowest: risk.lowest, highest: risk.highest, suppressUntilClear: decision.suppressUntilClear } };
+    }
+    const next = condition(rule, sources, now);
+    return next ? { state: next.met ? "triggered" : "armed", progress: null } : null;
+  }
+
+  /** Record an edited or resumed rule's current condition without a transition, so the change never notifies. */
+  async function rebaseline(rule, sources) {
+    const baseline = baselineOf(rule, sources);
+    if (!baseline) {
+      await touch(rule);
+      return "skipped";
+    }
+    const marker = progressUpdate(baseline.progress, baseline.state, rule.lastTransitionId);
+    const result = await subscriptions.updateOne(
+      { alertKey: rule.alertKey, status: "active", stateRevision: rule.stateRevision ?? null, pendingTransitionId: null },
+      { $set: { lastConditionState: baseline.state, lastEvaluatedAt: at, rebaselinedAt: at, updatedAt: at, ...marker.set }, $unset: { rebaseline: "", ...marker.unset }, $inc: { stateRevision: 1 } }
+    );
+    return result?.matchedCount === 1 ? "enrolled" : "conflict";
+  }
+
   async function evaluateLiveGauge(rule, read, holdReasons) {
     const decision = decideGaugeRule(rule, read, now);
     switch (decision.kind) {
@@ -429,6 +601,7 @@ function createEvaluation(db, now) {
   }
 
   async function evaluate(rule, sources) {
+    if (rule.rebaseline && !rule.pendingTransitionId) return rebaseline(rule, sources);
     if (typeOf(rule) === "water_quality") {
       if (rule.pendingTransitionId) return resumePending(rule, null);
       if (sources.wqMode === "rdp") return evaluateWaterQuality(rule, sources.wq.status === "fulfilled" ? sources.wq.risk : null, ASSESSMENT_METHOD.version);
@@ -548,7 +721,7 @@ export async function runColwickAlerts({ now = new Date() } = {}) {
     const liveRules = rules.filter(isLiveGaugeRule);
     const gaugeKeys = [...new Set(liveRules.map((rule) => rule.gaugeKey))];
     // Pre-run copies for the shadow comparison; evaluation never sees them.
-    const shadowRules = gaugeMode === "shadow" ? structuredClone(liveRules) : null;
+    const shadowRules = gaugeMode === "shadow" ? structuredClone(liveRules.filter((rule) => !rule.rebaseline)) : null;
     const shadowRead = gaugeMode === "shadow" && gaugeKeys.length ? readGauges("rdp", gaugeKeys, now).catch(() => null) : null;
     const authoritativeGauges = gaugeMode ? readGauges(gaugeMode === "rdp" ? "rdp" : "legacy", gaugeKeys, now) : Promise.resolve(new Map());
     const wqRules = rules.filter((rule) => typeOf(rule) === "water_quality");

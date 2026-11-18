@@ -1,10 +1,12 @@
-import { signIn, useSession } from 'next-auth/react'
-import Alert from 'react-bootstrap/Alert'
-import Button from 'react-bootstrap/Button'
+import PropTypes from 'prop-types'
+import { useSession } from 'next-auth/react'
 import Card from 'react-bootstrap/Card'
 import Container from 'react-bootstrap/Container'
 import Spinner from 'react-bootstrap/Spinner'
+import AdminAccessNotice from './adminaccessnotice'
 
+// Client-side defence in depth; app/admin/layout.js is the server-side gate and the admin APIs
+// enforce authorization independently.
 export default function AdminBody (props) {
     const { data: session, status } = useSession()
 
@@ -21,31 +23,21 @@ export default function AdminBody (props) {
         )
     }
 
-    if (!session) {
+    if (!session?.user?.isAdmin) {
         return (
             <Container fluid="lg" className="pb-5">
-                <Card bg="dark" text="light" border="secondary" className="text-center py-5 shadow-sm">
-                    <Card.Body>
-                        <Card.Title className="mb-3">Admin sign-in required</Card.Title>
-                        <Card.Text className="text-secondary mb-4">
-                            Sign in to manage events and update the site banner.
-                        </Card.Text>
-                        <Button onClick={signIn}>Sign in</Button>
-                    </Card.Body>
-                </Card>
-            </Container>
-        )
-    }
-
-    if (session) {
-        return (
-            <Container fluid="lg" className="pb-5">
-                {props.children}
+                <AdminAccessNotice state={session ? 'denied' : 'signed-out'} subject={session?.user?.id || null} />
             </Container>
         )
     }
 
     return (
-        <Alert variant="danger">Unable to load the admin area.</Alert>
+        <Container fluid="lg" className="pb-5">
+            {props.children}
+        </Container>
     )
+}
+
+AdminBody.propTypes = {
+    children: PropTypes.node,
 }

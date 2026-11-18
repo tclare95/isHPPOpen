@@ -35,7 +35,7 @@ describe('Editorial writes across the real Next.js cache boundary', () => {
     });
     events = [{ _id: 'event-1', event_name: 'Original event' }];
     banner = { banner_message: 'Original notice', banner_enabled: true };
-    getServerSession.mockResolvedValue({ user: { email: 'admin@test.com' } });
+    getServerSession.mockResolvedValue({ user: { id: 'auth0|test-admin', email: 'admin@test.com' } });
     eventsService.fetchUpcomingEvents.mockImplementation(async () => ({ eventsArray: events }));
     bannerService.getBanners.mockImplementation(async () => [banner]);
     eventsService.upsertEvent.mockImplementation(async ({ new_event_name }) => {

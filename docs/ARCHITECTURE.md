@@ -96,10 +96,15 @@ Editorial writes use the shared `libs/cache/revalidate.js` helper with `revalida
 
 ### AuthN/AuthZ
 - NextAuth is configured in `app/api/auth/[...nextauth]/route.js` using shared options from `libs/auth/authOptions.js`.
-- Protected mutations (e.g., POST/DELETE in events, POST in site banner) rely on server session checks via shared `requireRouteSession()`.
-- App Router route handlers use `requireRouteSession()` from `libs/api/httpApp.js`.
-- Unauthenticated protected writes return `401` with `{ message: "Unauthorized" }`.
-- Use `403` only for authenticated users lacking required permissions/roles (if/when role-based authorization is introduced).
+- Admin authorization is one policy in `libs/auth/adminAccess.js`: with `ADMIN_AUTH0_SUBS` unset any authenticated
+  session is admin (trust relies on the Auth0 tenant restricting sign-up); when set, only the listed stable `sub`s are
+  admins. See [ADMIN-AUTHORIZATION.md](ADMIN-AUTHORIZATION.md).
+- Privileged handlers (events POST/DELETE, site banner POST, every `app/api/admin/*` route) use `requireRouteAdmin()` from
+  `libs/api/httpApp.js`; `requireRouteSession()` alone only proves sign-in and must not guard admin actions.
+- Unauthenticated requests return `401` with `{ message: "Unauthorized" }`; authenticated non-admins return `403`
+  with `{ message: "Forbidden" }`.
+- `app/admin/layout.js` gates every `/admin` page server-side and shows a not-authorised state instead of admin UI.
+- `__tests__/api/admin-authorization.test.js` inventories `app/api`; classify any new mutating or admin handler there.
 
 ## 2.1) API route conventions
 - Prefer `message` as the standard error response key.
@@ -184,8 +189,8 @@ Editorial writes use the shared `libs/cache/revalidate.js` helper with `revalida
    - Live gauge rules (#51-D) read one bounded, uncached series per alerted measurement from the run's pinned `RDP_GAUGE_ALERTS_SOURCE` (`legacy` EA or `rdp`; `shadow` = legacy plus a pure, logged RDP comparison). Observed-time progress is stored on the subscription inside the same `stateRevision` compare-and-set; catch-up is chronological and bounded, notifications require the newest fresh (≤30 min) observation to still meet the rule, and ambiguous continuity holds the rule. Pure logic lives in `libs/alerts/`. See [RDP-GAUGE-ALERTS-51D.md](RDP-GAUGE-ALERTS-51D.md).
    - Alert emails are transactional and use a Resend-compatible HTTP integration. Required env vars are `SITE_URL`, `RESEND_API_KEY`, `ALERTS_FROM_EMAIL`, and `CRON_SECRET`.
    - Management links are email-scoped, 30-minute tokens stored separately from alert subscriptions so users can view and remove their alerts without a full account system. Confirmation links expire after 24 hours.
-   - Operational APIs return additive `health` metadata (`source`, `generatedAt`, `fetchedAt`, `ageSeconds`, and `state`). Most feeds are stale after 30 minutes; predictor forecasts use a one-hour window. HPP status is fresh when its MongoDB query succeeds because its source only writes on 2.2m boundary transitions. The authenticated `/api/admin/operational-health` endpoint is the safe operator diagnostic view.
-   - Operational-health diagnostics check the five sources concurrently and report integer `latencyMs` measured after each awaited check using a monotonic clock. A failed source returns sanitized `unavailable` health without concealing other results; unauthenticated requests return the standard `401` envelope before checking sources.
+   - Operational APIs return additive `health` metadata (`source`, `generatedAt`, `fetchedAt`, `ageSeconds`, and `state`). Most feeds are stale after 30 minutes; predictor forecasts use a one-hour window. HPP status is fresh when its MongoDB query succeeds because its source only writes on 2.2m boundary transitions. The admin-only `/api/admin/operational-health` endpoint is the safe operator diagnostic view.
+   - Operational-health diagnostics check the five sources concurrently and report integer `latencyMs` measured after each awaited check using a monotonic clock. A failed source returns sanitized `unavailable` health without concealing other results; unauthenticated requests return the standard `401` envelope and non-admins `403` before checking sources.
 
 8. **Admin editing experience**
    - Admin pages now use a more consistent editing pattern across events and site banner workflows.

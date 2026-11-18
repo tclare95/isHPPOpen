@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { HttpError } from "./http";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../auth/authOptions";
+import { ADMIN_ACCESS, getAdminAccess } from "../auth/adminAccess";
 
 export function sendRouteSuccess(data, status = 200, headers = undefined) {
   return NextResponse.json({ ok: true, data }, { status, headers });
@@ -46,6 +47,21 @@ export async function requireRouteSession() {
 
   if (!session) {
     throw new HttpError(401, "Unauthorized");
+  }
+
+  return session;
+}
+
+/**
+ * Requires an administrator: `401` without a session; `403` for an authenticated identity outside
+ * ADMIN_AUTH0_SUBS when that optional allowlist is set (see libs/auth/adminAccess.js).
+ * Use this, not requireRouteSession(), for every admin page API and privileged mutation.
+ */
+export async function requireRouteAdmin() {
+  const session = await requireRouteSession();
+
+  if (getAdminAccess(session.user?.id) !== ADMIN_ACCESS.GRANTED) {
+    throw new HttpError(403, "Forbidden");
   }
 
   return session;

@@ -64,6 +64,7 @@ describe('CsoCatchmentMonitoring', () => {
     expect(screen.getByText('Not read (incomplete collection): 30')).toBeInTheDocument();
     expect(screen.getByText(/Typical report age 7 min; read 2 min ago/)).toBeInTheDocument();
     expect(screen.getByText(/same location as 1 other outfall/)).toBeInTheDocument();
+    expect(screen.getByText(/These counts do not change the indication, chart or alerts above/)).toBeInTheDocument();
   });
 
   test('the legacy density comparison stays in the API response, not on the public page', () => {

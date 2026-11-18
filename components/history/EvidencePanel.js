@@ -23,8 +23,8 @@ export default function EvidencePanel({ summary, coverage, readAt, readingsLabel
         <Accordion.Item eventKey="threshold">
           <Accordion.Header>River level conditions are not HPP closures</Accordion.Header>
           <Accordion.Body>
-            <p>HPP uses a river-level rule at Colwick: below {threshold} the level is below the threshold; at or above {threshold} the threshold is met. These pages describe what the <em>observed river level</em> did. They are not a record of when the course actually opened or closed.</p>
-            <p className="mb-0">HPP can close for other reasons (events, maintenance, water quality, staff decisions), and the live status uses its own evidence and timing. The operational status history on the home page is kept separately and is not changed by anything here.</p>
+            <p>HPP uses a river-level rule at Colwick: the course is generally open below {threshold}. These pages describe what the <em>observed river level</em> did; they are not a record of when the course actually opened or closed.</p>
+            <p className="mb-0">HPP can close for other reasons (events, maintenance, water quality, staff decisions), and the live status on the home page is recorded separately.</p>
           </Accordion.Body>
         </Accordion.Item>
         <Accordion.Item eventKey="time">

@@ -4,8 +4,7 @@ import PropTypes from "prop-types";
 import Alert from "react-bootstrap/Alert";
 import Badge from "react-bootstrap/Badge";
 import Button from "react-bootstrap/Button";
-import Card from "react-bootstrap/Card";
-import Spinner from "react-bootstrap/Spinner";
+import StatusMessage from "../layout/site/StatusMessage";
 import Stack from "react-bootstrap/Stack";
 
 function formatSource(source) {
@@ -48,12 +47,11 @@ function AlertRow({ alert, busyAlertKey, onRemove }) {
   const status = formatStatus(alert);
 
   return (
-    <Card bg="black" text="light" border="secondary">
-      <Card.Body>
+    <div className="history-tile">
         <Stack direction="horizontal" className="justify-content-between align-items-start gap-3 flex-wrap mb-3">
           <div>
             <div className="fw-semibold mb-1">{alert.gaugeName}</div>
-            <div className="text-secondary small">
+            <div className="history-muted small">
               {alert.description || (alert.threshold !== null ? `${formatSource(alert.source)} • ${formatDirection(alert.direction)} ${Number(alert.threshold).toFixed(2)} m` : "Status alert")}
             </div>
           </div>
@@ -62,7 +60,7 @@ function AlertRow({ alert, busyAlertKey, onRemove }) {
 
         {status.note ? <div className="small mb-2">{status.note}</div> : null}
 
-        <div className="small text-secondary mb-3">
+        <div className="small history-muted mb-3">
           Created: {formatDate(alert.createdAt)}<br />
           Last alert email: {alert.lastTriggeredAt ? formatDate(alert.lastTriggeredAt) : "none yet"}
         </div>
@@ -76,8 +74,7 @@ function AlertRow({ alert, busyAlertKey, onRemove }) {
             {busyAlertKey === alert.alertKey ? "Stopping…" : "Stop this alert"}
           </Button>
         </div>
-      </Card.Body>
-    </Card>
+    </div>
   );
 }
 
@@ -115,22 +112,22 @@ AlertsManagementFeedback.propTypes = {
 
 export function AlertsManagementContent({ data, error, isPending, busyAlertKey, onRemove }) {
   if (isPending) {
-    return <div className="text-center py-4"><Spinner animation="border" role="status" /></div>;
+    return <StatusMessage state="loading">Loading your alerts…</StatusMessage>;
   }
 
   if (error) {
     // 404 is an unusable link; anything else is a temporary failure. Neither reveals whose alerts these are.
     return (
-      <Alert variant={error.status === 404 ? "warning" : "danger"}>
+      <StatusMessage state={error.status === 404 ? "unavailable" : "error"}>
         {error.status === 404
           ? "This management link has expired or has already been used. Request a new link below."
           : "We could not load your alerts just now. Please try again, or request a new link below."}
-      </Alert>
+      </StatusMessage>
     );
   }
 
   if (data?.alerts?.length === 0) {
-    return <Alert variant="secondary">There are no active or pending alerts for this email address.</Alert>;
+    return <StatusMessage state="empty">There are no active or pending alerts for this email address.</StatusMessage>;
   }
 
   if (!data?.alerts?.length) {

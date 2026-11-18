@@ -1,6 +1,5 @@
 import PropTypes from "prop-types";
 import { useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
 import Alert from "react-bootstrap/Alert";
 import Badge from "react-bootstrap/Badge";
 import Button from "react-bootstrap/Button";
@@ -39,21 +38,11 @@ function getAllComparisonKeys() {
 }
 
 export default function TrentDashboard({ initialViewMode = "level" }) {
-  const searchParams = useSearchParams();
   const [numDays, setNumDays] = useState(3);
   const [viewMode, setViewMode] = useState(initialViewMode);
   const [selectedKeys, setSelectedKeys] = useState(getAllComparisonKeys);
   const [overviewHidden, setOverviewHidden] = useState(false);
   const { data, error, isPending } = useFetch("/api/trentweirs", SWR_15_MINUTES);
-  const alertStatus = searchParams?.get("alertStatus");
-  const alertMessage = searchParams?.get("alertMessage");
-
-  const dashboardAlertVariant = alertStatus === "error"
-    ? "danger"
-    : alertStatus === "unsubscribed"
-      ? "secondary"
-      : "success";
-
   const selectedStations = useMemo(
     () => TRENT_CHART_STATIONS.filter((station) => selectedKeys.includes(getTrentStationKey(station))),
     [selectedKeys]
@@ -256,11 +245,6 @@ export default function TrentDashboard({ initialViewMode = "level" }) {
 
   return (
     <>
-      {alertStatus && alertMessage ? (
-        <Alert variant={dashboardAlertVariant} className="mb-4">
-          {alertMessage}
-        </Alert>
-      ) : null}
       {controlsSection}
       {overviewHidden ? null : summarySection}
       {comparisonSection}

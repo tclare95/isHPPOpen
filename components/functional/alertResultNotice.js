@@ -1,7 +1,6 @@
 "use client";
 
 import PropTypes from "prop-types";
-import Alert from "react-bootstrap/Alert";
 
 // Fixed copy for the result codes the confirm/unsubscribe links redirect with. The URL only selects a
 // message; it can never supply text, so a crafted link cannot show a fake "active" subscription.
@@ -15,10 +14,19 @@ export const ALERT_RESULT_COPY = Object.freeze({
   unsubscribe_error: { variant: "danger", text: "We could not stop your alert just now. Please try the link again, or request a management link below." },
 });
 
+// Plain /history notices: neutral for done or unchanged, warning for "nothing changed, act", an alert for a failure.
+const NOTICE_CLASS = {
+  success: "history-notice",
+  info: "history-notice",
+  secondary: "history-notice",
+  warning: "history-notice history-notice--warning",
+  danger: "alert alert-danger",
+};
+
 export default function AlertResultNotice({ result }) {
   const copy = ALERT_RESULT_COPY[result];
   if (!copy) return null;
-  return <Alert variant={copy.variant} role="status">{copy.text}</Alert>;
+  return <p className={`${NOTICE_CLASS[copy.variant]} mb-3`} role="status" data-variant={copy.variant}>{copy.text}</p>;
 }
 
 AlertResultNotice.propTypes = {

@@ -51,7 +51,7 @@ describe('OpenTitle', () => {
   test('shows the recorded open status even when the level alone would say closed', async () => {
     mockResponses({ levels: freshLevel(2.5), status: recorded(true) });
     render(<OpenTitle cachedEvents={[]} />);
-    expect(await heading()).toHaveTextContent('HPP is (probably) Open');
+    expect(await heading()).toHaveTextContent('HPP is Open');
     expect(screen.getByText(/latest reading \(2\.50 m\) is at or above 2\.2 m/)).toBeInTheDocument();
   });
 
@@ -66,7 +66,7 @@ describe('OpenTitle', () => {
   test('at exactly 2.2 m a recorded open status is flagged as not yet updated, never shown as closed', async () => {
     mockResponses({ levels: freshLevel(2.2), status: recorded(true) });
     render(<OpenTitle cachedEvents={[]} />);
-    expect(await heading()).toHaveTextContent('HPP is (probably) Open');
+    expect(await heading()).toHaveTextContent('HPP is Open');
     expect(screen.getByText(/latest reading \(2\.20 m\) is at or above 2\.2 m/)).toBeInTheDocument();
   });
 
@@ -130,6 +130,6 @@ describe('OpenTitle', () => {
     ];
     mockResponses();
     render(<OpenTitle cachedEvents={events} />);
-    expect(await heading()).toHaveTextContent('HPP is (probably) Open');
+    expect(await heading()).toHaveTextContent('HPP is Open');
   });
 });

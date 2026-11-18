@@ -7,11 +7,11 @@ import useFetch from "../../../libs/useFetch";
 import VomitFactor from "../../functional/vomitfactor";
 import WeirLevels from "../../functional/weirlevels";
 import ForecastChartWithConfidence from "../../functional/forecastChart";
-import Spinner from "react-bootstrap/Spinner";
 import GraphContext from "../../../libs/context/graphcontrol";
 import Link from "next/link";
 import PropTypes from "prop-types";
 import { SWR_15_MINUTES } from "../../../libs/dataFreshness";
+import StatusMessage from "../../layout/site/StatusMessage";
 import {
   formatLevelMetres,
   formatReadingAge,
@@ -32,14 +32,22 @@ function formatRiverLevel(reading, isPending) {
   return formatLevelMetres(reading.level);
 }
 
-function describeReadingAge(reading, freshness, currentTime) {
+function ReadingAge({ reading, freshness, currentTime }) {
   if (!reading) {
-    return "The latest river level reading is unavailable right now.";
+    return <StatusMessage state="unavailable" className="d-inline-block mb-2">The latest river level reading is unavailable right now.</StatusMessage>;
   }
 
   const age = `The river level reading is ${formatReadingAge(reading.observedAt, currentTime)} old`;
-  return freshness === "stale" ? `${age}, so it may be out of date.` : `${age}.`;
+  return freshness === "stale"
+    ? <StatusMessage state="stale" className="d-inline-block mb-2">{`${age}, so it may be out of date.`}</StatusMessage>
+    : <p className="history-muted small mb-2">{`${age}.`}</p>;
 }
+
+ReadingAge.propTypes = {
+  reading: PropTypes.shape({ level: PropTypes.number, observedAt: PropTypes.instanceOf(Date) }),
+  freshness: PropTypes.string,
+  currentTime: PropTypes.instanceOf(Date).isRequired,
+};
 
 function renderForecastContent({
   isPending,
@@ -52,11 +60,11 @@ function renderForecastContent({
   accuracyData,
 }) {
   if (isPending || forecastPending) {
-    return <Spinner animation="border" role="status" />;
+    return <StatusMessage state="loading">Loading the river level chart…</StatusMessage>;
   }
 
   if (hasOperationalError) {
-    return <p>Forecast and level data are unavailable right now.</p>;
+    return <StatusMessage state="unavailable">Forecast and level data are unavailable right now.</StatusMessage>;
   }
 
   return (
@@ -109,9 +117,9 @@ export default function TopContent(props) {
       </Row>
       <Row className="align-items-center">
         <Col>
-          <h3>
-            The River Level is {riverLevelDisplay}
-          </h3>
+          <h2 className="h3">
+            The river level is {riverLevelDisplay}
+          </h2>
           <a href="#waterquality">
             {!reading ? null : (
               <VomitFactor assessment={waterQualityAssessment?.current ?? null} isPending={assessmentPending} />
@@ -120,31 +128,16 @@ export default function TopContent(props) {
         </Col>
       </Row>
       <Row className="justify-content-center">
-        {isPending ? <Spinner animation="border" role="status" /> : null}
+        {isPending ? <StatusMessage state="loading" className="d-inline-block w-auto">Loading the latest river level…</StatusMessage> : null}
         {reading ? <WeirLevels currentLevel={reading.level} /> : null}
       </Row>
-      <Row className="justify-content-center ">
-        <p>
-          {isPending ? null : `${describeReadingAge(reading, freshness, currentTime)} `}
-          Generally HPP white water course is open below 2.2 meters
-          on the gauge. Check the graph below for trends and a 36 hour river
-          level forecast.
-        </p>
-        <p>
-          Need some new paddling kit or forgotten something? Check out{" "}
-          <a
-            href="https://www.flowkayaks.co.uk/"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Flow Kayaks
-          </a>{" "}
-          who are just over the river.
-        </p>
-        <p>
-          Check below the graph for details about the availability of slots
-          during sessions, and events that may affect the status of the course.
-        </p>
+      <Row className="justify-content-center">
+        <Col xs={12}>
+          {isPending ? null : <ReadingAge reading={reading} freshness={freshness} currentTime={currentTime} />}
+          <p>
+            HPP is generally open when the gauge is below 2.2 m. The chart shows recent levels and a 36-hour forecast.
+          </p>
+        </Col>
       </Row>
       <Row className="justify-content-center text-white mt-2" id="chart">
         <Col className="justify-content-center text-center">
@@ -169,6 +162,9 @@ export default function TopContent(props) {
           >
             Reset graph to HPP guidelines
           </Button>
+          <p className="history-muted small mt-3">
+            Need kit? <a href="https://www.flowkayaks.co.uk/" target="_blank" rel="noopener noreferrer">Flow Kayaks</a> is just over the river.
+          </p>
         </Col>
       </Row>
     </div>

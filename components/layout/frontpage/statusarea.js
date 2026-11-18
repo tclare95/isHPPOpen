@@ -1,4 +1,5 @@
-import { Row, ProgressBar, Alert, Spinner } from "react-bootstrap";
+import { Row, ProgressBar } from "react-bootstrap";
+import StatusMessage from "../../layout/site/StatusMessage";
 import Link from "next/link";
 import SourceHealthBadge from "../../functional/sourceHealthBadge";
 import useFetch from "../../../libs/useFetch";
@@ -60,9 +61,7 @@ export default function StatusArea() {
   if (statusError && !statusData) {
     return (
       <div className="mt-4" id="stats">
-        <Alert variant="danger" className="text-center mb-0">
-          We couldn&apos;t load closure stats right now. Please try again shortly.
-        </Alert>
+        <StatusMessage state="error">We couldn&apos;t load closure stats right now. Please try again shortly.</StatusMessage>
         <HistoricalConditions />
       </div>
     );
@@ -70,9 +69,8 @@ export default function StatusArea() {
 
   if (statusPending || !statusData) {
     return (
-      <div className="mt-4 text-white text-center" id="stats" aria-live="polite">
-        <Spinner animation="border" role="status" size="sm" className="mr-2" />
-        <span>Loading HPP closure stats…</span>
+      <div className="mt-4 text-white" id="stats">
+        <StatusMessage state="loading">Loading HPP closure stats…</StatusMessage>
       </div>
     );
   }
@@ -82,9 +80,7 @@ export default function StatusArea() {
   if (recordedStatus === "unavailable") {
     return (
       <div className="mt-4 text-white text-center" id="stats">
-        <Alert variant="warning" className="text-center mb-0">
-          HPP status and closure stats are unavailable right now. Please try again shortly.
-        </Alert>
+        <StatusMessage state="unavailable">HPP status and closure stats are unavailable right now. Please try again shortly.</StatusMessage>
         <HistoricalConditions />
       </div>
     );
@@ -115,17 +111,15 @@ export default function StatusArea() {
       id="stats"
     >
       <Row className="justify-content-center">
-        <h2>HPP Closure Stats</h2>
+        <h2>HPP closure stats</h2>
         <p>
           Current status: <span className="font-weight-bold">{currentStatus}</span><SourceHealthBadge health={statusData.health} />
         </p>
         <p><Link className="text-info" href="/alerts">Email me when HPP opens or closes</Link></p>
         {statusData.isEmpty && (
-          <Alert variant="info" className="text-center mb-0">
-            No historical closure records are available yet.
-          </Alert>
+          <StatusMessage state="empty" className="mb-3">No historical closure records are available yet.</StatusMessage>
         )}
-        <p>Note: this only accounts for river level - not any other closures</p>
+        <p className="history-muted small">Counts river-level closures only.</p>
       </Row>
       <Row className="justify-content-center">
         {recordedStatus === "closed" && (

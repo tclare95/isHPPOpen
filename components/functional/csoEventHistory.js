@@ -5,6 +5,7 @@ import ButtonGroup from 'react-bootstrap/ButtonGroup';
 import Form from 'react-bootstrap/Form';
 import PropTypes from 'prop-types';
 import useFetch from '../../libs/useFetch';
+import StatusMessage from '../layout/site/StatusMessage';
 
 // Recorded upstream spills from RDP's canonical event history (#121). Purely descriptive: it never changes
 // the indicator, density chart or alerts, and an empty list is only described as far as coverage allows.
@@ -281,26 +282,26 @@ export default function CsoEventHistory({ selectedOutfallId = '', onSelectOutfal
         ) : null}
       </div>
 
-      {isPending && !data ? <p role="status">Loading spill history…</p> : null}
-      {error || (data && !available) ? <div className="alert alert-secondary" role="status">Spill history is temporarily unavailable. The rest of this page is not affected.</div> : null}
+      {isPending && !data ? <StatusMessage state="loading" className="mb-2">Loading spill history…</StatusMessage> : null}
+      {error || (data && !available) ? <StatusMessage state="unavailable">Spill history is temporarily unavailable. The rest of this page is not affected.</StatusMessage> : null}
 
       {available ? (
         <>
           <div role="status" aria-live="polite">
-            {evidenceMessages(paged && pageData?.state === 'available' ? pageData : data).map((message) => <div key={message.text} className={`alert alert-${message.tone} py-2 mb-2`}>{message.text}</div>)}
-            {shown?.page?.windowMoved ? <div className="alert alert-secondary py-2 mb-2">The {period} period has moved on since you started browsing. It now begins <Time value={shown.window.from} />, so events that ended before then are no longer listed.</div> : null}
+            {evidenceMessages(paged && pageData?.state === 'available' ? pageData : data).map((message) => <div key={message.text} className={`${message.tone === 'warning' ? 'history-notice history-notice--warning' : 'history-notice'} mb-2`}>{message.text}</div>)}
+            {shown?.page?.windowMoved ? <div className="history-notice mb-2">The {period} period has moved on since you started browsing. It now begins <Time value={shown.window.from} />, so events that ended before then are no longer listed.</div> : null}
           </div>
-          {paged && !pageData && !pageError ? <p role="status">Loading events…</p> : null}
+          {paged && !pageData && !pageError ? <StatusMessage state="loading" className="mb-2">Loading events…</StatusMessage> : null}
           {paged && (pageError || (pageData && !pageAvailable)) ? (
-            <div className="alert alert-secondary" role="status">
+            <div className="history-notice history-notice--warning mb-2" role="status">
               <p className="mb-2">{HISTORY_ERRORS[pageError?.status] ?? 'These events could not be loaded right now.'}</p>
               <div className="d-flex flex-wrap gap-2">
-                {cursor ? <Button size="sm" variant="outline-dark" onClick={() => go([])}>Back to the newest events</Button> : null}
-                {!HISTORY_ERRORS[pageError?.status] ? <Button size="sm" variant="outline-dark" onClick={() => retryPage()}>Try again</Button> : null}
+                {cursor ? <Button size="sm" variant="outline-light" onClick={() => go([])}>Back to the newest events</Button> : null}
+                {!HISTORY_ERRORS[pageError?.status] ? <Button size="sm" variant="outline-light" onClick={() => retryPage()}>Try again</Button> : null}
               </div>
             </div>
           ) : null}
-          {filter && pageAvailable && pageData && !events.length && !cursor ? <p>No reported events for this outfall in the available data.</p> : null}
+          {filter && pageAvailable && pageData && !events.length && !cursor ? <StatusMessage state="empty">No reported events for this outfall in the available data.</StatusMessage> : null}
           {events.length && pageAvailable ? (
             <ol ref={listRef} tabIndex={-1} className="cso-event-list list-unstyled mb-0" aria-label={`Recorded spills, ${pageSummary(shown.page)?.range ?? `${events.length} shown`}`}>
               {events.map((event) => {

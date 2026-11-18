@@ -3,6 +3,7 @@ import Link from "next/link";
 import useFetch from "../../libs/useFetch";
 import PropTypes from "prop-types";
 import { SWR_15_MINUTES } from "../../libs/dataFreshness";
+import StatusMessage from "../layout/site/StatusMessage";
 import {
   HPP_THRESHOLD_METRES,
   formatLevelMetres,
@@ -43,7 +44,7 @@ function useClientNow() {
 }
 
 function StatusHeading({ children }) {
-  return <h2 className="font-weight-bold m-3">{children}</h2>;
+  return <h2 className="fw-bold my-3">{children}</h2>;
 }
 
 StatusHeading.propTypes = { children: PropTypes.node };
@@ -51,17 +52,17 @@ StatusHeading.propTypes = { children: PropTypes.node };
 function EvidenceNote({ recordedStatus, reading, freshness, now }) {
   if (reading && freshness === "stale") {
     return (
-      <p className="small fst-italic mb-1">
+      <StatusMessage state="stale" className="small text-start d-inline-block mb-2">
         This is the last recorded status. The latest river reading is {formatReadingAge(reading.observedAt, now)} old,
         so it may be out of date.
-      </p>
+      </StatusMessage>
     );
   }
 
   if (readingDisagreesWithStatus(recordedStatus, reading, freshness)) {
     const side = recordedStatus === "open" ? "at or above" : "below";
     return (
-      <p className="small fst-italic mb-1">
+      <p className="history-muted small mb-2">
         The latest reading ({formatLevelMetres(reading.level)}) is {side} {HPP_THRESHOLD_METRES} m. The status changes
         when the next 15-minute status check records it.
       </p>
@@ -96,9 +97,7 @@ export default function OpenTitle({ cachedEvents = [] }) {
 
   if (!now || statusPending) {
     return (
-      <div role="status" aria-live="polite">
-        Loading HPP status…
-      </div>
+      <StatusMessage state="loading" className="d-inline-block">Loading HPP status…</StatusMessage>
     );
   }
 
@@ -133,10 +132,10 @@ export default function OpenTitle({ cachedEvents = [] }) {
           HPP is <span className="text-danger">Closed</span> because of water levels
         </StatusHeading>
         {daysClosed === null ? null : (
-          <h6 className="font-weight-lighter fst-italic">
+          <p className="history-muted mb-2">
             HPP has been closed for {daysClosed} {daysClosed === 1 ? "day" : "days"} due to high water levels.{" "}
-            <Link href="#stats">(tap to see more)</Link>
-          </h6>
+            <Link href="#stats" className="text-info">Closure stats</Link>
+          </p>
         )}
         {note}
       </>
@@ -146,7 +145,7 @@ export default function OpenTitle({ cachedEvents = [] }) {
   return (
     <>
       <StatusHeading>
-        HPP is (probably) <span className="text-success">Open</span>
+        HPP is <span className="text-success">Open</span>
       </StatusHeading>
       {note}
     </>

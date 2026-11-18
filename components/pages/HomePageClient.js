@@ -11,7 +11,7 @@ import StatusArea from "../layout/frontpage/statusarea";
 
 export default function HomePageClient({ events, message }) {
   return (
-    <Container fluid className="history-page text-white pb-4">
+    <Container fluid className="history-page text-white py-4">
       <Header message={message} />
       <Container>
         <TopContent cachedEvents={events} />

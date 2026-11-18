@@ -27,8 +27,8 @@ export function AlertRuleSummary({ rule }) {
   return (
     <div className="small" aria-live="polite">
       {complete ? <div className="text-light mb-1">{alertDescriptionOf(rule)}</div> : null}
-      {complete ? <div className="text-secondary mb-1">{alertRepeatOf(rule)}</div> : null}
-      <ul className="text-secondary mb-0 ps-3">
+      {complete ? <div className="history-muted mb-1">{alertRepeatOf(rule)}</div> : null}
+      <ul className="history-muted mb-0 ps-3">
         {ALERT_EXPECTATIONS.map((line) => <li key={line}>{line}</li>)}
       </ul>
     </div>

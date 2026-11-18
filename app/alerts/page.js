@@ -2,7 +2,6 @@
 
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import Card from "react-bootstrap/Card";
 import Col from "react-bootstrap/Col";
 import Container from "react-bootstrap/Container";
 import Row from "react-bootstrap/Row";
@@ -95,14 +94,13 @@ function AlertsPageContent() {
         ) : null}
 
         {currentToken ? (
-          <Row className="justify-content-center mb-4">
+          <Row className="justify-content-center">
             <Col lg={8}>
-              <Card bg="dark" text="light" border="secondary" className="shadow-sm">
-                <Card.Body>
-                  <Card.Title className="mb-1">Your alerts</Card.Title>
-                  <Card.Text className="text-secondary">
+              <section className="history-panel" aria-labelledby="alerts-yours">
+                  <h2 id="alerts-yours" className="h5 mb-1">Your alerts</h2>
+                  <p className="history-muted">
                     {data?.email ? `Alerts for ${data.email}. This link works for 30 minutes.` : error ? "This link could not be used." : "Loading the alerts for this link…"}
-                  </Card.Text>
+                  </p>
 
                   <AlertsManagementFeedback successMessage={successMessage} errorMessage={errorMessage} />
                   <AlertsManagementContent
@@ -112,31 +110,26 @@ function AlertsPageContent() {
                     busyAlertKey={busyAlertKey}
                     onRemove={handleRemoveAlert}
                   />
-                </Card.Body>
-              </Card>
+              </section>
             </Col>
           </Row>
         ) : null}
 
-        <Row className="justify-content-center mb-4">
+        <Row className="justify-content-center">
           <Col lg={8}>
-            <Card bg="dark" text="light" border="secondary" className="shadow-sm">
-              <Card.Body>
-                <Card.Title className="mb-3">Create an alert</Card.Title>
-                <Card.Text className="text-secondary">Get an email when a Trent gauge, the Colwick forecast, HPP status or CSO water-quality risk meets a condition you choose.</Card.Text>
+            <section className="history-panel" aria-labelledby="alerts-create">
+                <h2 id="alerts-create" className="h5 mb-2">Create an alert</h2>
+                <p className="history-muted">Get an email when a Trent gauge, the Colwick forecast, HPP status or CSO water-quality risk meets a condition you choose.</p>
                 <AlertsSignup />
-              </Card.Body>
-            </Card>
+            </section>
           </Col>
         </Row>
-        <Row className="justify-content-center mb-4">
+        <Row className="justify-content-center">
           <Col lg={8}>
-            <Card bg="dark" text="light" border="secondary" className="shadow-sm">
-              <Card.Body>
-                <Card.Title className="mb-3">Review or stop your alerts</Card.Title>
+            <section className="history-panel" aria-labelledby="alerts-manage">
+                <h2 id="alerts-manage" className="h5 mb-2">Review or stop your alerts</h2>
                 <AlertManagementAccess />
-              </Card.Body>
-            </Card>
+            </section>
           </Col>
         </Row>
       </Container>

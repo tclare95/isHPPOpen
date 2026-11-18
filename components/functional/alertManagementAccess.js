@@ -55,7 +55,7 @@ export default function AlertManagementAccess({ compact = false }) {
   const content = (
     <Stack gap={2}>
       {!compact ? (
-        <div className="text-secondary">
+        <div className="history-muted">
           Enter your email and we&apos;ll send you a secure link to manage your Colwick alerts.
         </div>
       ) : null}
@@ -91,7 +91,7 @@ export default function AlertManagementAccess({ compact = false }) {
       ) : (
         <>
           <Form.Group controlId="manage-alert-email">
-            <Form.Label className="small text-uppercase text-secondary mb-1">Email</Form.Label>
+            <Form.Label>Email</Form.Label>
             <Form.Control
               type="email"
               value={email}

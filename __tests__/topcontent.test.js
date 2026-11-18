@@ -59,7 +59,7 @@ describe('TopContent', () => {
     renderWithGraphContext(<TopContent cachedEvents={[]} />);
 
     // Never a fabricated reading while loading.
-    expect(screen.getByText(/The River Level is/)).toHaveTextContent('The River Level is loading');
+    expect(screen.getByText(/The river level is/)).toHaveTextContent('The river level is loading');
     expect(screen.queryByText(/0\.00/)).not.toBeInTheDocument();
     expect(screen.queryByText(/hours? old/)).not.toBeInTheDocument();
     expect(screen.queryByTestId('weir-levels')).not.toBeInTheDocument();
@@ -76,7 +76,7 @@ describe('TopContent', () => {
 
     renderWithGraphContext(<TopContent cachedEvents={[]} />);
 
-    expect(screen.getByText(/The River Level is/)).toHaveTextContent('The River Level is unavailable');
+    expect(screen.getByText(/The river level is/)).toHaveTextContent('The river level is unavailable');
     expect(screen.getByText(/latest river level reading is unavailable/)).toBeInTheDocument();
     expect(screen.queryByText(/0\.00/)).not.toBeInTheDocument();
     expect(screen.queryByText(/0 hours/)).not.toBeInTheDocument();
@@ -95,7 +95,7 @@ describe('TopContent', () => {
 
     respond(12);
     const { unmount } = renderWithGraphContext(<TopContent cachedEvents={[]} />);
-    expect(screen.getByText(/The River Level is/)).toHaveTextContent('The River Level is 2.20 m');
+    expect(screen.getByText(/The river level is/)).toHaveTextContent('The river level is 2.20 m');
     expect(screen.getByText(/reading is 12 minutes old\./)).toBeInTheDocument();
     expect(screen.queryByText(/may be out of date/)).not.toBeInTheDocument();
     unmount();
@@ -133,7 +133,7 @@ describe('TopContent', () => {
 
     renderWithGraphContext(<TopContent cachedEvents={[]} />);
 
-    expect(screen.getByText(/The River Level is/)).toHaveTextContent('The River Level is 1.45 m');
+    expect(screen.getByText(/The river level is/)).toHaveTextContent('The river level is 1.45 m');
     // The front page shows the server's assessment; it no longer computes one from density rows (#wq-assessment).
     expect(screen.getByTestId('vomit-factor')).toHaveTextContent('elevated');
     expect(mockUseFetch.mock.calls.map(([path]) => path)).not.toContain('/api/waterquality/csodensity?hours=3');
@@ -167,7 +167,7 @@ describe('TopContent', () => {
 
     renderWithGraphContext(<TopContent cachedEvents={[]} />);
 
-    expect(screen.getByText(/The River Level is/)).toHaveTextContent('The River Level is unavailable');
+    expect(screen.getByText(/The river level is/)).toHaveTextContent('The river level is unavailable');
     expect(screen.getByText('Forecast and level data are unavailable right now.')).toBeInTheDocument();
   });
 });

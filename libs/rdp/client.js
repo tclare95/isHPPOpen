@@ -5,7 +5,8 @@ import { SignatureV4 } from "@smithy/signature-v4";
 import { Hash } from "@smithy/hash-node";
 import { setTimeout as delay } from "node:timers/promises";
 import { getRdpConfig } from "./config.js";
-import { getCanonicalMeasurement } from "./measurements.js";
+import { getCanonicalMeasurement, getRainfallMeasurement } from "./measurements.js";
+import { parseRainfallHistory, parseRainfallLatest } from "./rainfallContract.js";
 import { RdpError } from "./errors.js";
 import { assertRelationshipSetId, parseRelationshipSet } from "./relationshipContract.js";
 import { parseRiverLocation, parseRiverTrace, riverCoordinates, riverSamplePath, readRiverJson } from "./river.js";
@@ -59,6 +60,13 @@ function validateEnvelope(payload, kind, ids) {
     }
   }
   return payload;
+}
+
+function assertObservationQuery({ from, to, limit, cursor }) {
+  const timestamp = (value) => typeof value === "string" && /^\d{4}-\d{2}-\d{2}T.*(?:Z|[+-]\d{2}:\d{2})$/.test(value) && Number.isFinite(Date.parse(value));
+  if (!timestamp(from) || !timestamp(to) || Date.parse(from) >= Date.parse(to) ||
+      Date.parse(to) - Date.parse(from) > 366 * 86400000 || !Number.isInteger(limit) || limit < 1 || limit > 5000 ||
+      (cursor !== undefined && (typeof cursor !== "string" || !/^[A-Za-z0-9_-]{1,7000}$/.test(cursor)))) throw new RdpError("INVALID_QUERY");
 }
 
 // Construct lazily inside server code. No default AWS credential chain or local-token fallback.
@@ -225,11 +233,21 @@ export function createRdpClient(env = process.env) {
     },
     getObservations(id, { from, to, limit = 2000, cursor } = {}) {
       getCanonicalMeasurement(id);
-      const timestamp = (value) => typeof value === "string" && /^\d{4}-\d{2}-\d{2}T.*(?:Z|[+-]\d{2}:\d{2})$/.test(value) && Number.isFinite(Date.parse(value));
-      if (!timestamp(from) || !timestamp(to) || Date.parse(from) >= Date.parse(to) ||
-          Date.parse(to) - Date.parse(from) > 366 * 86400000 || !Number.isInteger(limit) || limit < 1 || limit > 5000 ||
-          (cursor !== undefined && (typeof cursor !== "string" || !/^[A-Za-z0-9_-]{1,7000}$/.test(cursor)))) throw new RdpError("INVALID_QUERY");
+      assertObservationQuery({ from, to, limit, cursor });
       return read(`/${id}/observations`, { from, to, limit: String(limit), ...(cursor === undefined ? {} : { cursor }) }, "observations", [id]);
+    },
+    // Observed rainfall period totals (RDP #54). Separate methods and parsers, so the level/flow envelopes above keep
+    // their exact validation and a rainfall ID can never be read as an instantaneous level (or vice versa).
+    getRainfallLatest(ids) {
+      if (!Array.isArray(ids) || ids.length < 1 || ids.length > 20 || new Set(ids).size !== ids.length) throw new RdpError("INVALID_QUERY");
+      ids.forEach(getRainfallMeasurement);
+      return request("/v1/measurements/latest", { ids: ids.join(",") }, (body) => parseRainfallLatest(body, ids));
+    },
+    getRainfallObservations(id, { from, to, limit = 2000, cursor } = {}) {
+      getRainfallMeasurement(id);
+      assertObservationQuery({ from, to, limit, cursor });
+      return request(`/v1/measurements/${id}/observations`, { from, to, limit: String(limit), ...(cursor === undefined ? {} : { cursor }) },
+        (body) => parseRainfallHistory(body, id));
     },
   });
 }

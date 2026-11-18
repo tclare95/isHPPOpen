@@ -127,7 +127,7 @@ export default function TopContent(props) {
       <Row className="justify-content-center">
         <Col className="text-center">
           <h1>Is HPP Open?</h1>
-          <OpenTitle cachedEvents={props.cachedEvents} />
+          <OpenTitle cachedEvents={props.cachedEvents} eventsUnavailable={props.eventsUnavailable} />
         </Col>
       </Row>
       <Row className="align-items-center">
@@ -187,4 +187,5 @@ export default function TopContent(props) {
 
 TopContent.propTypes = {
   cachedEvents: PropTypes.array,
+  eventsUnavailable: PropTypes.bool,
 };

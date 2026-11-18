@@ -1,10 +1,11 @@
 # Current river conditions summary (Wave C / C3)
 
-The homepage shows **"Conditions now and next 24 hours"** directly under the "Is HPP Open?" title
-(`components/layout/frontpage/currentConditions.js`, logic in `libs/currentConditions.js`). It implements
+The homepage keeps its original simple top section (title, "The river level is …", reading age, weir hints and
+chart). **"Conditions now and next 24 hours"** is an optional, collapsed "More river detail" disclosure below the
+chart (`components/layout/frontpage/currentConditions.js`, logic in `libs/currentConditions.js`). It implements
 [`current-river-conditions`](../openspec/changes/wave-c-rdp-product-features/specs/current-river-conditions/spec.md).
-It replaces the old "The river level is …" headline and reading-age line; the chart, weir hints and water-quality
-tile stay as they were.
+The summary, and its extra `/api/trentweirs` read, only mounts once a visitor opens the disclosure, so the default
+homepage load is unchanged.
 
 ## What it shows
 

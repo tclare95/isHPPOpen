@@ -21,3 +21,7 @@
 .conditions-links { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .conditions-link { display: inline-block; padding: 0.4rem 0.8rem; min-height: 2.25rem; border-radius: 999px; border: 1px solid rgba(130, 205, 239, 0.35); color: #a9dff8; text-decoration: none; font-size: 0.9rem; }
 .conditions-link:hover, .conditions-link:focus-visible { color: #fff; border-color: #7cc8ef; }
+
+/* Collapsed homepage disclosure for the conditions summary. */
+.conditions-disclosure > summary { cursor: pointer; text-align: center; }
+.conditions-disclosure[open] > summary { margin-bottom: 0.75rem; }

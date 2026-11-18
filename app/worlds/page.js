@@ -9,7 +9,7 @@ import Accordion from "react-bootstrap/Accordion";
 
 export default function WorldsPage() {
   return (
-    <Container fluid className="site-page">
+    <Container fluid className="history-page text-white">
       <Header message="This page will have specific information about the Nottingham Worlds 2022 - more info will be added as it is released" />
       <Container className="text-white text-center">
         <Row className="mb-5">

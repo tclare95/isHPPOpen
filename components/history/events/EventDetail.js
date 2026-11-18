@@ -16,8 +16,6 @@ import LevelChart from "../LevelChart";
 import { ErrorNotice, HISTORY_SWR, LoadingBlock, useSlow } from "../StatusBlocks";
 import PageHeader from "../../layout/site/PageHeader";
 
-const EVENT_BREADCRUMB = [{ href: "/history", label: "Level history" }, { href: "/history/events", label: "High-water events" }];
-
 const threshold = `${COLWICK_HISTORY.thresholdMetres.toFixed(1)} m`;
 const ordinal = (n) => `${n}${["th", "st", "nd", "rd"][(n % 100 > 10 && n % 100 < 14) ? 0 : n % 10] ?? "th"}`;
 
@@ -69,7 +67,8 @@ export default function EventDetail({ id }) {
     return (
       <main className="history-page text-white">
         <Container className="py-4 py-lg-5">
-          <PageHeader title="High-water event" breadcrumb={EVENT_BREADCRUMB} />
+          <p className="mb-2"><Link href="/history/events" className="history-back">← All high-water events</Link></p>
+          <PageHeader title="High-water event" />
           {notFound ? (
             <div className="history-empty">
               <h2 className="h5">Event not found</h2>
@@ -94,13 +93,14 @@ export default function EventDetail({ id }) {
   return (
     <main className="history-page text-white">
       <Container className="py-4 py-lg-5">
-        <PageHeader title={eventDateRange(event)} eyebrow="Observed high-water event · Colwick"
-          breadcrumb={[...EVENT_BREADCRUMB, { href: `/history/events?year=${startParts.year}`, label: String(startParts.year) }]}
-          lead={<>Peaked at {formatLevel(event.peak.value)} on {formatDate(event.peak.at)}; at or above {threshold} for {eventDurationText(event)}.</>}>
-          {event.limitations.length ? (
-            <p className="events-row__badges mb-0">{event.limitations.map((item) => <span key={item} className="events-badge events-badge--warning">{LIMITATION_TEXT[item]}</span>)}</p>
-          ) : <p className="events-row__badges mb-0"><span className="events-badge events-badge--ok">Fully observed</span></p>}
-        </PageHeader>
+        <p className="mb-2"><Link href={`/history/events?year=${startParts.year}`} className="history-back">← High-water events in {startParts.year}</Link></p>
+        <PageHeader title={eventDateRange(event)}
+          lead={<>Observed high-water event at Colwick. Peaked at {formatLevel(event.peak.value)} on {formatDate(event.peak.at)}; at or above {threshold} for {eventDurationText(event)}.
+            <span className="events-row__badges mt-2">
+              {event.limitations.length
+                ? event.limitations.map((item) => <span key={item} className="events-badge events-badge--warning">{LIMITATION_TEXT[item]}</span>)
+                : <span className="events-badge events-badge--ok">Fully observed</span>}
+            </span></>} />
 
         {data.match === "moved" ? (
           <p className="history-notice history-notice--warning">This event now starts at {formatDateTime(event.firstAboveAt)} (link: {formatDateTime(parseEventId(id))}).</p>

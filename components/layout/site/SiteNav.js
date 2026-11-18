@@ -8,6 +8,7 @@ import Nav from "react-bootstrap/Nav";
 import Navbar from "react-bootstrap/Navbar";
 import { SITE_AREAS, activeAreaKey, isPublicPath } from "./siteNavigation";
 
+// Not sticky, so it never covers maps, chart tooltips or the history pickers' own sticky bar.
 export default function SiteNav() {
   const pathname = usePathname();
   const [expanded, setExpanded] = useState(false);
@@ -16,9 +17,9 @@ export default function SiteNav() {
 
   return (
     <>
-      <a href="#content" className="skip-link">Skip to content</a>
-      <Navbar as="nav" expand="lg" variant="dark" collapseOnSelect expanded={expanded} onToggle={setExpanded}
-        className="site-nav" aria-label="Main">
+      <a href="#content" className="visually-hidden-focusable">Skip to content</a>
+      <Navbar as="nav" bg="dark" variant="dark" expand="lg" collapseOnSelect expanded={expanded} onToggle={setExpanded}
+        className="border-bottom border-secondary" aria-label="Main">
         <Container>
           <Navbar.Brand as={Link} href="/">Is HPP Open?</Navbar.Brand>
           <Navbar.Toggle aria-controls="site-nav-menu" label="Menu" aria-expanded={expanded} />

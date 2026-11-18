@@ -89,7 +89,7 @@ export default function TrentDashboard({ initialViewMode = "level" }) {
   }
 
   const controlsSection = (
-    <Card text="light" className="site-card mb-4">
+    <Card text="light" className="history-panel p-0 mb-4">
       <Card.Body className="py-3">
         <Row className="g-4 align-items-start mb-3">
           <Col lg={12}>
@@ -222,7 +222,7 @@ export default function TrentDashboard({ initialViewMode = "level" }) {
 
   const managementSection = (
     <section className="mb-4" id="trent-manage-alerts">
-      <Card text="light" className="site-card">
+      <Card text="light" className="history-panel p-0">
         <Card.Body>
           <Stack direction="horizontal" className="justify-content-between align-items-center mb-3">
             <div>
@@ -247,7 +247,7 @@ export default function TrentDashboard({ initialViewMode = "level" }) {
   }
 
   if (error) {
-    return <StatusMessage state="error" title="Trent gauges unavailable.">The gauge readings could not be loaded right now. Try again shortly.</StatusMessage>;
+    return <StatusMessage state="error">The Trent gauge readings could not be loaded right now. Try again shortly.</StatusMessage>;
   }
 
   if (!data?.stations?.length) {

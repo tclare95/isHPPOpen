@@ -191,7 +191,7 @@ export default function ForecastInfoPage() {
   });
 
   return (
-    <Container fluid as="main" className="site-page">
+    <Container fluid as="main" className="history-page text-white">
       <Container className="py-4 py-lg-5">
         <PageHeader title="River level forecast"
           lead="A model prediction of the Colwick river level for the next 36 hours, shown with recent observed levels. It is an estimate and can be wrong, especially after sudden heavy rain." />
@@ -212,7 +212,7 @@ export default function ForecastInfoPage() {
         {s3Data?.metadata && (
           <Row className="justify-content-center mb-3">
             <Col xs="auto">
-              <small className="site-muted">
+              <small className="history-muted">
                 Forecast generated: {new Date(s3Data.metadata.forecast_time).toLocaleString()}
               </small>
             </Col>
@@ -238,21 +238,21 @@ export default function ForecastInfoPage() {
                 </Button>
               </div>
             ) : (
-              <StatusMessage state="unavailable" title="Forecast chart unavailable.">Observed river levels could not be loaded, so the forecast cannot be shown.</StatusMessage>
+              <StatusMessage state="unavailable">Observed river levels could not be loaded, so the forecast cannot be shown.</StatusMessage>
             )}
           </Col>
         </Row>
 
         <Row className="justify-content-center mb-4">
           <Col md={10} lg={8}>
-            <Card text="white" className="site-card">
+            <Card text="white" className="history-panel p-0">
               <Card.Header><h2 className="h5 mb-0">Forecast Accuracy</h2></Card.Header>
               <Card.Body>
                 {accuracyPending ? (
                   <div className="text-center py-3"><Spinner animation="border" role="status" size="sm" /></div>
                 ) : accuracyData?.accuracy_data?.length > 0 ? (
                   <>
-                    <p className="site-muted mb-3"><small>Last evaluated: {new Date(accuracyData.evaluation_time).toLocaleString()}</small></p>
+                    <p className="history-muted mb-3"><small>Last evaluated: {new Date(accuracyData.evaluation_time).toLocaleString()}</small></p>
                     <Table variant="dark" striped bordered hover responsive size="sm">
                       <thead>
                         <tr>
@@ -285,10 +285,10 @@ export default function ForecastInfoPage() {
 
         <Row className="justify-content-center mb-4">
           <Col md={10} lg={8}>
-            <Card text="white" className="site-card">
+            <Card text="white" className="history-panel p-0">
               <Card.Header>
                 <h2 className="h5 mb-0">
-                  <button type="button" className="site-disclosure" aria-expanded={showStats} onClick={() => setShowStats(!showStats)}>
+                  <button type="button" className="w-100 d-flex justify-content-between align-items-center gap-2 p-0 bg-transparent border-0 text-reset text-start" aria-expanded={showStats} onClick={() => setShowStats(!showStats)}>
                     <span>Stats</span><span aria-hidden="true">{showStats ? "▼" : "▶"}</span>
                   </button>
                 </h2>
@@ -358,10 +358,10 @@ export default function ForecastInfoPage() {
 
         <Row className="justify-content-center mb-4">
           <Col md={10} lg={8}>
-            <Card text="white" className="site-card">
+            <Card text="white" className="history-panel p-0">
               <Card.Header>
                 <h2 className="h5 mb-0">
-                  <button type="button" className="site-disclosure" aria-expanded={showStability} onClick={() => setShowStability(!showStability)}>
+                  <button type="button" className="w-100 d-flex justify-content-between align-items-center gap-2 p-0 bg-transparent border-0 text-reset text-start" aria-expanded={showStability} onClick={() => setShowStability(!showStability)}>
                     <span className="d-flex align-items-center gap-2">
                       <span>Forecast Stability</span>
                       <Badge bg={stabilitySummary.color}>{`${stabilitySummary.icon} ${stabilitySummary.label}`}</Badge>

@@ -23,7 +23,7 @@ export default function TrentLockPage() {
   const [error, setError] = useState(false);
 
   return (
-    <Container fluid as="main" className="site-page">
+    <Container fluid as="main" className="history-page text-white">
       <Container className="py-4 py-lg-5">
         <PageHeader title="Log a Trent Lock session" lead="Record the wave conditions you found at Trent Lock." />
         <Row>

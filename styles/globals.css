@@ -1,24 +1,3 @@
-/* Site-wide presentation tokens (Wave A site-presentation). Specialist views (maps, charts, history
-   controls) keep their own styles but draw colours, panels and spacing from these. */
-:root {
-  --site-bg: #343a40;
-  --site-bg-deep: #17232b;
-  --site-surface: rgba(13, 24, 31, 0.86);
-  --site-surface-raised: #24323b;
-  --site-border: rgba(130, 205, 239, 0.2);
-  --site-text: #f3f6f8;
-  --site-muted: #bdc8cf;
-  --site-accent: #7cc8ef;
-  --site-link: #a9dff8;
-  --site-link-hover: #ffffff;
-  --site-warning: #eda100;
-  --site-danger: #e66767;
-  --site-radius: 1rem;
-  --site-radius-sm: 0.6rem;
-  --site-shadow: 0 1rem 2.4rem rgba(0, 0, 0, 0.16);
-  --site-gutter: 1.25rem;
-}
-
 body {
   background-color: #343a40 !important;
 }
@@ -202,79 +181,6 @@ a {
   .water-quality-stat__value { font-size: 2rem; }
 }
 
-/* ---- Shared site shell: navigation, page header, panels, links and data states ---- */
-.skip-link { position: absolute; left: 0.75rem; top: -3rem; z-index: 1100; padding: 0.5rem 0.9rem; border-radius: 0 0 0.5rem 0.5rem; background: #fff; color: #0d181f; font-weight: 650; }
-.skip-link:focus { top: 0; }
-
-/* Not sticky: a fixed bar would cover map popups, chart tooltips and the history pickers' own sticky bar. */
-.site-nav { background: #121c22; border-bottom: 1px solid var(--site-border); }
-.site-nav .navbar-brand { color: var(--site-text); font-weight: 750; letter-spacing: 0.01em; }
-.site-nav .navbar-brand:hover { color: var(--site-link-hover); }
-.site-nav .nav-link { color: var(--site-muted); padding-left: 0.65rem; padding-right: 0.65rem; border-radius: 0.4rem; }
-.site-nav .nav-link:hover, .site-nav .nav-link:focus-visible { color: var(--site-link-hover); background: rgba(255, 255, 255, 0.05); }
-.site-nav .nav-link.active, .site-nav .nav-link[aria-current="page"] { color: #fff; font-weight: 650; box-shadow: inset 0 -2px 0 var(--site-accent); }
-.site-nav .navbar-toggler { border-color: rgba(214, 224, 230, 0.35); }
-.site-nav .navbar-toggler:focus { box-shadow: 0 0 0 0.2rem rgba(124, 200, 239, 0.45); }
-@media (max-width: 991.98px) {
-  .site-nav .navbar-nav { padding: 0.5rem 0 0.75rem; }
-  .site-nav .nav-link { padding-top: 0.6rem; padding-bottom: 0.6rem; }
-  .site-nav .nav-link.active, .site-nav .nav-link[aria-current="page"] { box-shadow: inset 3px 0 0 var(--site-accent); }
-}
-
-.site-page {
-  min-height: 100vh;
-  color: var(--site-text);
-  background:
-    radial-gradient(circle at 85% 5%, rgba(55, 169, 225, 0.14), transparent 32rem),
-    linear-gradient(180deg, var(--site-bg-deep) 0%, #27343d 58%, var(--site-bg) 100%);
-}
-
-.site-page-header { margin-bottom: 1.5rem; }
-.site-page-title { font-size: calc(1.5rem + 1.2vw); font-weight: 750; line-height: 1.15; margin: 0 0 0.5rem; }
-@media (min-width: 1200px) { .site-page-title { font-size: 2.5rem; } }
-.site-eyebrow { color: var(--site-accent); text-transform: uppercase; letter-spacing: 0.06em; font-size: 0.78rem; font-weight: 650; margin-bottom: 0.35rem; }
-.site-lead { color: #d1d9de; font-size: 1.1rem; max-width: 46rem; margin-bottom: 0; }
-.site-page-header__actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.85rem; }
-.site-breadcrumb ol { display: flex; flex-wrap: wrap; gap: 0.25rem; padding: 0; margin: 0 0 0.75rem; list-style: none; font-size: 0.9rem; color: var(--site-muted); }
-.site-breadcrumb li + li::before { content: "/"; margin-right: 0.25rem; color: rgba(214, 224, 230, 0.4); }
-
-.site-panel {
-  margin-bottom: var(--site-gutter);
-  padding: 1.25rem;
-  color: var(--site-text);
-  background: var(--site-surface);
-  border: 1px solid var(--site-border);
-  border-radius: var(--site-radius);
-  box-shadow: var(--site-shadow);
-}
-.site-panel > h2:first-child, .site-panel > .site-panel__title { font-size: 1.3rem; }
-.site-muted { color: var(--site-muted); }
-
-/* Links: chrome links are plain, but links inside running text need an underline to be found. */
-.site-link, .site-breadcrumb a, .site-page p a:not([class]), .site-page li a:not([class]), .site-footer a:not([class]) { color: var(--site-link); text-decoration: underline; text-underline-offset: 0.15em; }
-.site-link:hover, .site-breadcrumb a:hover, .site-page p a:not([class]):hover, .site-page li a:not([class]):hover, .site-footer a:not([class]):hover { color: var(--site-link-hover); }
-:focus-visible { outline-color: var(--site-accent); }
-
-/* Data states: loading, empty, stale and unavailable look different from each other and never show a number. */
-.site-state { padding: 0.75rem 1rem; border-radius: var(--site-radius-sm); border: 1px solid rgba(214, 224, 230, 0.22); border-left-width: 4px; background: rgba(255, 255, 255, 0.04); color: var(--site-text); }
-.site-state__title { font-weight: 700; margin-right: 0.35rem; }
-.site-state > :last-child { margin-bottom: 0; }
-.site-state--loading { border-style: dashed; border-left-style: solid; border-left-color: var(--site-accent); color: #c9d4da; }
-.site-state--empty { border-style: dashed; border-left-style: solid; border-left-color: rgba(214, 224, 230, 0.45); }
-.site-state--stale { border-left-color: var(--site-warning); background: rgba(237, 161, 0, 0.09); }
-.site-state--unavailable { border-left-color: var(--site-warning); background: rgba(237, 161, 0, 0.06); }
-.site-state--error { border-left-color: var(--site-danger); background: rgba(230, 103, 103, 0.1); }
-
-.site-footer { margin-top: 3rem; padding: 1.5rem 0 2rem; color: var(--site-muted); background: #121c22; border-top: 1px solid var(--site-border); font-size: 0.9rem; }
-.site-footer__links { display: flex; flex-wrap: wrap; gap: 0.35rem 1.25rem; padding: 0; margin: 0 0 0.75rem; list-style: none; }
-.site-footer__links a { color: var(--site-text); }
-.site-footer__links a:hover { color: var(--site-link-hover); text-decoration: underline; }
-.site-footer details summary { color: var(--site-link); cursor: pointer; }
-.site-footer p { max-width: 52rem; }
+/* Site shell: the skip-link target needs no focus ring, and links inside running text are underlined so they can be found. */
 #content:focus { outline: none; }
-
-/* Bootstrap cards on content pages share the panel surface. */
-.site-card { --bs-card-bg: var(--site-surface); --bs-card-border-color: var(--site-border); --bs-card-cap-bg: rgba(255, 255, 255, 0.04); --bs-card-border-radius: var(--site-radius); --bs-card-inner-border-radius: calc(var(--site-radius) - 1px); color: var(--site-text); box-shadow: var(--site-shadow); }
-.site-disclosure { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; width: 100%; padding: 0; color: inherit; font: inherit; text-align: left; background: none; border: 0; }
-.site-disclosure:focus-visible { outline: 2px solid var(--site-accent); outline-offset: 4px; border-radius: 0.25rem; }
-.site-measure { max-width: 46rem; }
+#content p a:not([class]), #content li a:not([class]) { color: #a9dff8; text-decoration: underline; }

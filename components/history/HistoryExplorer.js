@@ -162,9 +162,7 @@ export default function HistoryExplorer() {
     <main className="history-page text-white">
       <Container className="py-4 py-lg-5">
         <PageHeader title="River level history"
-          lead={<>Observed Colwick river levels since {COLWICK_HISTORY.firstYear}: how often they reached HPP&apos;s {threshold} level rule, and how today compares with past seasons.</>}>
-          <Link href="/history/events" className="history-cta">Browse past high-water events →</Link>
-        </PageHeader>
+          lead={<>Observed Colwick river levels since {COLWICK_HISTORY.firstYear}: how often they reached HPP&apos;s {threshold} level rule, and how today compares with past seasons. <Link href="/history/events" className="history-back">Browse past high-water events →</Link></>} />
 
         <TodayContext overview={overview.data} overviewError={overview.error} latest={latest} levelsError={levels.error}
           currentMonth={current.month} onExplore={() => setPeriod(current)} />

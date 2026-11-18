@@ -99,28 +99,26 @@ describe("site footer", () => {
 });
 
 describe("page header", () => {
-  test("renders one page title with optional breadcrumb, eyebrow, lead and actions", () => {
-    render(<PageHeader title="High-water event" eyebrow="Observed" lead="Short summary."
-      breadcrumb={[{ href: "/history", label: "Level history" }]}><a href="/x">Action</a></PageHeader>);
-    expect(screen.getByRole("heading", { level: 1, name: "High-water event" })).toBeInTheDocument();
-    expect(within(screen.getByRole("navigation", { name: "Breadcrumb" })).getByRole("link", { name: "Level history" })).toHaveAttribute("href", "/history");
+  test("renders one page title and an optional lead, nothing else", () => {
+    const { container } = render(<PageHeader title="High-water events" lead="Short summary." />);
+    expect(screen.getByRole("heading", { level: 1, name: "High-water events" })).toBeInTheDocument();
     expect(screen.getByText("Short summary.")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Action" })).toBeInTheDocument();
+    expect(container.querySelectorAll("header > *")).toHaveLength(2);
   });
 });
 
 describe("status message", () => {
   test.each([
-    ["loading", "status"],
-    ["empty", "status"],
-    ["stale", "status"],
-    ["unavailable", "status"],
-    ["error", "alert"],
-  ])("%s states are distinct and announced as %s", (state, role) => {
+    ["loading", "status", "history-skeleton"],
+    ["empty", "status", "history-empty"],
+    ["stale", "status", "history-notice--warning"],
+    ["unavailable", "status", "history-notice--warning"],
+    ["error", "alert", "alert-warning"],
+  ])("%s is announced as %s in the history style", (state, role, className) => {
     render(<StatusMessage state={state} title="Title.">Body text</StatusMessage>);
     const message = screen.getByRole(role);
     expect(message).toHaveAttribute("data-state", state);
-    expect(message).toHaveClass(`site-state--${state}`);
+    expect(message).toHaveClass(className);
     expect(message).toHaveTextContent("Title. Body text");
   });
 

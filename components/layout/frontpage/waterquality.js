@@ -9,7 +9,7 @@ export default function WaterQuality() {
       </Row>
 
       <Row className="justify-content-center my-2">
-        <p className="mb-0 site-measure">
+        <p className="mb-0 col-lg-8">
           A general indication from recent upstream storm-overflow activity and how quickly the river is rising. It is not
           a test of the water or a safe/unsafe verdict, and other pollution may be present, so take sensible precautions.
         </p>

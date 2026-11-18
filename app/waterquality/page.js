@@ -106,7 +106,7 @@ export default function WaterQualityPage() {
                 <p className="mb-1"><strong>Observed:</strong> {formatUpdated(observedAt)}</p>
                 <p className="small water-quality-muted mb-2">Spill status is checked about every 5 minutes; other sources about every 15 minutes.</p>
                 <SourceHealthBadge health={assessment?.health ?? current?.health} />
-                {(summaryError || assessmentError) ? <div className="site-state site-state--unavailable mt-3">Some supporting data is unavailable, so the indication may be incomplete.</div> : null}
+                {(summaryError || assessmentError) ? <div className="history-notice history-notice--warning mt-3">Some supporting data is unavailable, so the indication may be incomplete.</div> : null}
               </Col>
             </Row>
           </Card.Body>

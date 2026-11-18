@@ -7,6 +7,7 @@
 }
 .history-back { color: #a9dff8; }
 .history-back:hover { color: #fff; }
+.history-intro { color: #d1d9de; max-width: 46rem; }
 .history-muted { color: #b4c1c9; }
 .history-eyebrow { color: #7cc8ef; text-transform: uppercase; letter-spacing: 0.06em; font-size: 0.78rem; font-weight: 650; }
 .history-panel {
@@ -25,8 +26,7 @@
 .history-chip:hover:not(:disabled) { border-color: #7cc8ef; color: #fff; }
 .history-chip.is-active { background: #3987e5; border-color: #3987e5; color: #fff; font-weight: 650; }
 .history-chip:disabled { opacity: 0.35; }
-/* Shared .site-state--loading supplies the border; the history pages keep a taller, centred block. */
-.history-skeleton { padding: 2.5rem 1rem; text-align: center; }
+.history-skeleton { padding: 2.5rem 1rem; text-align: center; color: #c9d4da; border: 1px dashed rgba(130, 205, 239, 0.25); border-radius: 0.75rem; }
 .history-empty { padding: 1.5rem; border-radius: 0.75rem; background: rgba(255, 255, 255, 0.04); border: 1px dashed rgba(214, 224, 230, 0.3); }
 .history-notice { padding: 0.6rem 0.85rem; border-left: 3px solid #7cc8ef; background: rgba(124, 200, 239, 0.08); border-radius: 0.25rem; font-size: 0.92rem; }
 .history-notice--warning { border-left-color: #eda100; background: rgba(237, 161, 0, 0.09); }

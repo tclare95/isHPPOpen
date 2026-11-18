@@ -12,7 +12,7 @@ function TrentWeirsPageFallback() {
 
 export default function TrentWeirsPage() {
   return (
-    <Container fluid as="main" className="site-page">
+    <Container fluid as="main" className="history-page text-white">
       <Container className="py-4 py-lg-5">
         <PageHeader title="Trent gauges" lead="Recent levels at gauges along the Trent, and a chart to compare them." />
         <div className="text-center">

@@ -77,7 +77,7 @@ function AlertsPageContent() {
   }
 
   return (
-    <Container fluid as="main" className="site-page">
+    <Container fluid as="main" className="history-page text-white">
       <Container className="text-white py-4 py-lg-5">
         <AlertsPageHeader />
 
@@ -137,7 +137,7 @@ function AlertsPageContent() {
 
 function AlertsPageFallback() {
   return (
-    <Container fluid as="main" className="site-page">
+    <Container fluid as="main" className="history-page text-white">
       <Container className="text-white py-4 py-lg-5">
         <AlertsPageHeader />
       </Container>

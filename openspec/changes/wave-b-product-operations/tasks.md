@@ -7,10 +7,10 @@
 - [ ] Relevant API/UI/evaluator tests cover changes, retries and invalid management links.
 
 ## Operational admin view
-- [ ] Admin overview helps locate recent problems with existing HPP/forecast/CSO/alert/source processes, without simply repeating the basic health badges.
-- [ ] States, timestamps and useful next diagnostic links are clear; missing diagnostics never appear as healthy.
-- [ ] Read-only access is limited to administrators, with sensitive values redacted and focused tests.
-- [ ] Routine load is bounded and reuses available evidence rather than generating expensive production queries.
+- [x] Admin overview helps locate recent problems with existing HPP/forecast/CSO/alert/source processes, without simply repeating the basic health badges.
+- [x] States, timestamps and useful next diagnostic links are clear; missing diagnostics never appear as healthy.
+- [x] Read-only access is limited to administrators, with sensitive values redacted and focused tests.
+- [x] Routine load is bounded and reuses available evidence rather than generating expensive production queries.
 
 ## Editorial management
 - [ ] Admins can find and edit past, current and future events without the existing upcoming-only view or arbitrary 99-item cap.

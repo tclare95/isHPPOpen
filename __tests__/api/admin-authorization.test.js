@@ -19,6 +19,7 @@ jest.mock("../../libs/services/forecastService", () => ({ getLatestForecastSnaps
 jest.mock("../../libs/services/hppStatusService", () => ({ getHppStatusSnapshot: jest.fn() }));
 jest.mock("../../libs/services/waterQualityAssessmentService", () => ({ getWaterQualityAssessmentHealth: jest.fn() }));
 jest.mock("../../libs/services/trentWeirsService", () => ({ getTrentWeirsSnapshot: jest.fn() }));
+jest.mock("../../libs/services/operationalOverviewService", () => ({ getOperationalOverview: jest.fn() }));
 
 const { getServerSession } = require("next-auth");
 const eventsService = require("../../libs/services/eventsService");
@@ -26,6 +27,7 @@ const siteBannerService = require("../../libs/services/siteBannerService");
 const { getHppShadowReport } = require("../../libs/services/hppShadowCronService");
 const { getCsoShadowReport } = require("../../libs/rdp/csoSource");
 const { getLatestLevelsSnapshot } = require("../../libs/services/levelsService");
+const { getOperationalOverview } = require("../../libs/services/operationalOverviewService");
 const { resetAdminAccessDiagnosticsForTests } = require("../../libs/auth/adminAccess");
 const { adminSession, nonAdminSession } = require("../../testUtils/adminSessions");
 
@@ -64,6 +66,13 @@ const ADMIN_ROUTES = [
     request: () => request("http://localhost/api/admin/operational-health"),
     arrange: () => getLatestLevelsSnapshot.mockResolvedValue({ health: { state: "fresh" } }),
     work: () => getLatestLevelsSnapshot,
+  },
+  {
+    route: "admin/operational-overview", method: "GET",
+    load: () => require("../../app/api/admin/operational-overview/route"),
+    request: () => request("http://localhost/api/admin/operational-overview"),
+    arrange: () => getOperationalOverview.mockResolvedValue({ checkedAt: "2026-11-18T12:00:00.000Z", components: [] }),
+    work: () => getOperationalOverview,
   },
   {
     route: "events", method: "POST",

@@ -31,13 +31,14 @@ Subjects, emails, tokens and session contents are never logged; admin write audi
 - `requireRouteAdmin()` in `libs/api/httpApp.js`: server-side check for every privileged handler, independent of the
   client flag.
 - `app/admin/layout.js`: server-side gate for every page under `/admin`; `AdminBody`, the admin nav and the
-  operational-health widget repeat the check client-side.
+  operational overview widget repeat the check client-side.
 
 Privileged handlers (all use `requireRouteAdmin()`):
 
 - `POST /api/events`, `DELETE /api/events` (authorized before the request is parsed)
 - `POST /api/sitebanner`
-- `GET /api/admin/operational-health`, `GET /api/admin/cso-shadow`, `GET /api/admin/hpp-shadow`
+- `GET /api/admin/operational-health`, `GET /api/admin/operational-overview`, `GET /api/admin/cso-shadow`,
+  `GET /api/admin/hpp-shadow`
 
 Deliberately **not** admin-only: public `GET` data endpoints; alert signup/confirm/manage/unsubscribe (subscriber
 tokens); `POST /api/alerts/manage-link`; `POST /api/trentlockapi` (public lookup); NextAuth's own endpoints; cron

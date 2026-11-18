@@ -74,8 +74,8 @@ function PeriodNotices({ data, label }) {
       {failed.length ? <p className="history-notice history-notice--warning">{failed.length === 1 ? "One month" : `${failed.length} months`} ({failed.map((month) => shortMonthName(month.month)).join(", ")}) could not be read and {failed.length === 1 ? "is" : "are"} left out rather than shown as empty.</p> : null}
       {support.tone === "none" ? (
         <div className="history-empty">
-          <h3 className="h5">No observations for {label}</h3>
-          <p className="mb-0">The River Data Platform returned no Colwick readings for this period. This usually means history has not been imported for it yet, or it is before live collection began. It is not a sign that the river was low or that HPP was open.</p>
+          <h3 className="h5">No readings available for {label}</h3>
+          <p className="mb-0">There are no Colwick river level readings for this period yet, so nothing can be shown. It is not a sign that the river was low or that HPP was open.</p>
         </div>
       ) : support.tone !== "full" ? <p className="history-notice history-notice--warning">{support.text}</p> : null}
     </>

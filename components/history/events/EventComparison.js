@@ -188,7 +188,6 @@ export default function EventComparison() {
               </ul>
               <p className="history-muted small mb-0">
                 Each curve is drawn against time from its own {anchorLabel}; hover or tap for each reading&apos;s actual date.
-                This lines up the observed shapes only: it is not a travel time or a prediction.
               </p>
               {data.events.map((slot, i) => (slot.window.trimmed ? (
                 <p key={`t${SLOTS[i].key}`} className="history-muted small mt-1 mb-0">Only the first part of the {SLOTS[i].name.toLowerCase()} is charted.</p>

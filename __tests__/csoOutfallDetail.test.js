@@ -113,7 +113,7 @@ describe('CsoOutfallDetail', () => {
 
   test.each([
     ['stale', 'The latest report is out of date'],
-    ['not_spilling_no_recent_event', 'not a confirmation that the outfall is clear'],
+    ['not_spilling_no_recent_event', 'with no reported spill in the last 48 hours'],
     ['status_not_read', 'The current report could not be read'],
   ])('an unknown status (%s) is never shown as clear', (statusReason, text) => {
     mockFetch({ data: detail({ status: { enabled: true, source: 'rdp', state: 'available', report: null,
@@ -134,7 +134,7 @@ describe('CsoOutfallDetail', () => {
     mockFetch({ data: detail({ relationship: { ...detail().relationship, category: 'candidate', primary: false } }) });
     render(<CsoOutfallDetail id={ASSET} />);
     expect(screen.getByText('Not confirmed upstream')).toBeInTheDocument();
-    expect(screen.getByText(/An inferred candidate, not part of the confirmed upstream list/)).toBeInTheDocument();
+    expect(screen.getByText(/Not on the confirmed upstream list/)).toBeInTheDocument();
     expect(screen.getByText(/possible link to the river network, but it is not confirmed/)).toBeInTheDocument();
   });
 
@@ -149,7 +149,7 @@ describe('CsoOutfallDetail', () => {
   test('an unrouted outfall offers no route; route display off is shown as unavailable', () => {
     mockFetch({ data: detail({ connectivity: { impactEnabled: false, routed: false }, relationship: { ...detail().relationship, routed: false } }) });
     render(<CsoOutfallDetail id={ASSET} />);
-    expect(screen.getByText(/could not be linked to the river network/)).toBeInTheDocument();
+    expect(screen.getByText(/^Not linked to the river network\.$/)).toBeInTheDocument();
     expect(screen.getByText(/downstream route map is not available on this site/)).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Show downstream route on the map' })).not.toBeInTheDocument();
   });
@@ -168,7 +168,7 @@ describe('CsoOutfallDetail', () => {
   test('an empty or unmonitored history is never presented as proof of no spills', () => {
     mockFetch({ data: detail({ history: { ...detail().history, events: [], evidence: evidence({ conclusion: 'no_reported_events' }) } }) });
     const { unmount } = render(<CsoOutfallDetail id={ASSET} />);
-    expect(screen.getByText(/this is not proof that no spill occurred/)).toBeInTheDocument();
+    expect(screen.getByText(/No reported spills in the last/)).toBeInTheDocument();
     unmount();
     mockFetch({ data: detail({ history: { ...detail().history, outfall: { state: 'not_monitored' }, events: [], evidence: evidence({ conclusion: 'not_monitored' }) } }) });
     render(<CsoOutfallDetail id={ASSET} />);
@@ -208,7 +208,7 @@ describe('CsoOutfallDetail', () => {
     render(<CsoOutfallDetail id="SVT00001" />);
     expect(screen.getByRole('heading', { level: 1, name: 'River Trent storm overflow' })).toBeInTheDocument();
     expect(screen.getByText('Not resolved')).toBeInTheDocument();
-    expect(screen.getByText(/derived from the Sewage Map/)).toBeInTheDocument();
-    expect(screen.getByText(/not been assessed against the reviewed River Tracer relationship set/)).toBeInTheDocument();
+    expect(screen.getByText(/upstream list from the Sewage Map/)).toBeInTheDocument();
+    expect(screen.getByText(/Not yet assessed against the River Tracer network/)).toBeInTheDocument();
   });
 });

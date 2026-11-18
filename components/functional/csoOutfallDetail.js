@@ -30,7 +30,7 @@ export const STATUS_LABELS = {
 
 // Why a status is not a confirmed spill or stop. None of these says the outfall is clear.
 export const STATUS_REASONS = {
-  not_spilling_no_recent_event: 'The latest report says not spilling, with no reported spill in the last 48 hours. Water company reporting is not independently verified, so this is not a confirmation that the outfall is clear.',
+  not_spilling_no_recent_event: 'The latest report says not spilling, with no reported spill in the last 48 hours.',
   stale: 'The latest report is out of date, so the current state is unknown.',
   offline: 'The monitor reported itself offline.',
   contradictory: 'The provider report and the platform’s assessment disagree, so the current state is unknown.',
@@ -50,10 +50,10 @@ export const STATUS_REASONS = {
 };
 
 const RELATIONSHIP_TEXT = {
-  confirmed: 'Confirmed upstream of HPP: the reviewed River Tracer relationship links it to the river above Holme Pierrepont.',
-  candidate: `${RELATIONSHIP_LABELS.candidate}. An inferred candidate, not part of the confirmed upstream list or its counts.`,
-  'catchment-only': `${RELATIONSHIP_LABELS['catchment-only']}. Inside the catchment, but not linked to the river network; not part of the confirmed upstream list or its counts.`,
-  legacy: 'On the HPP upstream list derived from the Sewage Map. This list has not been checked against the River Tracer network.',
+  confirmed: 'Confirmed upstream of HPP.',
+  candidate: `${RELATIONSHIP_LABELS.candidate}. Not on the confirmed upstream list.`,
+  'catchment-only': `${RELATIONSHIP_LABELS['catchment-only']}. Not linked to the river network.`,
+  legacy: 'On the HPP upstream list from the Sewage Map.',
 };
 
 function formatCoordinate(value) {
@@ -173,14 +173,14 @@ CurrentStatus.propTypes = { status: PropTypes.object.isRequired };
 export function outfallEvidenceMessages(history) {
   const { evidence, window, outfall } = history;
   const period = HISTORY_WINDOWS.find((option) => option.key === window.key)?.label ?? window.key;
-  if (evidence.conclusion === 'not_monitored') return [{ tone: 'warning', text: 'This outfall is not monitored for event history yet, so no spill history can be shown. That is not evidence that it did not spill.' }];
+  if (evidence.conclusion === 'not_monitored') return [{ tone: 'warning', text: 'This outfall is not monitored for event history yet.' }];
   const messages = [];
-  if (evidence.conclusion === 'no_reported_events') messages.push({ tone: 'info', text: `No reported spills in the available data for the last ${period}. Water company reporting is not independently verified, so this is not proof that no spill occurred.` });
-  if (evidence.conclusion === 'coverage_incomplete') messages.push({ tone: 'warning', text: 'No spills were found, but monitoring coverage is incomplete, so spills may have gone unrecorded.' });
+  if (evidence.conclusion === 'no_reported_events') messages.push({ tone: 'info', text: `No reported spills in the last ${period}.` });
+  if (evidence.conclusion === 'coverage_incomplete') messages.push({ tone: 'warning', text: 'No spills found, but monitoring coverage is incomplete.' });
   if (evidence.coverage.gapCount > 0) {
     messages.push({ tone: 'warning', text: `Monitoring coverage is incomplete: about ${Math.round(evidence.coverage.collectedFraction * 100)}% of this period was collected (${evidence.coverage.gapCount} gap${evidence.coverage.gapCount === 1 ? '' : 's'}).` });
   }
-  if (window.key === '30d' && !evidence.coverage.sufficient) messages.push({ tone: 'warning', text: 'Event monitoring does not yet cover enough of the last 30 days for a full 30-day history. The list shows what was recorded.' });
+  if (window.key === '30d' && !evidence.coverage.sufficient) messages.push({ tone: 'warning', text: 'Monitoring does not yet cover the full 30 days.' });
   if (outfall?.truncated) messages.push({ tone: 'warning', text: `This outfall had more events in this period than can be read at once, so its most recent events${outfall.readThrough ? ` (after ${formatTime(outfall.readThrough)})` : ''} are missing from this list.` });
   return messages;
 }
@@ -240,8 +240,8 @@ RecordedSpills.propTypes = { history: PropTypes.object.isRequired, windowKey: Pr
 function Connectivity({ detail }) {
   const { connectivity, relationship, outfall, publicId } = detail;
   let text;
-  if (relationship.basis !== 'rdp') text = 'This outfall has not been assessed against the reviewed River Tracer relationship set, so no downstream connection is claimed here.';
-  else if (connectivity.routed === false) text = 'This outfall could not be linked to the river network, so no downstream route can be drawn.';
+  if (relationship.basis !== 'rdp') text = 'Not yet assessed against the River Tracer network.';
+  else if (connectivity.routed === false) text = 'Not linked to the river network.';
   else if (relationship.primary) text = 'River Tracer links this outfall to the river network above HPP.';
   else text = 'River Tracer suggests a possible link to the river network, but it is not confirmed.';
   const canDraw = connectivity.impactEnabled && outfall.assetId && connectivity.routed !== false;
@@ -298,7 +298,7 @@ export default function CsoOutfallDetail({ id }) {
       <Container className="py-4 py-lg-5">
         {back}
         <PageHeader title={title(data)}
-          lead={`${data.outfall.providerLabel ?? 'Water company'} storm overflow ${data.outfall.externalId}. Reported activity and evidence for one outfall; not a measurement of water quality or a guarantee that the water is safe.`} />
+          lead={`${data.outfall.providerLabel ?? 'Water company'} storm overflow ${data.outfall.externalId}.`} />
         <Row className="g-0 g-lg-4">
           <Col lg={6}>
             <CurrentStatus status={data.status} />

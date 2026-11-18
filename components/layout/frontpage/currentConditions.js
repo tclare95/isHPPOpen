@@ -89,7 +89,7 @@ function HppStatusTile({ statusData, statusPending, eventClosed, eventsUnchecked
   } else {
     const recorded = statusData ? getRecordedHppStatus(statusData) : "unavailable";
     if (recorded === "unavailable") {
-      body = <StatusMessage state="unavailable">HPP&apos;s recorded status is unavailable right now. It is not inferred from the river level.</StatusMessage>;
+      body = <StatusMessage state="unavailable">HPP&apos;s recorded status is unavailable right now.</StatusMessage>;
     } else if (recorded === "unknown") {
       body = <StatusMessage state="unavailable">No recorded HPP status is available, so it is unknown.</StatusMessage>;
     } else {
@@ -178,9 +178,9 @@ const DIRECTION_TEXT = {
 };
 
 const GUIDE_TEXT = {
-  "predicted-at-or-above": `The forecast predicts Colwick reaching ${HPP_THRESHOLD_METRES} m. That is a prediction, not an announced closure.`,
-  "range-reaches": `The upper end of the indicative range reaches ${HPP_THRESHOLD_METRES} m. That is a possibility, not an announced closure.`,
-  "predicted-below": `The forecast predicts Colwick falling below ${HPP_THRESHOLD_METRES} m. That is a prediction: HPP reopens only when the status check records it.`,
+  "predicted-at-or-above": `Forecast to reach ${HPP_THRESHOLD_METRES} m.`,
+  "range-reaches": `The upper end of the range reaches ${HPP_THRESHOLD_METRES} m.`,
+  "predicted-below": `Forecast to drop below ${HPP_THRESHOLD_METRES} m.`,
 };
 
 function ForecastTile({ forecastData, forecastPending, accuracyData, accuracyPending, recordedStatus, now }) {
@@ -222,7 +222,6 @@ function ForecastTile({ forecastData, forecastPending, accuracyData, accuracyPen
   return (
     <Tile id="conditions-forecast" title="Next 24 hours (model forecast)">
       {body}
-      <p className="conditions-detail mb-0">A model prediction for Colwick, not an HPP decision.</p>
     </Tile>
   );
 }
@@ -277,9 +276,6 @@ function GaugesTile({ trentData, trentError, trentPending, now }) {
   return (
     <Tile id="conditions-gauges" title="Nearby and upstream gauges">
       {body}
-      <p className="conditions-detail mb-0">
-        Each gauge measures from its own datum, so compare how they are moving, not their heights.
-      </p>
     </Tile>
   );
 }

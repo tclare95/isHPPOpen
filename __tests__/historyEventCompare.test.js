@@ -156,7 +156,6 @@ describe("comparison page", () => {
       expect(container.querySelectorAll(".events-compare--b .events-compare__line--provisional").length).toBeGreaterThan(0);
       expect(container.querySelectorAll("[fill='url(#compare-hatch)']").length).toBeGreaterThan(0);
       expect(screen.getByText(/Provisional \(dashed\)/)).toBeInTheDocument();
-      expect(screen.getByText(/not a travel time or a prediction/)).toBeInTheDocument();
     } finally {
       delete HTMLElement.prototype.clientWidth;
     }

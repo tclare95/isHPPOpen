@@ -188,18 +188,14 @@ export default function ObservedRainfall() {
 
   return (
     <section id="rainfall" className="history-panel text-start mt-4" aria-labelledby="rainfall-heading">
-      <p className="history-eyebrow mb-1">Measured by rain gauges · not a forecast</p>
       <h2 id="rainfall-heading" className="h4">Observed rainfall</h2>
       <p className="history-intro">
-        Rain recorded in 15-minute totals by six Environment Agency rain gauges across the Trent catchment upstream of
-        Holme Pierrepont, via the River Data Platform. The telemetry is unchecked, usually arrives 30–70 minutes late in
-        batches, and can be corrected later. Missing intervals are shown as gaps, never as dry.
+        Rain recorded in 15-minute totals at six Environment Agency gauges upstream of Holme Pierrepont. Readings
+        usually arrive 30–70 minutes late; missing intervals are shown as gaps.
       </p>
       {body}
       <p className="rainfall-detail mt-3 mb-0">
-        Rainfall and river level are shown side by side for context only. This does not show how much a river rise was caused
-        by this rain or how long it takes to arrive. Predicted rainfall is part of the separate <Link href="/forecastinfo">forecast</Link>,
-        and is not included here.
+        Predicted rain is in the <Link href="/forecastinfo">forecast</Link>.
       </p>
     </section>
   );

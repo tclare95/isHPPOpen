@@ -166,7 +166,6 @@ describe('CurrentConditions', () => {
     expect(within(forecast).getByText('Predicted to rise')).toBeInTheDocument();
     expect(within(forecast).getByText(/Highest about 1.70 m around .*indicative range \d\.\d\d m–\d\.\d\d m/)).toBeInTheDocument();
     expect(within(forecast).getByText(/Forecast made 11:40 \(20 minutes ago\)/)).toBeInTheDocument();
-    expect(within(forecast).getByText('A model prediction for Colwick, not an HPP decision.')).toBeInTheDocument();
 
     const gauges = tile('Nearby and upstream gauges');
     const clifton = gauges.querySelector('[data-gauge="4126-level"]');
@@ -174,7 +173,6 @@ describe('CurrentConditions', () => {
     expect(clifton).toHaveTextContent("Level above this gauge's own datum. Rising 8 cm over 2 hours.");
     expect(gauges.querySelector('[data-gauge="4007-flow"]')).toHaveTextContent('85.2 m³/s');
     expect(gauges.querySelector('[data-gauge="4067-level"]')).toHaveTextContent('Falling 40 cm over 2 hours');
-    expect(within(gauges).getByText(/compare how they are moving, not their heights/)).toBeInTheDocument();
 
     const links = screen.getByRole('navigation', { name: 'River condition details' });
     expect(within(links).getByText('Trent gauges')).toHaveAttribute('href', '/trentweirs');
@@ -221,7 +219,7 @@ describe('CurrentConditions', () => {
     await renderSummary({ '/api/hppstatus': ok({ isEmpty: true, currentStatus: null, health: { state: 'unavailable' } }) });
 
     const status = tile('HPP status');
-    expect(within(status).getByText(/recorded status is unavailable right now. It is not inferred from the river level/)).toBeInTheDocument();
+    expect(within(status).getByText(/recorded status is unavailable right now\./)).toBeInTheDocument();
     expect(within(status).queryByText(/Open|Closed/)).not.toBeInTheDocument();
     // The other parts still show their own evidence.
     expect(within(tile('Colwick level now')).getByText('1.50 m')).toBeInTheDocument();
@@ -232,7 +230,7 @@ describe('CurrentConditions', () => {
     await renderSummary({ '/api/s3forecast': ok(forecastPayload({ values: [1.9, 2.3, 2.4] })) });
 
     const forecast = tile('Next 24 hours (model forecast)');
-    expect(within(forecast).getByText(/predicts Colwick reaching 2.2 m. That is a prediction, not an announced closure/)).toBeInTheDocument();
+    expect(within(forecast).getByText(/Forecast to reach 2.2 m\./)).toBeInTheDocument();
     // The recorded status is unchanged by the forecast.
     expect(within(tile('HPP status')).getByText('Open')).toBeInTheDocument();
     expect(screen.queryByText(/HPP (will|is going to) close/i)).not.toBeInTheDocument();

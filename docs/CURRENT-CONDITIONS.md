@@ -34,4 +34,4 @@ Links go to `/trentweirs`, `/forecastinfo`, `/history`, `/trentweirs#rainfall` (
 ## Boundaries
 
 No HPP status logic, alert rule, source authority or forecast generation changed. There is no composite score.
-The `/trentweirs` comparison chart is unchanged; its gauge snapshots now note that levels are on separate datums.
+The `/trentweirs` page is unchanged by C3.

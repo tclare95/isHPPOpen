@@ -53,9 +53,7 @@ test("anchors the section for /trentweirs#rainfall and keeps observed rain disti
   mockFetch(payload([gauge("ea-stone-rainfall", "Stone")]));
   const { container } = render(<ObservedRainfall />);
   expect(container.querySelector("section#rainfall")).toBeInTheDocument();
-  expect(screen.getByText(/not a forecast/i)).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "forecast" })).toHaveAttribute("href", "/forecastinfo");
-  expect(screen.getByText(/does not show how much a river rise was caused/i)).toBeInTheDocument();
 });
 
 test("states totals only for complete windows and lower bounds with missing counts otherwise", () => {

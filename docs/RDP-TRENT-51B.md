@@ -31,7 +31,8 @@ operational-health check uses the display path, so it reports what the dashboard
   A test asserts that identical source data gives `stations` deep-equal to legacy.
 - **Calculations:** RDP readings go through the same `buildMeasureSnapshot`. Rates
   use index 4 (1h) and index 96 (1d), level is in cm and flow in m³/s, and values
-  are rounded to one decimal place. Missing-sample behaviour is deliberately unchanged.
+  are rounded to one decimal place. Missing-sample behaviour is shared by both sources: a series too short to
+  reach index 4 or 96 reports that rate as `null` (shown as unavailable), never `0`.
 - **Additive diagnostics (rdp mode only):** `health.source` is
   `river-data-platform-trent`, and `health.series[]` lists `{key, origin:
   rdp|legacy|cache|null, state: fresh|stale|unavailable, observedAt, ageSeconds}`.

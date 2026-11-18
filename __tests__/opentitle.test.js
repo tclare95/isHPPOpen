@@ -133,4 +133,43 @@ describe('OpenTitle', () => {
     render(<OpenTitle cachedEvents={events} />);
     expect(await heading()).toHaveTextContent('HPP is Open');
   });
+  describe('when the cached homepage snapshot could not read events', () => {
+    const today = { event_start_date: daysFromNow(-1), event_end_date: daysFromNow(1) };
+    const withEvents = (events) => {
+      mockUseFetch.mockImplementation((path) => {
+        if (path === '/api/levels') return freshLevel(1.4);
+        if (path === '/api/hppstatus') return recorded(true);
+        if (path === '/api/events?limit=5') return events;
+        return ok(undefined);
+      });
+    };
+
+    test('reads events itself and shows an event closure instead of Open', async () => {
+      withEvents(ok({ count: 1, eventsArray: [today] }));
+      render(<OpenTitle cachedEvents={[]} eventsUnavailable />);
+      expect(await heading()).toHaveTextContent('HPP is Closed for an event');
+    });
+
+    test('waits for the event check instead of showing Open', async () => {
+      withEvents(pending);
+      render(<OpenTitle cachedEvents={[]} eventsUnavailable />);
+      expect(await screen.findByText(/Loading HPP status/)).toBeInTheDocument();
+      expect(screen.queryByText(/Open/)).not.toBeInTheDocument();
+    });
+
+    test('says event closures could not be checked when the event read also fails', async () => {
+      withEvents(failed);
+      render(<OpenTitle cachedEvents={[]} eventsUnavailable />);
+      expect(await heading()).toHaveTextContent('HPP is Open');
+      expect(screen.getByText(/events could not be checked right now, so the course may still be closed for an event/)).toBeInTheDocument();
+    });
+
+    test('does not read events again when the snapshot has them', async () => {
+      withEvents(failed);
+      render(<OpenTitle cachedEvents={[]} />);
+      expect(await heading()).toHaveTextContent('HPP is Open');
+      expect(mockUseFetch.mock.calls.map(([path]) => path)).not.toContain('/api/events?limit=5');
+      expect(screen.queryByText(/could not be checked/)).not.toBeInTheDocument();
+    });
+  });
 });

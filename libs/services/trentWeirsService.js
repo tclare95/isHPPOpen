@@ -33,16 +33,16 @@ export function buildMeasureSnapshot(items, measureType) {
     return null;
   }
 
-  const latestValue = readings[0]?.value ?? 0;
-  const readingOneHourAgo = readings[TRENT_READINGS_PER_HOUR]?.value ?? latestValue;
-  const readingOneDayAgo = readings[TRENT_READINGS_PER_DAY]?.value ?? latestValue;
+  const latestValue = readings[0].value;
   const changeMultiplier = measureType === "level" ? 100 : 1;
+  // A series too short to reach back an hour (or a day) has no change over it: null, never a fabricated 0.
+  const changeSince = (index) => (readings[index] ? roundToSingleDecimal((latestValue - readings[index].value) * changeMultiplier) : null);
 
   return {
     measureType,
     latestValue,
-    rateOfChangeHour: roundToSingleDecimal((latestValue - readingOneHourAgo) * changeMultiplier),
-    rateOfChangeDay: roundToSingleDecimal((latestValue - readingOneDayAgo) * changeMultiplier),
+    rateOfChangeHour: changeSince(TRENT_READINGS_PER_HOUR),
+    rateOfChangeDay: changeSince(TRENT_READINGS_PER_DAY),
     readings,
   };
 }

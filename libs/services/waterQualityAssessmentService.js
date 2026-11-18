@@ -41,7 +41,7 @@ export async function getLegacyWaterQualityAssessment({ now = new Date() } = {})
   return {
     source: "legacy",
     version: LEGACY_ASSESSMENT_VERSION,
-    current: { version: LEGACY_ASSESSMENT_VERSION, observedAt, level: indicator.level, label: indicator.label, atLeast: false, partial: indicator.partial,
+    current: { version: LEGACY_ASSESSMENT_VERSION, observedAt, level: indicator.level, label: indicator.label, atLeast: Boolean(indicator.atLeast), partial: indicator.partial,
       reasons: indicator.reasons, factors: { cso: { factor: "sewage_map_density", ...indicator.cso }, runoff: { factor: "river_rise_4h", ...indicator.runoff } } },
     history: null,
     legacyHistory: { route: "/api/waterquality/csodensity", unit: "Sewage Map CSO activity per km²", thresholds: calibration.waterQuality },

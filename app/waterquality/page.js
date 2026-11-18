@@ -21,6 +21,7 @@ import PageHeader from '../../components/layout/site/PageHeader';
 import StatusMessage from '../../components/layout/site/StatusMessage';
 import useFetch from '../../libs/useFetch';
 import { SWR_15_MINUTES } from '../../libs/dataFreshness';
+import { getDisplayedHealthState } from '../../libs/operationalHealth';
 
 const WaterQualityMap = dynamic(() => import('../../components/functional/csoMap'), { ssr: false, loading: () => <p>Loading map…</p> });
 const CsoChart = dynamic(() => import('../../components/functional/csoChart'), { ssr: false, loading: () => <p>Loading chart…</p> });
@@ -85,6 +86,11 @@ export default function WaterQualityPage() {
   const rdpStatus = current?.health?.cso?.origin === 'rdp';
   const freshReports = Number(counts.currentlySpilling || 0) + Number(counts.recentlyStopped48h || 0) + noRecentSpill;
   const noFreshStatus = rdpStatus && !csoStatusUnavailable && (current?.locations?.length ?? 0) > 0 && freshReports === 0;
+  // Legacy status can only claim a spill while its summary is fresh, so an out-of-date summary would read as zero
+  // spills. A successful read with no summary at all has nothing to count. Both are unavailable, not zero.
+  const legacyStatusStale = Boolean(current) && !rdpStatus && ['stale', 'unavailable'].includes(getDisplayedHealthState(current.health ?? null));
+  const noStatusSnapshot = !summaryPending && !summaryError && !current;
+  const statusUnavailableReason = noFreshStatus ? ': no upstream outfall has an up-to-date report' : legacyStatusStale ? ': the latest status summary is out of date' : '';
   const statusAsOf = current?.health?.cso?.read?.retrievedAt ?? null;
   const densityRows = Array.isArray(densityData) ? densityData : [];
   const observedAt = assessment?.current?.observedAt ?? current?.ScrapeTimestamp;
@@ -112,8 +118,8 @@ export default function WaterQualityPage() {
           </Card.Body>
         </Card>
 
-        {summaryPending ? <StatusMessage state="loading" className="mb-4">Loading current CSO status…</StatusMessage> : summaryError ? <StatusMessage state="error" className="mb-4">Current CSO status is unavailable. Historical activity may still be shown below.</StatusMessage> : csoStatusUnavailable || noFreshStatus ? (
-          <StatusMessage state="unavailable" className="mb-4">Current CSO status is temporarily unavailable{noFreshStatus ? ': no upstream outfall has an up-to-date report' : ''}. No upstream location is shown as spilling or as clear until it can be checked again. Historical activity may still be shown below.</StatusMessage>
+        {summaryPending ? <StatusMessage state="loading" className="mb-4">Loading current CSO status…</StatusMessage> : summaryError ? <StatusMessage state="error" className="mb-4">Current CSO status is unavailable. Historical activity may still be shown below.</StatusMessage> : csoStatusUnavailable || noFreshStatus || legacyStatusStale || noStatusSnapshot ? (
+          <StatusMessage state="unavailable" className="mb-4">Current CSO status is temporarily unavailable{statusUnavailableReason}. No upstream location is shown as spilling or as clear until it can be checked again. Historical activity may still be shown below.</StatusMessage>
         ) : (
           <Row className="g-3 mb-4">
             <Col md={4}><SummaryCard value={counts.currentlySpilling ?? '—'} label="Currently spilling" detail="Upstream locations reporting an active spill." /></Col>

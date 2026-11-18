@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import useFetch from "../../libs/useFetch";
 import PropTypes from "prop-types";
-import { SWR_15_MINUTES } from "../../libs/dataFreshness";
+import { SWR_15_MINUTES, SWR_EDITORIAL } from "../../libs/dataFreshness";
 import StatusMessage from "../layout/site/StatusMessage";
 import {
   HPP_THRESHOLD_METRES,
@@ -73,12 +73,17 @@ EvidenceNote.propTypes = {
 // Shows the authoritative recorded HPP status from /api/hppstatus (#89).
 // Event restrictions take precedence. The level reading only flags stale or
 // not-yet-recorded evidence; it never decides open or closed here.
-export default function OpenTitle({ cachedEvents = [] }) {
+// When the cached homepage snapshot could not read events (`eventsUnavailable`), today's events are read here instead;
+// if that also fails, the status is shown with a note that event closures could not be checked.
+export default function OpenTitle({ cachedEvents = [], eventsUnavailable = false }) {
   const { data: levelData } = useFetch("/api/levels", SWR_15_MINUTES);
   const { data: statusData, isPending: statusPending } = useFetch("/api/hppstatus", SWR_15_MINUTES);
+  const { data: liveEvents, isPending: liveEventsPending } = useFetch(eventsUnavailable ? "/api/events?limit=5" : null, SWR_EDITORIAL);
   const now = useClientNow();
+  const events = eventsUnavailable ? liveEvents?.eventsArray ?? [] : cachedEvents;
+  const eventsUnchecked = eventsUnavailable && !Array.isArray(liveEvents?.eventsArray);
 
-  if (now && isClosedForEventOn(cachedEvents, now)) {
+  if (now && isClosedForEventOn(events, now)) {
     return (
       <StatusHeading>
         HPP is <span className="text-danger">Closed</span> for an event
@@ -86,7 +91,7 @@ export default function OpenTitle({ cachedEvents = [] }) {
     );
   }
 
-  if (!now || statusPending) {
+  if (!now || statusPending || (eventsUnchecked && liveEventsPending)) {
     return (
       <StatusMessage state="loading" className="d-inline-block">Loading HPP status…</StatusMessage>
     );
@@ -113,7 +118,14 @@ export default function OpenTitle({ cachedEvents = [] }) {
 
   const reading = getLatestLevelReading(levelData);
   const freshness = getLevelFreshness(levelData, reading, now);
-  const note = <EvidenceNote recordedStatus={recordedStatus} reading={reading} freshness={freshness} />;
+  const note = (
+    <>
+      {eventsUnchecked ? (
+        <p className="history-muted small mb-2">Today&apos;s events could not be checked right now, so the course may still be closed for an event.</p>
+      ) : null}
+      <EvidenceNote recordedStatus={recordedStatus} reading={reading} freshness={freshness} />
+    </>
+  );
 
   if (recordedStatus === "closed") {
     const daysClosed = getDaysSince(statusData.effectiveLastOpenAt ?? statusData.effectiveLastOpenDate, now);
@@ -150,4 +162,5 @@ OpenTitle.propTypes = {
       event_end_date: PropTypes.string,
     })
   ),
+  eventsUnavailable: PropTypes.bool,
 };

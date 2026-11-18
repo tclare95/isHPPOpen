@@ -9,12 +9,12 @@ import WaterQuality from "../layout/frontpage/waterquality";
 import WeirInfo from "../layout/frontpage/weirinfo";
 import StatusArea from "../layout/frontpage/statusarea";
 
-export default function HomePageClient({ events, message }) {
+export default function HomePageClient({ events, eventsUnavailable, message }) {
   return (
     <Container fluid className="history-page text-white py-4">
       <Header message={message} />
       <Container>
-        <TopContent cachedEvents={events} />
+        <TopContent cachedEvents={events} eventsUnavailable={eventsUnavailable} />
         <EventsArea />
         <WaterQuality />
         <WeirInfo />
@@ -26,6 +26,7 @@ export default function HomePageClient({ events, message }) {
 
 HomePageClient.propTypes = {
   events: PropTypes.arrayOf(PropTypes.object),
+  eventsUnavailable: PropTypes.bool,
   message: PropTypes.shape({
     banner_title: PropTypes.string,
     banner_message: PropTypes.string,
@@ -35,5 +36,6 @@ HomePageClient.propTypes = {
 
 HomePageClient.defaultProps = {
   events: [],
+  eventsUnavailable: false,
   message: null,
 };

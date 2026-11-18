@@ -1,5 +1,6 @@
 const {
   __resetTrentWeirsSnapshotCacheForTests,
+  buildMeasureSnapshot,
   getTrentWeirsSnapshot,
 } = require("../libs/services/trentWeirsService");
 
@@ -98,5 +99,11 @@ describe("trentWeirsService", () => {
     expect(result.fallback).toBe(true);
     expect(result.partial).toBe(true);
     expect(result.stations).toHaveLength(4);
+  });
+  test("buildMeasureSnapshot reports no change, not zero, when the series does not reach back far enough", () => {
+    const items = Array.from({ length: 3 }, (_, index) => ({ dateTime: `2026-03-08T12:${String(45 - index * 15).padStart(2, "0")}:00Z`, value: 1 + index * 0.01 }));
+    expect(buildMeasureSnapshot(items, "level")).toMatchObject({ latestValue: 1, rateOfChangeHour: null, rateOfChangeDay: null });
+    const hour = Array.from({ length: 5 }, (_, index) => ({ dateTime: `2026-03-08T1${index}:00:00Z`, value: 2 - index * 0.01 }));
+    expect(buildMeasureSnapshot(hour, "level")).toMatchObject({ rateOfChangeHour: 4, rateOfChangeDay: null });
   });
 });

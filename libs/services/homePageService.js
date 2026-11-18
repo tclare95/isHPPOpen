@@ -53,6 +53,8 @@ export async function fetchHomePageSnapshot(limit = 5) {
 
   return {
     events: normalizedEvents,
+    // A failed events read is not "no events today": the homepage then checks events itself before trusting "Open".
+    eventsUnavailable: !Array.isArray(eventsPayload?.eventsArray),
     message: bannerMessage,
   };
 }

@@ -16,12 +16,18 @@ function formatDirection(direction) {
   return direction === "below" ? "Below" : "Above";
 }
 
-function formatStatus(status) {
-  if (status === "pending_confirmation") {
-    return { label: "Pending confirmation", variant: "warning" };
+function formatStatus(alert) {
+  if (alert.status === "pending_confirmation") {
+    return alert.confirmationExpired
+      ? { label: "Not active: confirmation expired", variant: "secondary", note: "This alert was never confirmed and its link has expired. Set it up again to receive it." }
+      : { label: "Not active: awaiting confirmation", variant: "warning", note: "Open the confirmation link we emailed you to start this alert." };
   }
 
-  return { label: "Active", variant: "success" };
+  if (alert.status === "active") {
+    return { label: "Active", variant: "success", note: null };
+  }
+
+  return { label: "Not active", variant: "secondary", note: null };
 }
 
 function formatDate(value) {
@@ -39,7 +45,7 @@ function formatDate(value) {
 }
 
 function AlertRow({ alert, busyAlertKey, onRemove }) {
-  const status = formatStatus(alert.status);
+  const status = formatStatus(alert);
 
   return (
     <Card bg="black" text="light" border="secondary">
@@ -54,10 +60,11 @@ function AlertRow({ alert, busyAlertKey, onRemove }) {
           <Badge bg={status.variant}>{status.label}</Badge>
         </Stack>
 
+        {status.note ? <div className="small mb-2">{status.note}</div> : null}
+
         <div className="small text-secondary mb-3">
           Created: {formatDate(alert.createdAt)}<br />
-          Last updated: {formatDate(alert.updatedAt)}<br />
-          Last triggered: {formatDate(alert.lastTriggeredAt)}
+          Last alert email: {alert.lastTriggeredAt ? formatDate(alert.lastTriggeredAt) : "none yet"}
         </div>
 
         <div className="d-grid d-sm-flex justify-content-sm-end">
@@ -66,7 +73,7 @@ function AlertRow({ alert, busyAlertKey, onRemove }) {
             onClick={() => onRemove(alert.alertKey)}
             disabled={busyAlertKey === alert.alertKey}
           >
-            {busyAlertKey === alert.alertKey ? "Removing…" : "Remove alert"}
+            {busyAlertKey === alert.alertKey ? "Stopping…" : "Stop this alert"}
           </Button>
         </div>
       </Card.Body>
@@ -86,6 +93,7 @@ AlertRow.propTypes = {
     createdAt: PropTypes.string,
     updatedAt: PropTypes.string,
     lastTriggeredAt: PropTypes.string,
+    confirmationExpired: PropTypes.bool,
   }).isRequired,
   busyAlertKey: PropTypes.string.isRequired,
   onRemove: PropTypes.func.isRequired,
@@ -111,11 +119,18 @@ export function AlertsManagementContent({ data, error, isPending, busyAlertKey, 
   }
 
   if (error) {
-    return <Alert variant="danger">{error.message || "Unable to load your alerts right now."}</Alert>;
+    // 404 is an unusable link; anything else is a temporary failure. Neither reveals whose alerts these are.
+    return (
+      <Alert variant={error.status === 404 ? "warning" : "danger"}>
+        {error.status === 404
+          ? "This management link has expired or has already been used. Request a new link below."
+          : "We could not load your alerts just now. Please try again, or request a new link below."}
+      </Alert>
+    );
   }
 
   if (data?.alerts?.length === 0) {
-    return <Alert variant="secondary">No active or pending alerts were found for this email address.</Alert>;
+    return <Alert variant="secondary">There are no active or pending alerts for this email address.</Alert>;
   }
 
   if (!data?.alerts?.length) {
@@ -137,6 +152,7 @@ AlertsManagementContent.propTypes = {
   }),
   error: PropTypes.shape({
     message: PropTypes.string,
+    status: PropTypes.number,
   }),
   isPending: PropTypes.bool.isRequired,
   busyAlertKey: PropTypes.string.isRequired,

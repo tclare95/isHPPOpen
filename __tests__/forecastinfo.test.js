@@ -5,8 +5,8 @@ import useFetch from '../libs/useFetch';
 jest.mock('../libs/useFetch');
 jest.mock('next/link', () => ({ children, href }) => <a href={href}>{children}</a>);
 jest.mock('../components/functional/stabilityChart', () => () => <div data-testid="stability-chart" />);
-jest.mock('../components/functional/forecastChart', () => ({ graphData, graphForeCastData, accuracyData, showConfidence }) => (
-  <div data-testid="forecast-chart">{`${graphData.length}:${graphForeCastData.map((row) => row.forecast_reading).join(',')}:${accuracyData?.length ?? 'none'}:${showConfidence}`}</div>
+jest.mock('../components/functional/forecastChart', () => ({ graphData, graphForeCastData, showConfidence }) => (
+  <div data-testid="forecast-chart">{`${graphData.length}:${graphForeCastData.map((row) => row.forecast_reading).join(',')}:${showConfidence}`}</div>
 ));
 
 function buildResponses(levelForecast = []) {
@@ -37,12 +37,14 @@ describe('ForecastInfoPage', () => {
     mockResponses(buildResponses());
   });
 
-  it('shows the predictor forecast with observed levels, accuracy and confidence by default', () => {
+  it('shows the predictor forecast with observed levels, accuracy and the indicative range by default', () => {
     render(<ForecastInfoPage />);
 
-    expect(screen.getByTestId('forecast-chart')).toHaveTextContent('1:1.25,1.3:1:true');
+    expect(screen.getByTestId('forecast-chart')).toHaveTextContent('1:1.25,1.3:true');
     expect(screen.getByText('Forecast Accuracy')).toBeInTheDocument();
-    expect(screen.getByLabelText('Show 95% confidence interval')).toBeChecked();
+    expect(screen.getByLabelText('Show indicative range')).toBeChecked();
+    expect(screen.queryByText(/95%|confidence interval/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/about 7 in 10 past forecasts/i)).toHaveTextContent(/not been tested in flood conditions/);
     expect(screen.getByText('Stats')).toBeInTheDocument();
     expect(screen.getByText('Forecast Stability')).toBeInTheDocument();
   });
@@ -56,11 +58,12 @@ describe('ForecastInfoPage', () => {
     expect(screen.getByTestId('forecast-chart')).not.toHaveTextContent('9.9');
   });
 
-  it('turns the confidence interval off and opens stability details', () => {
+  it('turns the indicative range off and opens stability details', () => {
     render(<ForecastInfoPage />);
 
-    fireEvent.click(screen.getByLabelText('Show 95% confidence interval'));
+    fireEvent.click(screen.getByLabelText('Show indicative range'));
     expect(screen.getByTestId('forecast-chart')).toHaveTextContent(':false');
+    expect(screen.queryByText(/about 7 in 10 past forecasts/i)).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByText('Forecast Stability'));
     expect(screen.getByTestId('stability-chart')).toBeInTheDocument();

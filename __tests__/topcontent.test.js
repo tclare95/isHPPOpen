@@ -13,8 +13,8 @@ jest.mock('../components/functional/vomitfactor', () => ({ assessment, isPending
 jest.mock('../components/functional/weirlevels', () => ({ currentLevel }) => (
   <div data-testid="weir-levels">{currentLevel}</div>
 ));
-jest.mock('../components/functional/forecastChart', () => ({ graphData, graphForeCastData, accuracyData }) => (
-  <div data-testid="forecast-chart">{`${graphData.length}:${graphForeCastData.length}:${accuracyData.length}`}</div>
+jest.mock('../components/functional/forecastChart', () => ({ graphData, graphForeCastData, showConfidence }) => (
+  <div data-testid="forecast-chart">{`${graphData.length}:${graphForeCastData.length}:${showConfidence}`}</div>
 ));
 
 const mockUseFetch = useFetch;
@@ -95,7 +95,9 @@ describe('TopContent', () => {
     expect(screen.getByTestId('vomit-factor')).toHaveTextContent('elevated');
     expect(mockUseFetch.mock.calls.map(([path]) => path)).not.toContain('/api/waterquality/csodensity?hours=3');
     expect(screen.getByTestId('weir-levels')).toHaveTextContent('1.45');
-    expect(screen.getByTestId('forecast-chart')).toHaveTextContent('1:1:1');
+    expect(screen.getByTestId('forecast-chart')).toHaveTextContent('1:1:true');
+    // The range comes from published-forecast errors, so the front page no longer needs (or fails on) accuracy data.
+    expect(mockUseFetch.mock.calls.map(([path]) => path)).not.toContain('/api/forecastaccuracy');
   });
 
   it('renders a recoverable error message when operational data fails', () => {

@@ -9,14 +9,13 @@ jest.mock('react-google-charts', () => function MockChart({ data }) {
 const rows = () => JSON.parse(screen.getByTestId('chart').getAttribute('data-rows'));
 const history = [{ reading_date: '2026-03-08T09:00:00Z', reading_level: 1.2 }];
 const forecast = [{ forecast_date: '2026-03-08T11:00:00Z', forecast_reading: 1.5 }];
-const accuracy = [{ horizon_hours: 0, mae: 0.1 }];
 
 describe('Chart input transformations', () => {
   beforeEach(() => jest.useFakeTimers().setSystemTime(new Date('2026-03-08T10:00:00Z')));
   afterEach(() => jest.useRealTimers());
 
   test.each([ChartRender, ForecastChart])('%p preserves rows, bounds and input-triggered clock samples', (Component) => {
-    const props = { graphData: history, graphForeCastData: forecast, lowerBound: 0.5, upperBound: 2, accuracyData: accuracy };
+    const props = { graphData: history, graphForeCastData: forecast, lowerBound: 0.5, upperBound: 2 };
     const view = render(<Component {...props} />);
     expect(rows().slice(1).map((row) => row[0])).toEqual(['2026-03-08T09:00:00.000Z', '2026-03-08T10:00:00.000Z', '2026-03-08T11:00:00.000Z']);
     expect(rows()[1].slice(3, 7)).toEqual([1.2, 0.5, 2, null]);
@@ -31,13 +30,15 @@ describe('Chart input transformations', () => {
     expect(rows()).toHaveLength(2); // Header and Now, without stale input rows.
   });
 
-  test('forecast confidence follows accuracy data and the visibility toggle', () => {
-    const props = { graphData: history, graphForeCastData: forecast, lowerBound: 0.5, upperBound: 2, accuracyData: accuracy };
+  test('forecast range uses the published-error table by lead time and the visibility toggle', () => {
+    const props = { graphData: history, graphForeCastData: forecast, lowerBound: 0.5, upperBound: 2 };
     const view = render(<ForecastChart {...props} />);
-    expect(rows()[3][7]).toBeCloseTo(1.5 - 1.96 * 0.1);
-    expect(rows()[3][8]).toBeCloseTo(1.5 + 1.96 * 0.1);
-    view.rerender(<ForecastChart {...props} accuracyData={[{ horizon_hours: 0, mae: 0.2 }]} />);
-    expect(rows()[3][7]).toBeCloseTo(1.5 - 1.96 * 0.2);
+    // first row, no CSV horizon: lead inferred as 0.25 h, held at the 1 h offsets
+    expect(rows()[3][7]).toBeCloseTo(1.5 - 0.056);
+    expect(rows()[3][8]).toBeCloseTo(1.5 + 0.031);
+    view.rerender(<ForecastChart {...props} graphForeCastData={[{ ...forecast[0], horizon_hours: 72 }]} />);
+    expect(rows()[3][7]).toBeCloseTo(1.5 - 0.147);
+    expect(rows()[3][8]).toBeCloseTo(1.5 + 0.063);
     view.rerender(<ForecastChart {...props} showConfidence={false} />);
     expect(rows()[3].slice(7)).toEqual([null, null]);
   });

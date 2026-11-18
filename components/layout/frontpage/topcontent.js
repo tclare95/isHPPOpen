@@ -48,7 +48,6 @@ function renderForecastContent({
   upperBound,
   levelReadings,
   s3Forecast,
-  accuracyData,
 }) {
   if (isPending || forecastPending) {
     return <Spinner animation="border" role="status" />;
@@ -64,7 +63,6 @@ function renderForecastContent({
       upperBound={upperBound}
       graphData={levelReadings}
       graphForeCastData={s3Forecast?.forecast_data || []}
-      accuracyData={accuracyData?.accuracy_data || []}
       showConfidence
     />
   );
@@ -77,7 +75,6 @@ export default function TopContent(props) {
     error: forecastError,
     isPending: forecastPending,
   } = useFetch("/api/s3forecast", SWR_15_MINUTES);
-  const { data: accuracyData, error: accuracyError } = useFetch("/api/forecastaccuracy", SWR_15_MINUTES);
   // The same server-side assessment as /waterquality (RDP_WQ_ASSESSMENT); never computed in the browser.
   const { data: waterQualityAssessment, isPending: assessmentPending } = useFetch("/api/waterquality/assessment", SWR_15_MINUTES);
 
@@ -87,7 +84,7 @@ export default function TopContent(props) {
   const readingTime = recentEntry?.reading_date ? new Date(recentEntry.reading_date) : currentTime;
   const recentLevel = recentEntry ? recentEntry.reading_level : 0;
   const { lowerBound, upperBound, updateBounds } = useContext(GraphContext);
-  const hasOperationalError = Boolean(levelError || forecastError || accuracyError);
+  const hasOperationalError = Boolean(levelError || forecastError);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -165,7 +162,6 @@ export default function TopContent(props) {
             upperBound,
             levelReadings,
             s3Forecast,
-            accuracyData,
           })}
           <p className="mt-2 small">
             <Link href="/forecastinfo">About this forecast</Link>

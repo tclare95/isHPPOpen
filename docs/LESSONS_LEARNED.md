@@ -10,6 +10,11 @@
 - Environment variables are required very early because `libs/database.js` validates on import.
 - Legacy clients can still send mixed request-body shapes; keep compatibility through `parseRequestBody()` until fully migrated.
 - Route-level domain logic can still grow quickly; continue extracting validation/persistence into services.
+- Never fall back from a missing/invalid id to a natural key with `upsert`: the former event save matched by name, so
+  "creating" an event with an existing name silently overwrote it. Create inserts; update targets `_id` without upsert.
+- Date-only values must not round-trip through `toISOString()` or browser-local parsing: they shift by a day for
+  values stored at UK midnight. Convert to `YYYY-MM-DD` on the server in Europe/London, and reject rolled-over dates
+  such as `2026-02-30` (JavaScript silently turns them into March).
 
 ## Practical guidance for future changes
 1. **Add or modify endpoint behavior in the service first**, then keep route handlers thin.

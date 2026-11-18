@@ -53,7 +53,8 @@ Editorial writes use the shared `libs/cache/revalidate.js` helper with `revalida
    - keep one route-level `try/catch` boundary
    - map errors with shared `mapApiError()`
 - Examples:
-  - `app/api/events/route.js`: read/update/delete events.
+  - `app/api/events/route.js`: public upcoming-events feed (read-only).
+  - `app/api/admin/events/route.js` and `app/api/admin/events/[id]/route.js`: admin browse, create, update-by-id and delete-by-id of events.
   - `app/api/sitebanner/route.js`: get/update banner messages.
   - `app/api/hppstatus/route.js`: computes closure days over time windows.
    - `app/api/levels/route.js`: serves observed Colwick levels via `libs/services/levelsService.js`. `RDP_LEVELS_SOURCE` (`legacy|shadow|rdp`, default `legacy`) selects the `level_data` source: `rdp` reads RDP with a bounded direct-EA fallback, and `legacy` reads direct EA; `libs/rdp/levelsSource.js` is loaded only outside legacy. `forecast_data` is always `[]`: the government forecast is retired and the ML forecast is served only by `/api/s3forecast` (#90). No mode reads `levels/latest.json`. See [RDP-LEVELS-51C.md](RDP-LEVELS-51C.md) and [FORECAST-ML-PRIMARY-90.md](FORECAST-ML-PRIMARY-90.md).
@@ -99,7 +100,7 @@ Editorial writes use the shared `libs/cache/revalidate.js` helper with `revalida
 - Admin authorization is one policy in `libs/auth/adminAccess.js`: with `ADMIN_AUTH0_SUBS` unset any authenticated
   session is admin (trust relies on the Auth0 tenant restricting sign-up); when set, only the listed stable `sub`s are
   admins. See [ADMIN-AUTHORIZATION.md](ADMIN-AUTHORIZATION.md).
-- Privileged handlers (events POST/DELETE, site banner POST, every `app/api/admin/*` route) use `requireRouteAdmin()` from
+- Privileged handlers (site banner POST and every `app/api/admin/*` route, including event writes) use `requireRouteAdmin()` from
   `libs/api/httpApp.js`; `requireRouteSession()` alone only proves sign-in and must not guard admin actions.
 - Unauthenticated requests return `401` with `{ message: "Unauthorized" }`; authenticated non-admins return `403`
   with `{ message: "Forbidden" }`.
@@ -140,9 +141,21 @@ Editorial writes use the shared `libs/cache/revalidate.js` helper with `revalida
    - The homepage (`components/functional/opentitle.js`, `components/layout/frontpage/statusarea.js`) shows the recorded `currentStatus` from `/api/hppstatus` and never derives open/closed from the browser's level reading. A same-day event still shows "closed for an event". Presentation helpers in `libs/hpp/hppHomeStatus.js` use the service rule (`isOpenAtLevel`: open strictly below 2.2 m) only to note when a fresh reading is on the other side of 2.2 m from the recorded status, and the 30-minute observation age to mark the status as last recorded. A loading, failed, empty or fallback read shows loading or unavailable, never `0.00 m` or zero closures. If the cached home snapshot could not read events (`eventsUnavailable`), the title reads `/api/events` itself before showing a status, and notes when event closures could not be checked.
 
 2. **Event management**
-   - Public users can fetch upcoming events.
-   - Authenticated admins can upsert and delete events.
-   - Validation is performed with Yup in the service layer.
+   - Public users can fetch upcoming events (`GET /api/events`; semantics and homepage feed unchanged).
+   - Admins browse every event with `GET /api/admin/events?scope=upcoming|current|past|all&q=&page=&pageSize=` (default
+     `upcoming`, 20 per page, at most 50; `q` is a literal, case-insensitive match on name and details, at most 100
+     characters). Upcoming and current sort soonest first; past and all sort most recent first. Invalid parameters are `400`.
+   - Scopes use UK (Europe/London) calendar days: upcoming starts after today, current spans today (including an event
+     ending today), past ended before today.
+   - Event identity is the Mongo `_id`. `POST /api/admin/events` always inserts a new event (a body carrying an `id` is
+     rejected) and never matches an existing event by name. `PUT /api/admin/events/{id}` updates only that event without
+     upsert; `DELETE /api/admin/events/{id}` deletes only that event. A malformed id is `400 Invalid event id`; an unknown
+     id is `404 Event not found` and creates nothing.
+   - Dates are date-only `YYYY-MM-DD` UK days, stored as that day's UTC midnight (the established format). Only real
+     calendar dates are accepted, and end must be on or after start. The admin read returns stored dates as UK date-only
+     values, so a saved date round-trips through the editor unchanged (also for legacy values stored at UK midnight).
+   - Validation (`libs/services/eventsService.js`) reports every problem in one `400` message and never writes on failure.
+   - Successful create/update/delete expire the `events` and `home-snapshot` tags; an unchanged update does not.
 
 3. **Site banner management**
    - Public endpoint exposes current banner entries.
@@ -195,15 +208,20 @@ Editorial writes use the shared `libs/cache/revalidate.js` helper with `revalida
 
 8. **Admin editing experience**
    - Admin pages now use a more consistent editing pattern across events and site banner workflows.
-   - Event management uses a focused list-and-editor flow with consistent save/reset/delete feedback.
-   - A removed selected event falls back to the first remaining event or new-event mode before its editor renders; refreshes preserve valid selections and explicit new-event mode.
+   - Event management (`components/functional/eventstable.js`, `eventsform.js`) lists events by timing (upcoming,
+     current, past, all) with search and paging, and edits the selected event by id. The editor shows "New event" or
+     "Editing <name>"; creating then switches to editing the created event. The selection is kept independently of the
+     list, so changing filters or pages does not drop it; switching away from unsaved changes asks first.
+   - Failed saves or deletes keep the typed values and show the reason (`401` asks the admin to sign in again, `403`
+     says the account is not authorised); success is only reported after the server confirms the write. Deletion
+     requires confirmation and returns to new-event mode.
    - Banner management includes preview, visibility toggle, scheduling controls, and clearer loading/success/error states.
 
 9. **Home page static data strategy**
    - `app/page.js` uses App Router `unstable_cache` (`revalidate = 21600`) with tags (`home-snapshot`, `events`, `site-banner`) to cache events/banner and reduce load.
     - Data assembly for the home snapshot lives in `libs/services/homePageService.js`.
    - Home snapshot assembly tolerates partial Mongo-backed failures so banner and events can fall back independently.
-   - Admin writes in `app/api/events/route.js` and `app/api/sitebanner/route.js` trigger `revalidateTag` for immediate snapshot refresh.
+   - Admin writes in `app/api/admin/events/*` and `app/api/sitebanner/route.js` trigger `revalidateTag` for immediate snapshot refresh.
    - Operational data (levels/status/forecast/water quality) uses Route Handler `revalidate` at **15 minutes** and remains client-side via SWR at the same cadence.
 
 10. **River level history (#104)**

@@ -42,6 +42,8 @@ const banner = {
   banner_end_date: null,
 };
 
+const EVENT_ID = "650000000000000000000001";
+
 const request = (url, body) => ({ nextUrl: new URL(url), async json() { return body; } });
 
 /** Every admin-only handler, with a request that would succeed for an admin and the work it must not do otherwise. */
@@ -75,17 +77,34 @@ const ADMIN_ROUTES = [
     work: () => getOperationalOverview,
   },
   {
-    route: "events", method: "POST",
-    load: () => require("../../app/api/events/route"),
-    request: () => request("http://localhost/api/events", { new_event_id: "evt-1", new_event_name: "Race" }),
-    arrange: () => eventsService.upsertEvent.mockResolvedValue({ acknowledged: true, matchedCount: 1, modifiedCount: 1 }),
-    work: () => eventsService.upsertEvent,
+    route: "admin/events", method: "GET",
+    load: () => require("../../app/api/admin/events/route"),
+    request: () => request("http://localhost/api/admin/events?scope=past"),
+    arrange: () => eventsService.listAdminEvents.mockResolvedValue({ events: [], total: 0, page: 1, pageSize: 20, totalPages: 1 }),
+    work: () => eventsService.listAdminEvents,
   },
   {
-    route: "events", method: "DELETE",
-    load: () => require("../../app/api/events/route"),
-    request: () => request("http://localhost/api/events?id=evt-1"),
-    arrange: () => eventsService.deleteEventById.mockResolvedValue({ deletedCount: 1 }),
+    route: "admin/events", method: "POST",
+    load: () => require("../../app/api/admin/events/route"),
+    request: () => request("http://localhost/api/admin/events", { name: "Race" }),
+    okStatus: 201,
+    arrange: () => eventsService.createEvent.mockResolvedValue({ id: EVENT_ID }),
+    work: () => eventsService.createEvent,
+  },
+  {
+    route: "admin/events/[id]", method: "PUT",
+    load: () => require("../../app/api/admin/events/[id]/route"),
+    request: () => request(`http://localhost/api/admin/events/${EVENT_ID}`, { name: "Race" }),
+    context: () => ({ params: Promise.resolve({ id: EVENT_ID }) }),
+    arrange: () => eventsService.updateEventById.mockResolvedValue({ event: { id: EVENT_ID }, changed: true }),
+    work: () => eventsService.updateEventById,
+  },
+  {
+    route: "admin/events/[id]", method: "DELETE",
+    load: () => require("../../app/api/admin/events/[id]/route"),
+    request: () => request(`http://localhost/api/admin/events/${EVENT_ID}`),
+    context: () => ({ params: Promise.resolve({ id: EVENT_ID }) }),
+    arrange: () => eventsService.deleteEventById.mockResolvedValue({ id: EVENT_ID }),
     work: () => eventsService.deleteEventById,
   },
   {
@@ -159,7 +178,7 @@ describe("privileged route inventory", () => {
 
 describe.each(ADMIN_ROUTES.map((entry) => [`${entry.method} /api/${entry.route}`, entry]))("%s authorization", (_label, entry) => {
   const originalAllowlist = process.env.ADMIN_AUTH0_SUBS;
-  const call = () => entry.load()[entry.method](entry.request());
+  const call = () => entry.load()[entry.method](entry.request(), entry.context?.());
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -191,7 +210,7 @@ describe.each(ADMIN_ROUTES.map((entry) => [`${entry.method} /api/${entry.route}`
   test("allowlist set: allows a member", async () => {
     getServerSession.mockResolvedValue(adminSession());
     const res = await call();
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(entry.okStatus ?? 200);
     expect(entry.work()).toHaveBeenCalled();
   });
 
@@ -226,7 +245,7 @@ describe.each(ADMIN_ROUTES.map((entry) => [`${entry.method} /api/${entry.route}`
     ])("allows %s, logging one redacted info line", async (_who, session) => {
       getServerSession.mockResolvedValue(session());
       const res = await call();
-      expect(res.status).toBe(200);
+      expect(res.status).toBe(entry.okStatus ?? 200);
       expect(entry.work()).toHaveBeenCalled();
       const logged = console.info.mock.calls.flat().map(String).join(" | ");
       expect(logged).toContain("ADMIN_AUTH0_SUBS is not set");

@@ -8,9 +8,10 @@ import Form from "react-bootstrap/Form";
 import Row from "react-bootstrap/Row";
 import Spinner from "react-bootstrap/Spinner";
 import Stack from "react-bootstrap/Stack";
-import useSWR, { mutate } from "swr";
+import useSWR from "swr";
 import * as Yup from "yup";
 import { fetcher } from "../../libs/fetcher";
+import { describeAdminFailure } from "../../libs/admin/adminRequest";
 
 function optionalDateSchema() {
     return Yup.date().transform((value, originalValue) => {
@@ -168,7 +169,7 @@ function normalizeValidationError(error) {
 }
 
 export default function MessageEditor() {
-    const { data: messageData, error: messageError, isLoading } = useSWR("/api/sitebanner", fetcher);
+    const { data: messageData, error: messageError, isLoading, mutate } = useSWR("/api/sitebanner", fetcher);
     const initialValues = useMemo(() => normalizeBanner(messageData), [messageData]);
     const [values, setValues] = useState(initialValues);
     const [touched, setTouched] = useState({});
@@ -277,10 +278,10 @@ export default function MessageEditor() {
 
             const payload = await response.json().catch(() => null);
             if (!response.ok || payload?.ok === false) {
-                throw new Error(payload?.error?.message || payload?.message || "Unable to update the banner.");
+                throw new Error(describeAdminFailure(response.status, payload?.error?.message || payload?.message, "Unable to update the banner."));
             }
 
-            await mutate("/api/sitebanner");
+            await mutate();
             setStatus({ type: "success", message: "Banner settings updated." });
         } catch (error) {
             setStatus({ type: "danger", message: error.message || "Unable to update the banner." });

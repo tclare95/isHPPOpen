@@ -35,7 +35,8 @@ Subjects, emails, tokens and session contents are never logged; admin write audi
 
 Privileged handlers (all use `requireRouteAdmin()`):
 
-- `POST /api/events`, `DELETE /api/events` (authorized before the request is parsed)
+- `GET`/`POST /api/admin/events`, `PUT`/`DELETE /api/admin/events/{id}` (authorized before the request is parsed;
+  replaces the former `POST`/`DELETE /api/events`, which is now a public read-only feed)
 - `POST /api/sitebanner`
 - `GET /api/admin/operational-health`, `GET /api/admin/operational-overview`, `GET /api/admin/cso-shadow`,
   `GET /api/admin/hpp-shadow`

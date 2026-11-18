@@ -39,6 +39,7 @@ function AlertsPageContent() {
   const [requestToken] = useState(token);
   const [currentToken, setCurrentToken] = useState(token);
   const [busyAlertKey, setBusyAlertKey] = useState("");
+  const [busyAction, setBusyAction] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const managePath = useMemo(
@@ -58,33 +59,55 @@ function AlertsPageContent() {
     router.replace(`/alerts?token=${encodeURIComponent(nextToken)}`, { scroll: false });
   }, [currentToken, data?.manageToken, router]);
 
-  async function handleRemoveAlert(alertKey) {
+  // Re-reads the list after every change, successful or not, so the page shows what is actually stored.
+  async function refreshAlerts() {
+    try {
+      const refreshedData = await fetcher(`/api/alerts/manage?token=${encodeURIComponent(currentToken)}`);
+      await mutate(refreshedData, { revalidate: false });
+    } catch {
+      // The change's own result is already shown; a failed refresh leaves the previous list in place.
+    }
+  }
+
+  /** Sends one management change. Returns true when it succeeded. */
+  async function manageAlert(alertKey, { method, action, body, fallbackError, fallbackSuccess }) {
     setBusyAlertKey(alertKey);
+    setBusyAction(action);
     setSuccessMessage("");
     setErrorMessage("");
 
     try {
       const response = await fetch("/api/alerts/manage", {
-        method: "DELETE",
+        method,
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ token: currentToken, alertKey }),
+        body: JSON.stringify({ token: currentToken, alertKey, ...body }),
       });
       const payload = await response.json();
 
       if (!response.ok || payload?.ok === false) {
-        throw new Error(payload?.error?.message || "Unable to remove that alert right now.");
+        throw new Error(payload?.error?.message || fallbackError);
       }
 
-      setSuccessMessage(payload?.data?.message || "Alert removed.");
-      const refreshedData = await fetcher(`/api/alerts/manage?token=${encodeURIComponent(currentToken)}`);
-      await mutate(refreshedData, { revalidate: false });
-    } catch (removeError) {
-      setErrorMessage(removeError.message || "Unable to remove that alert right now.");
+      setSuccessMessage(payload?.data?.message || fallbackSuccess);
+      return true;
+    } catch (changeError) {
+      setErrorMessage(changeError.message || fallbackError);
+      return false;
     } finally {
+      await refreshAlerts();
       setBusyAlertKey("");
+      setBusyAction("");
     }
+  }
+
+  function handleRemoveAlert(alertKey) {
+    return manageAlert(alertKey, { method: "DELETE", action: "remove", body: {}, fallbackError: "Unable to remove that alert right now.", fallbackSuccess: "Alert removed." });
+  }
+
+  function handleChangeAlert(alertKey, change) {
+    return manageAlert(alertKey, { method: "PATCH", action: change.action, body: change, fallbackError: "Unable to change that alert right now. Nothing was changed.", fallbackSuccess: "Alert updated." });
   }
 
   return (
@@ -115,7 +138,9 @@ function AlertsPageContent() {
                     error={error}
                     isPending={isPending}
                     busyAlertKey={busyAlertKey}
+                    busyAction={busyAction}
                     onRemove={handleRemoveAlert}
+                    onChange={handleChangeAlert}
                   />
               </section>
             </Col>
@@ -134,7 +159,7 @@ function AlertsPageContent() {
         <Row className="justify-content-center">
           <Col lg={8}>
             <section className="history-panel" aria-labelledby="alerts-manage">
-                <h2 id="alerts-manage" className="h5 mb-2">Review or stop your alerts</h2>
+                <h2 id="alerts-manage" className="h5 mb-2">Change, pause or stop your alerts</h2>
                 <AlertManagementAccess />
             </section>
           </Col>

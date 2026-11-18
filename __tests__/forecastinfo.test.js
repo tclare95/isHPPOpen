@@ -47,6 +47,12 @@ describe('ForecastInfoPage', () => {
     expect(screen.getByText('Forecast Stability')).toBeInTheDocument();
   });
 
+  it('says once, up front, that the forecast is a model estimate', () => {
+    render(<ForecastInfoPage />);
+
+    expect(screen.getByText(/It is an estimate and can be wrong/)).toBeInTheDocument();
+  });
+
   it('has no EA forecast selector and never charts /api/levels forecast_data', () => {
     mockResponses(buildResponses([{ forecast_date: '2026-11-13T11:00:00Z', forecast_reading: 9.9 }]));
     render(<ForecastInfoPage />);
@@ -64,5 +70,33 @@ describe('ForecastInfoPage', () => {
 
     fireEvent.click(screen.getByText('Forecast Stability'));
     expect(screen.getByTestId('stability-chart')).toBeInTheDocument();
+  });
+  it('treats the levels fallback payload as unavailable instead of drawing an empty chart', () => {
+    mockResponses({ ...buildResponses(), '/api/levels': { data: { level_data: [], forecast_data: [], health: { state: 'unavailable' } }, isPending: false } });
+    render(<ForecastInfoPage />);
+
+    expect(screen.queryByTestId('forecast-chart')).not.toBeInTheDocument();
+    expect(screen.getByText(/Observed river levels could not be loaded/)).toBeInTheDocument();
+  });
+
+  it('says when the forecast is unavailable or out of date', () => {
+    mockResponses({ ...buildResponses(), '/api/s3forecast': { data: undefined, error: new Error('down'), isPending: false } });
+    const { unmount } = render(<ForecastInfoPage />);
+    expect(screen.getByTestId('forecast-chart')).toHaveTextContent('1::1:true');
+    expect(screen.getByText(/forecast is unavailable right now/)).toBeInTheDocument();
+    unmount();
+
+    // The fixture forecast was made on 2026-11-13, long before "now".
+    mockResponses(buildResponses());
+    render(<ForecastInfoPage />);
+    expect(screen.getByText(/This forecast was made .+ ago, so it may be out of date\./)).toHaveAttribute('data-state', 'stale');
+  });
+
+  it('shows a failed accuracy read as unavailable, not as no figures yet', () => {
+    mockResponses({ ...buildResponses(), '/api/forecastaccuracy': { data: undefined, error: new Error('down'), isPending: false } });
+    render(<ForecastInfoPage />);
+
+    expect(screen.getByText('Forecast accuracy figures are unavailable right now.')).toBeInTheDocument();
+    expect(screen.queryByText(/No accuracy figures are available yet/)).not.toBeInTheDocument();
   });
 });

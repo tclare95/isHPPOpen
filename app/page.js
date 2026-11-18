@@ -15,7 +15,7 @@ const getCachedHomePageSnapshot = unstable_cache(
 );
 
 export default async function HomePage() {
-  let snapshot = { events: [], message: { banner_message: "" } };
+  let snapshot = { events: [], eventsUnavailable: true, message: { banner_message: "" } };
 
   try {
     snapshot = await getCachedHomePageSnapshot();
@@ -26,6 +26,7 @@ export default async function HomePage() {
   return (
     <HomePageClient
       events={snapshot.events}
+      eventsUnavailable={snapshot.eventsUnavailable === true}
       message={snapshot.message}
     />
   );

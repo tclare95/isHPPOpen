@@ -24,10 +24,10 @@ const weirs = [
     eventKey: "1",
     header: "Trent Lock",
     description:
-      "A big green fast wave that you can front surf and carve around on to your hearts content. As the river rises it gets more of a pile, but is a bit finicky in shorter boats. As it only comes in when the Trent is in flood, watch out for debris.",
+      "A big green fast wave that you can front surf and carve around on to your heart's content. As the river rises it gets more of a pile, but is a bit finicky in shorter boats. As it only comes in when the Trent is in flood, watch out for debris.",
     levels: "2.85m - 3.6m",
     location:
-      "Parking at the Trent Lock inn. Get on, and paddle down the main Trent, go past the bouys (on the left) and under the bridges. You should see the wave.",
+      "Parking at the Trent Lock inn. Get on, and paddle down the main Trent, go past the buoys (on the left) and under the bridges. You should see the wave.",
     mapLink:
       "https://www.google.com/maps/place/52%C2%B052'35.9%22N+1%C2%B016'25.6%22W/",
     lowerBound: "2.85",

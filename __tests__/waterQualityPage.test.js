@@ -120,6 +120,27 @@ describe('WaterQualityPage', () => {
     expect(screen.queryByText('Currently spilling')).not.toBeInTheDocument();
   });
 
+  it('reports legacy status as unavailable, not as zero spills, once its summary is out of date', () => {
+    // Legacy status claims a spill only while the summary is fresh, so every location is unknown and the counts are 0.
+    const scrapedAt = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
+    mockFetches(LEGACY_ASSESSMENT, { waterQualityData: { ScrapeTimestamp: scrapedAt,
+      statusSummary: { currentlySpilling: 0, recentlyStopped48h: 0, offline: 0, unknown: 2 },
+      locations: [{ id: 'A', status: 'unknown' }, { id: 'B', status: 'unknown' }],
+      // A response cached while fresh is re-checked against the observed time.
+      health: { state: 'fresh', source: 'mongodb-water-quality', generatedAt: scrapedAt } } });
+    render(<WaterQualityPage />);
+    expect(screen.getByRole('status')).toHaveTextContent(/temporarily unavailable: the latest status summary is out of date/);
+    expect(screen.queryByText('Currently spilling')).not.toBeInTheDocument();
+  });
+
+  it('reports status as unavailable when the read succeeds without any status summary', () => {
+    mockFetches(LEGACY_ASSESSMENT, { waterQualityData: null });
+    render(<WaterQualityPage />);
+    expect(screen.getByRole('status')).toHaveTextContent(/Current CSO status is temporarily unavailable\./);
+    expect(screen.queryByText('Currently spilling')).not.toBeInTheDocument();
+    expect(screen.queryByText('Status unavailable')).not.toBeInTheDocument();
+  });
+
   it('shows when the status was read, and a route chosen in the spill history switches the overlay on and selects it', () => {
     mockFetches(RDP_ASSESSMENT, { waterQualityData: { statusSummary: { currentlySpilling: 1, recentlyStopped48h: 0, offline: 0, unknown: 0 },
       locations: [{ id: 'A', status: 'active', statusReason: 'spilling' }],

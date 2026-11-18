@@ -78,14 +78,17 @@ describe("history explorer", () => {
     const alert = screen.getByRole("alert");
     expect(alert).toHaveTextContent("Read failed.");
     expect(alert).toHaveTextContent("not the same as having no river data");
-    expect(screen.queryByText(/No observations for/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/No readings available for/)).not.toBeInTheDocument();
   });
 
   test("an empty period says so without inventing a percentage", () => {
     mockFetches({ "/api/history/colwick/overview": { data: overview }, "/api/history/colwick/month": { data: monthPayload(2024, 11, 1, { keep: () => false }) }, "/api/levels": levels });
     render(<HistoryExplorer />);
-    expect(screen.getByText("No observations for November 2024")).toBeInTheDocument();
+    expect(screen.getByText("No readings available for November 2024")).toBeInTheDocument();
     expect(screen.getByText(/not a sign that the river was low or that HPP was open/)).toBeInTheDocument();
+    // Plain language for visitors: no internal platform or import wording, and not a failed read.
+    expect(screen.getByText("No readings available for November 2024").parentElement).not.toHaveTextContent(/River Data Platform|imported/);
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(screen.queryByText("Time at or above 2.2 m")).not.toBeInTheDocument();
   });
 

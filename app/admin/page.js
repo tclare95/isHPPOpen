@@ -8,7 +8,7 @@ import Col from "react-bootstrap/Col";
 import Row from "react-bootstrap/Row";
 import Button from "react-bootstrap/Button";
 import Link from "next/link";
-import OperationalHealthSummary from "../../components/functional/operationalHealthSummary";
+import OperationalOverview from "../../components/functional/operationalOverview";
 
 export default function AdminPage() {
   return (
@@ -18,10 +18,14 @@ export default function AdminPage() {
         <div className="text-light mb-4">
           <h1 className="mb-2">Admin overview</h1>
           <p className="text-secondary mb-0">
-            Manage the two highest-traffic editorial workflows from one place: events and the homepage banner.
+            Start here: problems that need attention first, then the last-known state of each scheduled job and live
+            source. Editorial tools are below.
           </p>
         </div>
 
+        <OperationalOverview />
+
+        <h2 className="h5 text-light mt-5 mb-3">Editorial</h2>
         <Row className="g-4">
           <Col md={6}>
             <Card bg="dark" text="light" border="secondary" className="h-100 shadow-sm">
@@ -46,7 +50,6 @@ export default function AdminPage() {
             </Card>
           </Col>
         </Row>
-        <Row className="g-4 mt-1"><Col><OperationalHealthSummary /></Col></Row>
       </AdminBody>
     </Container>
   );

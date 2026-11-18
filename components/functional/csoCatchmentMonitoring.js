@@ -89,7 +89,7 @@ export default function CsoCatchmentMonitoring() {
   return (
     <section className="water-quality-panel mb-4" aria-labelledby="cso-catchment-heading" id="cso-catchment">
       <h2 id="cso-catchment-heading">Whole-catchment monitoring</h2>
-      <p className="water-quality-muted">Storm overflows across the {data?.set?.label ?? 'river catchment upstream of Holme Pierrepont'}, as monitored by River Data Platform. This is extra evidence only: it does not change the indication, chart or alerts above.</p>
+      <p className="water-quality-muted">Storm overflows across the {data?.set?.label ?? 'river catchment upstream of Holme Pierrepont'}, shown for context. These counts do not change the indication, chart or alerts above.</p>
 
       {isPending && !data ? <p role="status">Loading catchment monitoring…</p> : null}
       {error || (data && !ready) ? (

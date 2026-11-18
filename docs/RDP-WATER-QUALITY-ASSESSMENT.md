@@ -103,7 +103,8 @@ legacy density. Roll back by unsetting the variable.
 - `GET /api/waterquality/assessment?hours=0|24|120` (new): `{ mode, source, version, current, history, method, explanation,
   evidence, health, sources }` in `rdp` mode; `{ mode, source: "legacy", version: "sewage-map-density/2026-08-31", current,
   history: null, legacyHistory }` otherwise. `current` has the same shape in both: `level`, `label`, `atLeast`, `partial`,
-  `reasons`, `observedAt`, `factors`.
+  `reasons`, `observedAt`, `factors`. In both, missing or stale CSO evidence never yields **Lower**: the legacy indicator
+  then shows only an elevated or high four-hour river rise, as "at least" that level, and is otherwise **Unavailable**.
 - `GET /api/waterquality/csodensity` (unchanged): the legacy density series. With v1 it is only the archive.
 - `GET /api/waterquality` (unchanged shape). In RDP status + RDP membership mode with `RDP_WQ_ASSESSMENT=rdp`,
   `NumberCSOsPerKm2` and `NumberUpstreamCSOs` are `null` (not 0), `Id` is null, and `ScrapeTimestamp`/`health` are the RDP

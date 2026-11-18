@@ -25,6 +25,8 @@ describe('homePageService', () => {
     const result = await fetchHomePageSnapshot();
 
     expect(result.events).toEqual([]);
+    // Not "no events": the homepage must not treat a failed read as a day without event closures.
+    expect(result.eventsUnavailable).toBe(true);
     expect(result.message.banner_message).toBe('Banner message');
     expect(result.message.banner_title).toBe('Important update');
     expect(result.message.banner_enabled).toBe(true);
@@ -47,6 +49,7 @@ describe('homePageService', () => {
     const result = await fetchHomePageSnapshot();
 
     expect(result.events).toHaveLength(1);
+    expect(result.eventsUnavailable).toBe(false);
     expect(result.message.banner_message).toBe('');
     expect(result.message.banner_enabled).toBe(false);
   });

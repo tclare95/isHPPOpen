@@ -16,7 +16,7 @@ export default function WaterQualityInterpretation({ assessment = null }) {
   const members = assessment.evidence?.membership?.members;
   return (
     <>
-      <p><strong>What it measures.</strong> How many storm overflows in River Data Platform&apos;s reviewed set of {Number.isFinite(members) ? `${members} ` : ''}outfalls upstream of HPP spilled in the previous {recentHours} hours or are spilling now, and whether the river at Colwick is higher than at the same time the day before. Sewage can take a day or more to travel down the catchment, so recent spills still count after they stop.</p>
+      <p><strong>What it measures.</strong> How many of the {Number.isFinite(members) ? `${members} ` : ''}reviewed storm overflows upstream of HPP spilled in the previous {recentHours} hours or are spilling now, and whether the river at Colwick is higher than at the same time the day before. Sewage can take a day or more to travel down the catchment, so recent spills still count after they stop.</p>
       <ul>
         <li><strong>Elevated:</strong> {bands.elevated.recent} or more outfalls spilled in the previous {recentHours} hours, {bands.elevated.spillingNow} or more are spilling now, or the river is {runoff.elevatedRiseMetres.toFixed(2)} m or more higher than a day earlier.</li>
         <li><strong>High:</strong> {bands.high.recent} or more spilled, {bands.high.spillingNow} or more spilling now, or a rise of {runoff.highRiseMetres.toFixed(2)} m or more.</li>

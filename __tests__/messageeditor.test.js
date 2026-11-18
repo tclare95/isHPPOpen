@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import useSWR, { mutate } from 'swr';
+import useSWR from 'swr';
 import MessageEditor from '../components/functional/messageeditor';
 
 jest.mock('swr', () => ({
@@ -10,7 +10,10 @@ jest.mock('swr', () => ({
 }));
 
 describe('MessageEditor component', () => {
+  let mutate;
+
   beforeEach(() => {
+    mutate = jest.fn();
     globalThis.fetch = jest.fn();
     useSWR.mockReturnValue({
       data: [
@@ -25,6 +28,7 @@ describe('MessageEditor component', () => {
       ],
       error: null,
       isLoading: false,
+      mutate,
     });
   });
 
@@ -52,7 +56,7 @@ describe('MessageEditor component', () => {
     await user.click(screen.getByRole('button', { name: /save banner/i }));
 
     await waitFor(() => expect(globalThis.fetch).toHaveBeenCalledTimes(1));
-    expect(mutate).toHaveBeenCalledWith('/api/sitebanner');
+    expect(mutate).toHaveBeenCalledTimes(1);
     expect(await screen.findByText(/banner settings updated/i)).toBeInTheDocument();
   });
 

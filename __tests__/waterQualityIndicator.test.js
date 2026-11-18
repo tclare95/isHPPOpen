@@ -33,4 +33,16 @@ describe('waterQualityIndicator', () => {
     const unavailable = buildWaterQualityIndicator({ csoData: [], levelData: [], now });
     expect(unavailable.level).toBe('unavailable');
   });
+  test('never shows Lower from a calm river when CSO activity data is missing or stale', () => {
+    const calmRiver = [{ reading_date: '2026-08-31T08:00:00Z', reading_level: 1.0 }, { reading_date: '2026-08-31T11:55:00Z', reading_level: 1.0 }];
+    const risingRiver = [{ reading_date: '2026-08-31T08:00:00Z', reading_level: 1.0 }, { reading_date: '2026-08-31T11:55:00Z', reading_level: 1.5 }];
+    const staleCso = density(0.001).map((row) => ({ ...row, timestamp: new Date(new Date(row.timestamp).getTime() - 2 * 3600000).toISOString() }));
+
+    for (const csoData of [[], staleCso]) {
+      expect(buildWaterQualityIndicator({ csoData, levelData: calmRiver, now })).toMatchObject({ level: 'unavailable', partial: false, atLeast: false });
+      // A rising river can still raise the indication, but only as "at least" that level.
+      expect(buildWaterQualityIndicator({ csoData, levelData: risingRiver, now })).toMatchObject({ level: 'high', partial: true, atLeast: true });
+    }
+    expect(buildWaterQualityIndicator({ csoData: density(0.001), levelData: calmRiver, now })).toMatchObject({ level: 'lower', partial: false, atLeast: false });
+  });
 });

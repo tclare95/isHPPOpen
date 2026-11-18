@@ -8,38 +8,36 @@ import Form from "react-bootstrap/Form";
 import Row from "react-bootstrap/Row";
 import Stack from "react-bootstrap/Stack";
 import * as Yup from "yup";
+import { adminRequest } from "../../libs/admin/adminRequest";
+
+const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
 
 const validationSchema = Yup.object({
-  name: Yup.string().trim().required("Event name is required"),
-  startDate: Yup.date().required("Start date is required"),
-  endDate: Yup.date()
+  name: Yup.string().trim().required("Event name is required").max(200, "Event name must be 200 characters or fewer"),
+  startDate: Yup.string().required("Start date is required").matches(DATE_ONLY, "Start date must be a valid date"),
+  endDate: Yup.string()
     .required("End date is required")
-    .min(Yup.ref("startDate"), "End date can’t be before start date"),
-  eventDetails: Yup.string().trim().required("Event details are required"),
+    .matches(DATE_ONLY, "End date must be a valid date")
+    // Date-only strings compare correctly as text.
+    .test("end-after-start", "End date can’t be before start date", function validateEnd(value) {
+      const { startDate } = this.parent;
+      return !value || !startDate || !DATE_ONLY.test(startDate) || value >= startDate;
+    }),
+  details: Yup.string().trim().required("Event details are required"),
 });
 
-function formatDateInput(value) {
-  if (!value) {
-    return "";
-  }
-
-  const parsed = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
-    return "";
-  }
-
-  return parsed.toISOString().split("T")[0];
+/** Today's UK calendar date as `YYYY-MM-DD`, the default for a new event. */
+export function todayDateKey(now = new Date()) {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/London", year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
 }
 
 function buildInitialValues(event) {
-  const today = formatDateInput(new Date());
-
+  const today = todayDateKey();
   return {
-    id: event?.id ?? event?._id ?? "",
-    name: event?.name ?? event?.event_name ?? "",
-    startDate: formatDateInput(event?.startDate ?? event?.event_start_date) || today,
-    endDate: formatDateInput(event?.endDate ?? event?.event_end_date) || today,
-    eventDetails: event?.eventDetails ?? event?.event_details ?? "",
+    name: event?.name ?? "",
+    startDate: event?.startDate || today,
+    endDate: event?.endDate || event?.startDate || today,
+    details: event?.details ?? "",
   };
 }
 
@@ -57,13 +55,12 @@ function normalizeValidationError(error) {
   }, {});
 }
 
-export default function EventsForm({
-  event,
-  mode = "create",
-  onSaved,
-  onDeleted,
-  onCancel,
-}) {
+/**
+ * Create or edit one event. `event` (from /api/admin/events) selects edit mode by its stable id;
+ * without it the form only ever creates a new event. Failed saves keep the typed values.
+ * The parent remounts the form (via `key`) to load a different or freshly saved event.
+ */
+export default function EventsForm({ event, onSaved, onDeleted, onCancel, onDirtyChange }) {
   const initialValues = useMemo(() => buildInitialValues(event), [event]);
   const [values, setValues] = useState(initialValues);
   const [touched, setTouched] = useState({});
@@ -73,16 +70,13 @@ export default function EventsForm({
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  useEffect(() => {
-    setValues(initialValues);
-    setTouched({});
-    setErrors({});
-    setStatus(null);
-    setShowDeleteConfirm(false);
-  }, [initialValues]);
-
-  const hasExistingEvent = Boolean(initialValues.id);
+  const eventId = event?.id || null;
+  const isEditing = Boolean(eventId);
   const isDirty = JSON.stringify(values) !== JSON.stringify(initialValues);
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+  }, [isDirty, onDirtyChange]);
 
   async function validateForm(nextValues = values) {
     try {
@@ -123,15 +117,7 @@ export default function EventsForm({
   async function handleSubmit(submitEvent) {
     submitEvent.preventDefault();
     setStatus(null);
-
-    const nextTouched = {
-      name: true,
-      startDate: true,
-      endDate: true,
-      eventDetails: true,
-    };
-
-    setTouched(nextTouched);
+    setTouched({ name: true, startDate: true, endDate: true, details: true });
 
     const nextErrors = await validateForm(values);
     if (Object.keys(nextErrors).length > 0) {
@@ -140,48 +126,39 @@ export default function EventsForm({
     }
 
     setIsSubmitting(true);
+    const body = {
+      name: values.name.trim(),
+      startDate: values.startDate,
+      endDate: values.endDate,
+      details: values.details.trim(),
+    };
 
+    let result;
     try {
-      const response = await fetch("/api/events", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          new_event_id: values.id || undefined,
-          new_event_name: values.name.trim(),
-          new_event_start_date: values.startDate,
-          new_event_end_date: values.endDate,
-          new_event_details: values.eventDetails.trim(),
-        }),
-      });
-
-      const payload = await response.json().catch(() => null);
-      if (!response.ok || payload?.ok === false) {
-        throw new Error(payload?.error?.message || payload?.message || "Unable to save event.");
-      }
-
-      setStatus({
-        type: "success",
-        message: values.id ? "Event updated successfully." : "Event created successfully.",
-      });
-
-      if (onSaved) {
-        await onSaved(payload?.data?.id || values.id || null);
-      }
+      result = await adminRequest(
+        isEditing ? `/api/admin/events/${encodeURIComponent(eventId)}` : "/api/admin/events",
+        { method: isEditing ? "PUT" : "POST", body, fallback: "Unable to save the event." },
+      );
     } catch (error) {
-      setStatus({
-        type: "danger",
-        message: error.message || "Unable to save event.",
-      });
-    } finally {
+      // Nothing was saved: keep everything the editor typed.
+      setStatus({ type: "danger", message: `Not saved. ${error.message}` });
       setIsSubmitting(false);
+      return;
+    }
+
+    setIsSubmitting(false);
+    const message = isEditing
+      ? result?.changed === false ? "No changes to save." : "Event updated."
+      : "Event created.";
+    if (onSaved) {
+      await onSaved(result?.event ?? null, message);
+    } else {
+      setStatus({ type: "success", message });
     }
   }
 
   async function handleDelete() {
-    if (!values.id) {
+    if (!eventId) {
       return;
     }
 
@@ -189,29 +166,23 @@ export default function EventsForm({
     setStatus(null);
 
     try {
-      const response = await fetch(`/api/events?id=${encodeURIComponent(values.id)}`, {
+      await adminRequest(`/api/admin/events/${encodeURIComponent(eventId)}`, {
         method: "DELETE",
-        credentials: "include",
+        fallback: "Unable to delete the event.",
       });
-
-      const payload = await response.json().catch(() => null);
-      if (!response.ok || payload?.ok === false) {
-        throw new Error(payload?.error?.message || payload?.message || "Unable to delete event.");
-      }
-
-      setShowDeleteConfirm(false);
-      setStatus({ type: "success", message: "Event deleted." });
-
-      if (onDeleted) {
-        await onDeleted(values.id);
-      }
     } catch (error) {
-      setStatus({
-        type: "danger",
-        message: error.message || "Unable to delete event.",
-      });
-    } finally {
+      setStatus({ type: "danger", message: `Not deleted. ${error.message}` });
+      setShowDeleteConfirm(false);
       setIsDeleting(false);
+      return;
+    }
+
+    setIsDeleting(false);
+    setShowDeleteConfirm(false);
+    if (onDeleted) {
+      await onDeleted(eventId, event?.name);
+    } else {
+      setStatus({ type: "success", message: "Event deleted." });
     }
   }
 
@@ -220,30 +191,30 @@ export default function EventsForm({
       <Card.Body>
         <Stack direction="horizontal" className="justify-content-between align-items-start mb-3 gap-3">
           <div>
-            <Card.Title className="mb-1">
-              {mode === "edit" ? "Edit event" : "Create event"}
+            <Card.Title as="h2" className="h5 mb-1">
+              {isEditing ? `Editing “${event.name || "Untitled event"}”` : "New event"}
             </Card.Title>
             <Card.Text className="text-secondary mb-0">
-              {mode === "edit"
-                ? "Update the selected event and save when you are ready."
-                : "Add a new event with dates and public-facing details."}
+              {isEditing
+                ? "Changes apply to this saved event only."
+                : "Creates a separate event, even if another event has the same name."}
             </Card.Text>
           </div>
           <Badge bg={isDirty ? "warning" : "secondary"} text={isDirty ? "dark" : "light"}>
-            {isDirty ? "Unsaved changes" : "Saved state"}
+            {isDirty ? "Unsaved changes" : isEditing ? "Saved" : "Not saved yet"}
           </Badge>
         </Stack>
 
         {status ? (
-          <Alert variant={status.type} className="mb-3">
+          <Alert variant={status.type} className="mb-3" role={status.type === "danger" ? "alert" : "status"}>
             {status.message}
           </Alert>
         ) : null}
 
         {showDeleteConfirm ? (
           <Alert variant="warning" className="mb-3">
-            <div className="fw-semibold mb-2">Delete this event permanently?</div>
-            <div className="small mb-3">This cannot be undone.</div>
+            <div className="fw-semibold mb-2">Delete “{event?.name}” permanently?</div>
+            <div className="small mb-3">It will be removed from the public site. This cannot be undone.</div>
             <Stack direction="horizontal" gap={2}>
               <Button variant="danger" onClick={handleDelete} disabled={isDeleting}>
                 {isDeleting ? "Deleting…" : "Confirm delete"}
@@ -289,6 +260,7 @@ export default function EventsForm({
                 id="endDate"
                 type="date"
                 value={values.endDate}
+                min={values.startDate || undefined}
                 onChange={(changeEvent) => updateValue("endDate", changeEvent.target.value)}
                 onBlur={() => handleBlur("endDate")}
                 isInvalid={Boolean(touched.endDate && errors.endDate)}
@@ -297,34 +269,38 @@ export default function EventsForm({
             </Col>
 
             <Col xs={12}>
-              <Form.Label htmlFor="eventDetails">Public details</Form.Label>
+              <Form.Text className="text-secondary">Dates are whole UK days; an event runs to the end of its end date.</Form.Text>
+            </Col>
+
+            <Col xs={12}>
+              <Form.Label htmlFor="details">Public details</Form.Label>
               <Form.Control
-                id="eventDetails"
+                id="details"
                 as="textarea"
                 rows={8}
-                value={values.eventDetails}
-                onChange={(changeEvent) => updateValue("eventDetails", changeEvent.target.value)}
-                onBlur={() => handleBlur("eventDetails")}
-                isInvalid={Boolean(touched.eventDetails && errors.eventDetails)}
+                value={values.details}
+                onChange={(changeEvent) => updateValue("details", changeEvent.target.value)}
+                onBlur={() => handleBlur("details")}
+                isInvalid={Boolean(touched.details && errors.details)}
                 placeholder="Summarise the event, timings, restrictions, or anything visitors should know."
               />
-              <Form.Control.Feedback type="invalid">{errors.eventDetails}</Form.Control.Feedback>
+              <Form.Control.Feedback type="invalid">{errors.details}</Form.Control.Feedback>
             </Col>
           </Row>
 
           <Stack direction="horizontal" gap={2} className="mt-4 flex-wrap">
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Saving…" : mode === "edit" ? "Save changes" : "Create event"}
+            <Button type="submit" disabled={isSubmitting || isDeleting}>
+              {isSubmitting ? "Saving…" : isEditing ? "Save changes" : "Create event"}
             </Button>
             <Button variant="outline-light" type="button" onClick={resetForm} disabled={isSubmitting || isDeleting || !isDirty}>
               Reset
             </Button>
-            {onCancel ? (
+            {onCancel && isEditing ? (
               <Button variant="outline-secondary" type="button" onClick={onCancel} disabled={isSubmitting || isDeleting}>
-                Cancel
+                Close
               </Button>
             ) : null}
-            {hasExistingEvent ? (
+            {isEditing ? (
               <Button
                 variant="outline-danger"
                 type="button"

@@ -90,6 +90,11 @@ describe("Alerts API route handlers", () => {
     expect(resultOf(await confirm())).toBe("already_active");
   });
 
+  test("confirm route reports a paused alert as paused, not as newly confirmed", async () => {
+    confirmColwickAlertSubscription.mockResolvedValue({ status: "already_paused", message: "This alert is paused." });
+    expect(resultOf(await confirm())).toBe("already_paused");
+  });
+
   test("confirm and unsubscribe failures never redirect as success, and carry no free text", async () => {
     const { HttpError } = jest.requireActual("../../libs/api/http");
     confirmColwickAlertSubscription.mockRejectedValue(new HttpError(404, "invalid"));

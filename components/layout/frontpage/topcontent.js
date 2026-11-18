@@ -12,6 +12,7 @@ import Link from "next/link";
 import PropTypes from "prop-types";
 import { SWR_15_MINUTES } from "../../../libs/dataFreshness";
 import StatusMessage from "../../layout/site/StatusMessage";
+import { describeForecast } from "../../../libs/forecastDisplay";
 import {
   formatLevelMetres,
   formatReadingAge,
@@ -57,38 +58,47 @@ ReadingAge.propTypes = {
 function renderForecastContent({
   isPending,
   forecastPending,
-  hasOperationalError,
   lowerBound,
   upperBound,
   levelReadings,
-  s3Forecast,
+  forecast,
   accuracyData,
+  accuracyError,
 }) {
   if (isPending || forecastPending) {
     return <StatusMessage state="loading">Loading the river level chart…</StatusMessage>;
   }
 
-  if (hasOperationalError) {
+  // The chart needs observed levels. A failed or fallback forecast, or a failed accuracy read, only removes that
+  // part of the chart and says so; it never hides the observed levels.
+  if (!levelReadings.length) {
     return <StatusMessage state="unavailable">Forecast and level data are unavailable right now.</StatusMessage>;
   }
 
   return (
-    <ForecastChartWithConfidence
-      lowerBound={lowerBound}
-      upperBound={upperBound}
-      graphData={levelReadings}
-      graphForeCastData={s3Forecast?.forecast_data || []}
-      accuracyData={accuracyData?.accuracy_data || []}
-      showConfidence
-    />
+    <>
+      <ForecastChartWithConfidence
+        lowerBound={lowerBound}
+        upperBound={upperBound}
+        graphData={levelReadings}
+        graphForeCastData={forecast.rows}
+        accuracyData={accuracyData?.accuracy_data || []}
+        showConfidence
+      />
+      {forecast.notice ? (
+        <StatusMessage state={forecast.rows.length ? "stale" : "unavailable"} className="mt-2">{forecast.notice}</StatusMessage>
+      ) : null}
+      {accuracyError && !accuracyData && forecast.rows.length ? (
+        <p className="history-muted small mt-2 mb-0">The forecast&apos;s confidence band is unavailable right now.</p>
+      ) : null}
+    </>
   );
 }
 
 export default function TopContent(props) {
-  const { data: levelData, error: levelError, isPending } = useFetch("/api/levels", SWR_15_MINUTES);
+  const { data: levelData, isPending } = useFetch("/api/levels", SWR_15_MINUTES);
   const {
     data: s3Forecast,
-    error: forecastError,
     isPending: forecastPending,
   } = useFetch("/api/s3forecast", SWR_15_MINUTES);
   const { data: accuracyData, error: accuracyError } = useFetch("/api/forecastaccuracy", SWR_15_MINUTES);
@@ -100,7 +110,7 @@ export default function TopContent(props) {
   const reading = isPending ? null : getLatestLevelReading(levelData);
   const freshness = getLevelFreshness(levelData, reading, currentTime);
   const { lowerBound, upperBound, updateBounds } = useContext(GraphContext);
-  const hasOperationalError = Boolean(levelError || forecastError || accuracyError);
+  const forecast = describeForecast(s3Forecast, currentTime);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -117,7 +127,7 @@ export default function TopContent(props) {
       <Row className="justify-content-center">
         <Col className="text-center">
           <h1>Is HPP Open?</h1>
-          <OpenTitle cachedEvents={props.cachedEvents} />
+          <OpenTitle cachedEvents={props.cachedEvents} eventsUnavailable={props.eventsUnavailable} />
         </Col>
       </Row>
       <Row className="align-items-center">
@@ -148,12 +158,12 @@ export default function TopContent(props) {
           {renderForecastContent({
             isPending,
             forecastPending,
-            hasOperationalError,
             lowerBound,
             upperBound,
             levelReadings,
-            s3Forecast,
+            forecast,
             accuracyData,
+            accuracyError,
           })}
           <p className="mt-2 small">
             <Link href="/forecastinfo" className="text-info">About this forecast</Link>
@@ -177,4 +187,5 @@ export default function TopContent(props) {
 
 TopContent.propTypes = {
   cachedEvents: PropTypes.array,
+  eventsUnavailable: PropTypes.bool,
 };

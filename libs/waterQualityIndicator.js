@@ -62,13 +62,19 @@ export function getRunoffAssessment(levelData = [], now = new Date()) {
   return result(level, { riseMetres, observedAt: newest.timestamp.toISOString(), reason });
 }
 
+// CSO activity is required for "Lower": a river that is not rising can raise nothing and never stands in for missing
+// CSO data (the same rule as the RDP assessment's combineAssessment). Without CSO data, only an elevated or high river
+// rise is shown, as "at least" that level.
 export function buildWaterQualityIndicator({ csoData = [], levelData = [], now = new Date() } = {}) {
   const cso = getCsoActivityAssessment(csoData, now);
   const runoff = getRunoffAssessment(levelData, now);
-  const available = [cso, runoff].filter((factor) => factor.level !== 'unavailable');
-  if (!available.length) return result('unavailable', { partial: false, cso, runoff, reasons: [cso.reason, runoff.reason] });
-  const level = available.reduce((worst, factor) => RANK[factor.level] > RANK[worst] ? factor.level : worst, 'lower');
-  return result(level, { partial: available.length !== 2, cso, runoff, reasons: [cso.reason, runoff.reason] });
+  const reasons = [cso.reason, runoff.reason];
+  if (cso.level === 'unavailable') {
+    if (RANK[runoff.level] < RANK.elevated) return result('unavailable', { partial: false, atLeast: false, cso, runoff, reasons });
+    return result(runoff.level, { partial: true, atLeast: true, cso, runoff, reasons });
+  }
+  const level = RANK[runoff.level] > RANK[cso.level] ? runoff.level : cso.level;
+  return result(level, { partial: runoff.level === 'unavailable', atLeast: false, cso, runoff, reasons });
 }
 
 export { calibration as WATER_QUALITY_CALIBRATION };

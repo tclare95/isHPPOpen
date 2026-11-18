@@ -1,21 +1,11 @@
-import {
-  fetchUpcomingEvents,
-  upsertEvent,
-  deleteEventById,
-} from "../../../libs/services/eventsService";
-import { HttpError, mapApiError } from "../../../libs/api/http";
-import {
-  parseJsonObjectBody,
-  requireRouteAdmin,
-  sendRouteError,
-  sendRouteSuccess,
-} from "../../../libs/api/httpApp";
+import { fetchUpcomingEvents } from "../../../libs/services/eventsService";
+import { mapApiError } from "../../../libs/api/http";
+import { sendRouteError, sendRouteSuccess } from "../../../libs/api/httpApp";
 import { createRequestLogger } from "../../../libs/api/logger";
-import { revalidateTagsSafe } from "../../../libs/cache/revalidate";
-import { CACHE_TAGS } from "../../../libs/cache/tags";
 
 export const dynamic = "force-dynamic";
 
+// Public upcoming-events feed. Admin browsing and writes live under /api/admin/events.
 export async function GET(request) {
   const logger = createRequestLogger({ method: "GET" }, "api/events");
   try {
@@ -25,60 +15,6 @@ export async function GET(request) {
     const data = await fetchUpcomingEvents(limit);
     logger.info("GET events called", { limit });
     return sendRouteSuccess(data);
-  } catch (error) {
-    const { statusCode, message } = mapApiError(error);
-    logger.error("Error in events", error);
-    return sendRouteError(statusCode, message);
-  }
-}
-
-export async function POST(request) {
-  const logger = createRequestLogger({ method: "POST" }, "api/events");
-  try {
-    const session = await requireRouteAdmin();
-    const payload = await parseJsonObjectBody(request);
-    const result = await upsertEvent(payload);
-    const savedId = payload.new_event_id || result.upsertedId?.toString?.() || null;
-
-    if (result.acknowledged && (result.modifiedCount === 1 || result.upsertedCount === 1 || result.matchedCount === 1)) {
-      await revalidateTagsSafe([CACHE_TAGS.EVENTS, CACHE_TAGS.HOME_SNAPSHOT], {
-        logger,
-        context: "events-post",
-      });
-      logger.info("Event modified", { actor: session?.user?.id, eventId: payload.new_event_id });
-      return sendRouteSuccess({
-        message: payload.new_event_id ? "Event updated" : "Event created",
-        id: savedId,
-      });
-    }
-
-    throw new HttpError(500, "Update failed");
-  } catch (error) {
-    const { statusCode, message } = mapApiError(error);
-    logger.error("Error in events", error);
-    return sendRouteError(statusCode, message);
-  }
-}
-
-export async function DELETE(request) {
-  const logger = createRequestLogger({ method: "DELETE" }, "api/events");
-  try {
-    const session = await requireRouteAdmin();
-    const id = request.nextUrl.searchParams.get("id");
-    if (!id) throw new HttpError(400, "Missing id parameter");
-
-    const result = await deleteEventById(id);
-
-    if (result.deletedCount === 1) {
-      await revalidateTagsSafe([CACHE_TAGS.EVENTS, CACHE_TAGS.HOME_SNAPSHOT], {
-        logger,
-        context: "events-delete",
-      });
-      logger.info("Event deleted", { actor: session?.user?.id, eventId: id });
-      return sendRouteSuccess({ deleted: true, id });
-    }
-
-    throw new HttpError(404, "Event Not Found");
   } catch (error) {
     const { statusCode, message } = mapApiError(error);
     logger.error("Error in events", error);

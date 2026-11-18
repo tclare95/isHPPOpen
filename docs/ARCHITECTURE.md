@@ -255,3 +255,9 @@ Editorial writes use the shared `libs/cache/revalidate.js` helper with `revalida
 - Most domain-heavy Route Handlers now delegate to `libs/services`; remaining inline logic should follow the same pattern as endpoints evolve.
 - Some endpoints still accept legacy body shapes; `parseRequestBody()` exists to smooth migration.
 - Continued value: move remaining domain logic from handlers to `libs/services` while preserving the shared route contract.
+
+## Wave C consumer features
+- Homepage current-conditions summary: [CURRENT-CONDITIONS.md](CURRENT-CONDITIONS.md)
+- Historical event comparison (`/history/events/compare`): [HISTORICAL_RIVER_EVENTS.md](HISTORICAL_RIVER_EVENTS.md)
+- Observed rainfall on `/trentweirs#rainfall` (`/api/rainfall/observed`): [RDP-RAINFALL-CONTEXT.md](RDP-RAINFALL-CONTEXT.md)
+- Individual CSO outfall view (`/waterquality/cso/{assetId}`): [CSO-OUTFALL-DETAIL.md](CSO-OUTFALL-DETAIL.md)

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import Accordion from 'react-bootstrap/Accordion';
@@ -22,6 +23,7 @@ import StatusMessage from '../../components/layout/site/StatusMessage';
 import useFetch from '../../libs/useFetch';
 import { SWR_15_MINUTES } from '../../libs/dataFreshness';
 import { getDisplayedHealthState } from '../../libs/operationalHealth';
+import { readOutfallMapQuery } from '../../libs/csoOutfallLinks';
 
 const WaterQualityMap = dynamic(() => import('../../components/functional/csoMap'), { ssr: false, loading: () => <p>Loading map…</p> });
 const CsoChart = dynamic(() => import('../../components/functional/csoChart'), { ssr: false, loading: () => <p>Loading chart…</p> });
@@ -46,6 +48,22 @@ function SummaryCard({ value, label, detail }) {
 
 SummaryCard.propTypes = { value: PropTypes.oneOfType([PropTypes.string, PropTypes.number]), label: PropTypes.string.isRequired, detail: PropTypes.string.isRequired };
 
+// Applies `?outfall=`/`?route=` once per distinct link. Inside Suspense so the page itself stays statically rendered.
+function OutfallDeepLink({ onOpen }) {
+  const params = useSearchParams();
+  const applied = useRef(null);
+  const search = params?.toString() ?? '';
+  useEffect(() => {
+    if (applied.current === search) return;
+    applied.current = search;
+    const query = readOutfallMapQuery(search);
+    if (query.outfall || query.route) onOpen(query);
+  }, [search, onOpen]);
+  return null;
+}
+
+OutfallDeepLink.propTypes = { onOpen: PropTypes.func.isRequired };
+
 export default function WaterQualityPage() {
   const [chartHours, setChartHours] = useState(120);
   const [riverDirection, setRiverDirection] = useState('off');
@@ -62,6 +80,12 @@ export default function WaterQualityPage() {
   // One highlighted route, chosen from the overlay list, a map marker or the spill history.
   const [impactId, setImpactId] = useState('');
   const showRoute = (assetId) => { setImpactOn(true); setImpactId(assetId); };
+  // A link from one outfall's detail page (`?outfall=` public ID, optional `&route=` canonical asset ID) focuses the map and
+  // the spill history on it and, for a route, switches the impact overlay on with that route highlighted.
+  const openOutfall = ({ outfall, route }) => {
+    if (outfall) { setMapFocusId(outfall); setHistoryOutfallId(outfall); }
+    if (route) showRoute(route);
+  };
   const { data: impactData, error: impactFetchError, isPending: impactPending } = useFetch(
     impactOn ? '/api/waterquality/river/impact' : null,
     { refreshInterval: 300000, revalidateOnFocus: false, revalidateOnReconnect: false, shouldRetryOnError: false });
@@ -97,6 +121,7 @@ export default function WaterQualityPage() {
 
   return (
     <main className="water-quality-page text-white">
+      <Suspense fallback={null}><OutfallDeepLink onOpen={openOutfall} /></Suspense>
       <Container className="py-4 py-lg-5">
         <PageHeader title="Water quality indication"
           lead="A general indication based on recent upstream storm-overflow activity and whether the river is rising. It is not a measurement of bacteria or a guarantee that the water is safe." />

@@ -1,6 +1,8 @@
+import Link from 'next/link';
 import Button from 'react-bootstrap/Button';
 import Form from 'react-bootstrap/Form';
 import PropTypes from 'prop-types';
+import { outfallDetailPath } from '../../libs/csoOutfallLinks';
 
 // "Reported downstream spill impact" (RDP live downstream impact). Display only; never feeds the indicator or alerts.
 export const IMPACT_LABELS = {
@@ -84,7 +86,8 @@ export function ImpactPanel({ impact = null, isPending = false, error = null, se
           {selected.route
             ? <>Route: {(selected.route.lengthM / 1000).toFixed(1)} km over {selected.route.reachCount} reaches{selected.route.completeness === 'complete' ? ', to the river mouth' : ' (incomplete: the mapped network ends or branches before the sea)'}<br /></>
             : <>No downstream route is drawn for this outfall.<br /></>}
-          {onShowHistory ? <Button size="sm" variant="link" className="p-0" onClick={() => onShowHistory(selected.externalId)}>Spill history for this outfall</Button> : null}
+          {onShowHistory ? <><Button size="sm" variant="link" className="p-0" onClick={() => onShowHistory(selected.externalId)}>Spill history for this outfall</Button><br /></> : null}
+          <Link href={outfallDetailPath(selected.assetId)}>Outfall details</Link>
         </div>
       ) : null}
     </div>

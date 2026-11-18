@@ -4,17 +4,19 @@ import WaterQualityPage from '../app/waterquality/page';
 import useFetch from '../libs/useFetch';
 
 jest.mock('../libs/useFetch');
+let mockSearch = '';
+jest.mock('next/navigation', () => ({ useSearchParams: () => new URLSearchParams(mockSearch) }));
 jest.mock('next/link', () => ({ children, href }) => <a href={href}>{children}</a>);
 jest.mock('next/dynamic', () => (loader) => {
   const source = loader.toString();
-  if (source.includes('csoMap')) return ({ locations, impactEnabled, impactSelectedId }) => <div data-testid="map" data-impact={String(impactEnabled)} data-route={impactSelectedId}>{locations.length}</div>;
+  if (source.includes('csoMap')) return ({ locations, impactEnabled, impactSelectedId, focusId }) => <div data-testid="map" data-impact={String(impactEnabled)} data-route={impactSelectedId} data-focus={focusId ?? ''}>{locations.length}</div>;
   if (source.includes('waterQualityAssessmentChart')) return ({ assessment }) => <div data-testid="assessment-chart">{assessment.history.points.length}</div>;
   return ({ data }) => <div data-testid="density-chart">{data.length}</div>;
 });
 jest.mock('../components/functional/vomitfactor', () => ({ assessment }) => <div data-testid="indicator">{assessment?.level ?? 'none'}</div>);
 jest.mock('../components/functional/csoCatchmentMonitoring', () => () => <div data-testid="catchment" />);
-jest.mock('../components/functional/csoEventHistory', () => ({ onShowOnMap, onShowRoute }) => (
-  <><button type="button" data-testid="history" onClick={() => onShowOnMap('A')}>history</button>
+jest.mock('../components/functional/csoEventHistory', () => ({ onShowOnMap, onShowRoute, selectedOutfallId }) => (
+  <><button type="button" data-testid="history" data-selected={selectedOutfallId} onClick={() => onShowOnMap('A')}>history</button>
     <button type="button" onClick={() => onShowRoute('severn-trent:storm-overflow-activity:A')}>history route</button></>));
 
 const LEGACY_ASSESSMENT = { source: 'legacy', version: 'sewage-map-density/2026-08-31', current: { level: 'lower', label: 'Lower', observedAt: '2026-08-31T12:00:00Z', reasons: [] }, history: null };
@@ -42,7 +44,26 @@ function mockFetches(assessment, summary = SUMMARY) {
 }
 
 describe('WaterQualityPage', () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => { jest.clearAllMocks(); mockSearch = ''; });
+
+  it('opens on one outfall from its detail page link, with its downstream route highlighted (C4)', () => {
+    mockSearch = 'outfall=SVT00001&route=severn-trent:storm-overflow-activity:SVT00001';
+    mockFetches(LEGACY_ASSESSMENT);
+    render(<WaterQualityPage />);
+    expect(screen.getByTestId('map')).toHaveAttribute('data-focus', 'SVT00001');
+    expect(screen.getByTestId('map')).toHaveAttribute('data-impact', 'true');
+    expect(screen.getByTestId('map')).toHaveAttribute('data-route', 'severn-trent:storm-overflow-activity:SVT00001');
+    expect(screen.getByTestId('history')).toHaveAttribute('data-selected', 'SVT00001');
+    expect(useFetch).toHaveBeenCalledWith('/api/waterquality/river/impact', expect.anything());
+  });
+
+  it('ignores a malformed outfall link', () => {
+    mockSearch = 'outfall=%3Cscript%3E';
+    mockFetches(LEGACY_ASSESSMENT);
+    render(<WaterQualityPage />);
+    expect(screen.getByTestId('map')).toHaveAttribute('data-focus', '');
+    expect(screen.getByTestId('map')).toHaveAttribute('data-impact', 'false');
+  });
 
   it('fetches each resource once and shares the result with its sections (legacy assessment)', () => {
     mockFetches(LEGACY_ASSESSMENT);

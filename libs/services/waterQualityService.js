@@ -67,7 +67,7 @@ async function getLatestCsoRecords(csoDataCollection, ids, { since } = {}) {
   return new Map(rows.map((row) => [row._id, mapCsoRecord(row.doc)]));
 }
 
-function classifyLocation(id, record, { now, summaryFresh, recentCutoff }) {
+export function classifyLocation(id, record, { now, summaryFresh, recentCutoff }) {
   const recordFresh = isFresh(record?.DateScraped, now);
   const status = Number(record?.Status);
   const eventEnd = validDate(record?.LatestEventEnd);
@@ -384,4 +384,12 @@ export async function getPublicCsoEventDetail(eventId) {
   }
   const { getCsoEventDetail } = await import('../rdp/csoHistory');
   return getCsoEventDetail(eventId);
+}
+
+// ---- One outfall in focus (Wave C / C4, /waterquality/cso/{id}) ----
+// Every section follows the flags above: status by RDP_CSO_SOURCE, scope by RDP_CSO_MEMBERSHIP, recorded events only with
+// RDP_CSO_HISTORY and the route link only with RDP_RIVER_IMPACT. Descriptive only: never read by the indicator or alerts.
+export async function getPublicCsoOutfallDetail(id, { windowKey } = {}) {
+  const { getCsoOutfallDetail } = await import('../rdp/csoOutfallDetail');
+  return getCsoOutfallDetail(id, { windowKey, sourceMode: resolveCsoMode(), membershipMode: resolveMembershipMode(), historyEnabled: isCsoHistoryEnabled() });
 }

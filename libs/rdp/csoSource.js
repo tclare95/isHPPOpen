@@ -176,8 +176,8 @@ const readCachedEvents = unstable_cache(async (id, from, to) => {
 }, ["rdp-cso-events-v1"], { revalidate: 900, tags: ["rdp-cso"] });
 
 export const readCatalogue = () => coalesce("catalogue", async () => unpackCatalogue(await readCachedCatalogue()));
-const readStatusBatch = (ids) => coalesce(`status:${ids.join(",")}`, () => readCachedStatus(ids));
-const readEvents = (id, from, to) => coalesce(`events:${id}:${from}:${to}`, () => readCachedEvents(id, from, to));
+export const readStatusBatch = (ids) => coalesce(`status:${ids.join(",")}`, () => readCachedStatus(ids));
+export const readEvents = (id, from, to) => coalesce(`events:${id}:${from}:${to}`, () => readCachedEvents(id, from, to));
 const readHealth = (id) => coalesce(`health:${id}`, () => readCachedHealth(id));
 
 // Aligned to 15-minute buckets so every request inside a bucket shares one cache key per outfall.

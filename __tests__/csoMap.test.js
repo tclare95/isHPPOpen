@@ -112,6 +112,23 @@ describe('WaterQualityMap', () => {
     });
   });
 
+  it('gives co-located monitors their own marker and their own canonical detail link (C4)', async () => {
+    const pin = { x: -1.15, y: 52.95 };
+    const shared = [
+      { id: 'SVT00001', assetId: 'severn-trent:storm-overflow-activity:SVT00001', status: 'active', coordinates: pin, latestEventStart: '2026-08-31T10:00:00Z' },
+      { id: 'SVT00002', assetId: 'severn-trent:storm-overflow-activity:SVT00002', status: 'active', coordinates: pin, latestEventStart: '2026-08-31T10:00:00Z' },
+      { id: 'LEGACY', status: 'active', coordinates: { x: -1.3, y: 52.8 }, latestEventStart: '2026-08-31T10:00:00Z' },
+    ];
+    render(<WaterQualityMap locations={shared} health={{ state: 'fresh' }} now={now} />);
+    expect(await screen.findAllByTestId('marker')).toHaveLength(3);
+    expect(screen.getAllByRole('link', { name: 'Outfall details' }).map((link) => link.getAttribute('href'))).toEqual([
+      '/waterquality/cso/severn-trent:storm-overflow-activity:SVT00001',
+      '/waterquality/cso/severn-trent:storm-overflow-activity:SVT00002',
+      // Legacy locations carry only the provider ID; the detail resolves and canonicalises it.
+      '/waterquality/cso/LEGACY',
+    ]);
+  });
+
   it('says status is unavailable, not stale, when RDP has no usable status', () => {
     render(<WaterQualityMap locations={[{ id: 'A', status: 'unknown', coordinates: null }]} health={{ state: 'unavailable', cso: { available: false } }} now={now} />);
     expect(screen.getByText(/Current status is unavailable\. No location is labelled as currently spilling or as clear/)).toBeInTheDocument();
@@ -142,6 +159,8 @@ describe('WaterQualityMap', () => {
       expect(screen.getByText(/incomplete: the mapped network ends or branches before the sea/)).toBeInTheDocument();
       fireEvent.click(screen.getAllByRole('button', { name: 'Spill history for this outfall' }).at(-1));
       expect(onShowHistory).toHaveBeenLastCalledWith('SVT00002');
+      // The selected route links back to its outfall's detail (C4).
+      expect(screen.getAllByRole('link', { name: 'Outfall details' }).at(-1)).toHaveAttribute('href', '/waterquality/cso/severn-trent:storm-overflow-activity:SVT00002');
     });
 
     it('selects a route from an existing CSO marker', async () => {

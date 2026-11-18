@@ -1,4 +1,5 @@
 import PropTypes from "prop-types";
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import Alert from "react-bootstrap/Alert";
 import Badge from "react-bootstrap/Badge";
@@ -176,6 +177,11 @@ export default function TrentDashboard({ initialViewMode = "level" }) {
           <h2 className="h4 mb-1">Gauge snapshots</h2>
           <p className="text-secondary mb-0">
             The latest reading and recent trend at each gauge. Level gauges can be added to the comparison.
+          </p>
+          <p className="text-secondary small mb-0">
+            Each level is in metres above that gauge&apos;s own datum, so compare how gauges are moving, not their
+            heights. For HPP&apos;s recorded status and the Colwick forecast, see the{" "}
+            <Link className="text-info" href="/#conditions">conditions summary</Link>.
           </p>
         </div>
         <Badge bg="secondary">{TRENT_WEIR_BLOCKS.length} cards</Badge>

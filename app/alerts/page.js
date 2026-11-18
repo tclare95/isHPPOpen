@@ -7,8 +7,8 @@ import Card from "react-bootstrap/Card";
 import Col from "react-bootstrap/Col";
 import Container from "react-bootstrap/Container";
 import Row from "react-bootstrap/Row";
-import Stack from "react-bootstrap/Stack";
 import AlertManagementAccess from "../../components/functional/alertManagementAccess";
+import AlertResultNotice from "../../components/functional/alertResultNotice";
 import AlertsSignup from "../../components/functional/alertsSignup";
 import {
   AlertsManagementContent,
@@ -17,10 +17,15 @@ import {
 import { fetcher } from "../../libs/fetcher";
 import useFetch from "../../libs/useFetch";
 
+// Each management read replaces the link's token, so the first token must be read exactly once:
+// a focus/reconnect revalidation with it would fail and hide a working session behind an error.
+const MANAGE_FETCH_OPTIONS = { revalidateOnFocus: false, revalidateOnReconnect: false, revalidateIfStale: false, shouldRetryOnError: false };
+
 function AlertsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams?.get("token") || "";
+  const result = searchParams?.get("result") || "";
   const [requestToken] = useState(token);
   const [currentToken, setCurrentToken] = useState(token);
   const [busyAlertKey, setBusyAlertKey] = useState("");
@@ -30,7 +35,7 @@ function AlertsPageContent() {
     () => (requestToken ? `/api/alerts/manage?token=${encodeURIComponent(requestToken)}` : null),
     [requestToken]
   );
-  const { data, error, isPending, mutate } = useFetch(managePath);
+  const { data, error, isPending, mutate } = useFetch(managePath, MANAGE_FETCH_OPTIONS);
 
   useEffect(() => {
     const nextToken = data?.manageToken;
@@ -40,7 +45,7 @@ function AlertsPageContent() {
     }
 
     setCurrentToken(nextToken);
-    router.replace(`/alerts?token=${encodeURIComponent(nextToken)}`);
+    router.replace(`/alerts?token=${encodeURIComponent(nextToken)}`, { scroll: false });
   }, [currentToken, data?.manageToken, router]);
 
   async function handleRemoveAlert(alertKey) {
@@ -82,41 +87,23 @@ function AlertsPageContent() {
           </Col>
         </Row>
 
-        <Row className="justify-content-center mb-4">
-          <Col lg={8}>
-            <Card bg="dark" text="light" border="secondary" className="shadow-sm">
-              <Card.Body>
-                <Card.Title className="mb-3">Create an alert</Card.Title>
-                <Card.Text className="text-secondary">Get confirmed email alerts for Trent gauges, HPP status, or CSO water-quality risk.</Card.Text>
-                <AlertsSignup />
-              </Card.Body>
-            </Card>
-          </Col>
-        </Row>
-        <Row className="justify-content-center mb-4">
-          <Col lg={8}>
-            <Card bg="dark" text="light" border="secondary" className="shadow-sm">
-              <Card.Body>
-                <Card.Title className="mb-3">Email me a management link</Card.Title>
-                <AlertManagementAccess />
-              </Card.Body>
-            </Card>
-          </Col>
-        </Row>
+        {result ? (
+          <Row className="justify-content-center">
+            <Col lg={8}>
+              <AlertResultNotice result={result} />
+            </Col>
+          </Row>
+        ) : null}
 
         {currentToken ? (
-          <Row className="justify-content-center">
+          <Row className="justify-content-center mb-4">
             <Col lg={8}>
               <Card bg="dark" text="light" border="secondary" className="shadow-sm">
                 <Card.Body>
-                  <Stack direction="horizontal" className="justify-content-between align-items-center mb-3">
-                    <div>
-                      <Card.Title className="mb-1">Your current alerts</Card.Title>
-                      <Card.Text className="text-secondary mb-0">
-                        {data?.email ? `Signed in as ${data.email}` : "Use the link from your email to manage alerts."}
-                      </Card.Text>
-                    </div>
-                  </Stack>
+                  <Card.Title className="mb-1">Your alerts</Card.Title>
+                  <Card.Text className="text-secondary">
+                    {data?.email ? `Alerts for ${data.email}. This link works for 30 minutes.` : error ? "This link could not be used." : "Loading the alerts for this link…"}
+                  </Card.Text>
 
                   <AlertsManagementFeedback successMessage={successMessage} errorMessage={errorMessage} />
                   <AlertsManagementContent
@@ -131,6 +118,28 @@ function AlertsPageContent() {
             </Col>
           </Row>
         ) : null}
+
+        <Row className="justify-content-center mb-4">
+          <Col lg={8}>
+            <Card bg="dark" text="light" border="secondary" className="shadow-sm">
+              <Card.Body>
+                <Card.Title className="mb-3">Create an alert</Card.Title>
+                <Card.Text className="text-secondary">Get an email when a Trent gauge, the Colwick forecast, HPP status or CSO water-quality risk meets a condition you choose.</Card.Text>
+                <AlertsSignup />
+              </Card.Body>
+            </Card>
+          </Col>
+        </Row>
+        <Row className="justify-content-center mb-4">
+          <Col lg={8}>
+            <Card bg="dark" text="light" border="secondary" className="shadow-sm">
+              <Card.Body>
+                <Card.Title className="mb-3">Review or stop your alerts</Card.Title>
+                <AlertManagementAccess />
+              </Card.Body>
+            </Card>
+          </Col>
+        </Row>
       </Container>
     </Container>
   );

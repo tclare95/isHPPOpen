@@ -5,7 +5,7 @@ import { connectToDatabase } from "../database";
 import { getLatestForecastSnapshot } from "./forecastService";
 import { getHppStatusSnapshot } from "./hppStatusService";
 import { getLatestWaterQualitySummaryHealth, getWaterQualityDensitySeries } from "./waterQualityService";
-import { TRENT_DASHBOARD_STATIONS, getTrentStationKey } from "../trentWeirsConfig";
+import { alertDescriptionOf as descriptionOf, alertNameOf as nameOf, alertStationFor as stationFor, alertTypeOf as typeOf, alertUnitOf as unitOf } from "../alerts/alertDescriptions";
 import { sendAlertConfirmationEmail, sendManageAlertsAccessEmail, sendThresholdAlertEmail } from "./alertMailerService";
 import { getCsoActivityAssessment } from "../waterQualityIndicator";
 import { alertRisk, ASSESSMENT_METHOD } from "../waterQualityAssessment";
@@ -33,20 +33,6 @@ const hashToken = (token) => createHash("sha256").update(token).digest("hex");
 const createToken = () => randomBytes(24).toString("hex");
 const normalizedEmail = (email) => email.trim().toLowerCase();
 const timestamp = (now) => now.toISOString();
-const typeOf = (rule) => rule.alertType || "gauge";
-const stationFor = (gaugeKey) => TRENT_DASHBOARD_STATIONS.find((station) => getTrentStationKey(station) === gaugeKey);
-
-function nameOf(rule) {
-  if (typeOf(rule) === "hpp_status") return `HPP ${rule.desiredStatus === "open" ? "opens" : "closes"}`;
-  if (typeOf(rule) === "water_quality") return `CSO risk reaches ${rule.riskLevel}`;
-  return rule.gaugeName || stationFor(rule.gaugeKey)?.gaugeName || "Trent gauge";
-}
-function descriptionOf(rule) {
-  if (typeOf(rule) === "hpp_status") return `We will email you when HPP is reported ${rule.desiredStatus}.`;
-  if (typeOf(rule) === "water_quality") return `We will email you when CSO risk reaches ${rule.riskLevel}.`;
-  const unit = stationFor(rule.gaugeKey)?.measureType === "flow" ? "cumecs" : "m";
-  return `We will email you when ${nameOf(rule)} ${rule.direction === "below" ? "drops to or below" : "rises to or above"} ${Number(rule.threshold).toFixed(2)} ${unit}.`;
-}
 function normalizeRule(payload) {
   const alertType = payload.alertType || "gauge";
   if (alertType === "hpp_status") { if (!payload.desiredStatus) throw new HttpError(400, "Choose an HPP status"); return { alertType, desiredStatus: payload.desiredStatus, gaugeName: "HPP status" }; }
@@ -58,7 +44,9 @@ function normalizeRule(payload) {
   return { alertType, gaugeKey: payload.gaugeKey, gaugeName: station.gaugeName, stationId: station.stationId, measureType: station.measureType, source: payload.source, direction: payload.direction, threshold: Number(Number(payload.threshold).toFixed(3)) };
 }
 function alertKey(email, rule) { return [email, rule.alertType, rule.gaugeKey || rule.desiredStatus || rule.riskLevel, rule.source || "", rule.direction || "", rule.threshold ?? ""].join("|"); }
-function managedRule(rule) { return { alertKey: rule.alertKey, alertType: typeOf(rule), gaugeName: nameOf(rule), source: rule.source || null, direction: rule.direction || null, threshold: rule.threshold ?? null, desiredStatus: rule.desiredStatus || null, riskLevel: rule.riskLevel || null, status: rule.status, createdAt: rule.createdAt || null, updatedAt: rule.updatedAt || null, confirmedAt: rule.confirmedAt || null, lastTriggeredAt: rule.lastTriggeredAt || null, description: descriptionOf(rule) }; }
+function managedRule(rule, now) { return { alertKey: rule.alertKey, alertType: typeOf(rule), gaugeName: nameOf(rule), source: rule.source || null, direction: rule.direction || null, threshold: rule.threshold ?? null, desiredStatus: rule.desiredStatus || null, riskLevel: rule.riskLevel || null, status: rule.status, createdAt: rule.createdAt || null, updatedAt: rule.updatedAt || null, confirmedAt: rule.confirmedAt || null, lastTriggeredAt: rule.lastTriggeredAt || null, description: descriptionOf(rule),
+  // A pending alert whose confirmation link has expired can never become active; the subscriber must request it again.
+  confirmationExpired: rule.status === "pending_confirmation" && Boolean(rule.confirmationExpiresAt) && new Date(rule.confirmationExpiresAt) <= now }; }
 
 async function limitRequests(db, email, ip, now) {
   const collection = db.collection(ALERT_RATE_LIMITS_COLLECTION); const cutoff = new Date(now.getTime() - RATE_LIMIT_WINDOW_MS);
@@ -111,12 +99,12 @@ export async function confirmColwickAlertSubscription(token, { now = new Date() 
   return { status: "confirmed", message: "Alert confirmed." };
 }
 export async function unsubscribeColwickAlertSubscription(token, { now = new Date() } = {}) {
-  if (!token) throw new HttpError(400, "Missing token parameter"); const { db } = await connectToDatabase(); const collection = db.collection(ALERT_SUBSCRIPTIONS_COLLECTION); const rule = await collection.findOne({ unsubscribeToken: token }); if (!rule) throw new HttpError(404, "Alert unsubscribe token is invalid or expired");
-  await collection.updateOne({ alertKey: rule.alertKey }, { $set: { status: "unsubscribed", unsubscribedAt: timestamp(now), updatedAt: timestamp(now) } }); return { message: "Alert unsubscribed." };
+  if (!token) throw new HttpError(400, "Missing token parameter"); const { db } = await connectToDatabase(); const collection = db.collection(ALERT_SUBSCRIPTIONS_COLLECTION); const rule = await collection.findOne({ unsubscribeToken: token }); if (!rule) throw new HttpError(404, "This unsubscribe link is invalid or no longer in use.");
+  await collection.updateOne({ alertKey: rule.alertKey }, { $set: { status: "unsubscribed", unsubscribedAt: timestamp(now), updatedAt: timestamp(now) } }); return { message: "Alert stopped. You will not get further emails for it." };
 }
-async function managementSession(token, now) { if (!token) throw new HttpError(400, "Missing token parameter"); const { db } = await connectToDatabase(); const sessions = db.collection(ALERT_MANAGE_SESSIONS_COLLECTION); const session = await sessions.findOne({ tokenHash: hashToken(token) }); if (!session || new Date(session.expiresAt) <= now) throw new HttpError(404, "Alert management link is invalid or expired"); return { db, sessions, session }; }
-export async function requestColwickAlertManagementLink(emailInput, { now = new Date(), ip } = {}) { const email = normalizedEmail(await emailSchema.validate(emailInput)); const { db } = await connectToDatabase(); await limitRequests(db, email, ip, now); const token = createToken(); await db.collection(ALERT_MANAGE_SESSIONS_COLLECTION).updateOne({ email }, { $set: { email, tokenHash: hashToken(token), createdAt: timestamp(now), expiresAt: timestamp(new Date(now.getTime() + ALERT_MANAGE_SESSION_MS)) } }, { upsert: true }); await sendManageAlertsAccessEmail({ email, manageToken: token }); return { message: "Check your email for a link to manage your Colwick alerts." }; }
-export async function listColwickAlertsForManagement(token, { now = new Date() } = {}) { const { db, sessions, session } = await managementSession(token, now); const rules = await db.collection(ALERT_SUBSCRIPTIONS_COLLECTION).find({ email: session.email, status: { $ne: "unsubscribed" } }).toArray(); const nextToken = createToken(); await sessions.updateOne({ email: session.email }, { $set: { tokenHash: hashToken(nextToken), createdAt: timestamp(now), expiresAt: timestamp(new Date(now.getTime() + ALERT_MANAGE_SESSION_MS)) } }); return { email: session.email, alerts: rules.map(managedRule), manageToken: nextToken }; }
+async function managementSession(token, now) { if (!token) throw new HttpError(400, "Missing token parameter"); const { db } = await connectToDatabase(); const sessions = db.collection(ALERT_MANAGE_SESSIONS_COLLECTION); const session = await sessions.findOne({ tokenHash: hashToken(token) }); if (!session || new Date(session.expiresAt) <= now) throw new HttpError(404, "This management link has expired or has already been used. Request a new link below."); return { db, sessions, session }; }
+export async function requestColwickAlertManagementLink(emailInput, { now = new Date(), ip } = {}) { const email = normalizedEmail(await emailSchema.validate(emailInput)); const { db } = await connectToDatabase(); await limitRequests(db, email, ip, now); const token = createToken(); await db.collection(ALERT_MANAGE_SESSIONS_COLLECTION).updateOne({ email }, { $set: { email, tokenHash: hashToken(token), createdAt: timestamp(now), expiresAt: timestamp(new Date(now.getTime() + ALERT_MANAGE_SESSION_MS)) } }, { upsert: true }); await sendManageAlertsAccessEmail({ email, manageToken: token }); return { message: "Check your email for a link to manage your alerts. It expires in 30 minutes." }; }
+export async function listColwickAlertsForManagement(token, { now = new Date() } = {}) { const { db, sessions, session } = await managementSession(token, now); const rules = await db.collection(ALERT_SUBSCRIPTIONS_COLLECTION).find({ email: session.email, status: { $ne: "unsubscribed" } }).toArray(); const nextToken = createToken(); await sessions.updateOne({ email: session.email }, { $set: { tokenHash: hashToken(nextToken), createdAt: timestamp(now), expiresAt: timestamp(new Date(now.getTime() + ALERT_MANAGE_SESSION_MS)) } }); return { email: session.email, alerts: rules.map((rule) => managedRule(rule, now)), manageToken: nextToken }; }
 export async function deleteManagedColwickAlert({ token, alertKey: key }, { now = new Date() } = {}) { if (!key) throw new HttpError(400, "Missing alertKey"); const { db, session } = await managementSession(token, now); const result = await db.collection(ALERT_SUBSCRIPTIONS_COLLECTION).updateOne({ email: session.email, alertKey: key, status: { $ne: "unsubscribed" } }, { $set: { status: "unsubscribed", unsubscribedAt: timestamp(now), updatedAt: timestamp(now) } }); if (!result?.matchedCount) throw new HttpError(404, "Alert not found"); return { message: "Alert removed." }; }
 
 const usable = (result) => result.status === "fulfilled" && (!result.value?.health || result.value.health.state === "fresh");
@@ -175,7 +163,7 @@ const sendOutcomeOf = (error) => (error?.deliveryOutcome === "rejected" ? "rejec
 const errorCategoryOf = (error) => error?.reason || (isDuplicateKeyError(error) ? "duplicate_key" : error?.name || "error");
 
 function thresholdEmailPayload(rule, state) {
-  return { gaugeName: nameOf(rule), source: rule.source || "status", direction: rule.direction, threshold: rule.threshold, observedValue: typeof state.value === "number" ? state.value : null, observedAt: state.at, forecastRunAt: state.forecastRunAt, unsubscribeToken: rule.unsubscribeToken, ruleDescription: descriptionOf(rule) };
+  return { alertType: typeOf(rule), gaugeName: nameOf(rule), source: rule.source || "status", unit: unitOf(rule), observedLabel: typeof state.value === "string" ? state.value : null, direction: rule.direction, threshold: rule.threshold, observedValue: typeof state.value === "number" ? state.value : null, observedAt: state.at, forecastRunAt: state.forecastRunAt, unsubscribeToken: rule.unsubscribeToken, ruleDescription: descriptionOf(rule) };
 }
 
 let deliveryIndexVerified = false;

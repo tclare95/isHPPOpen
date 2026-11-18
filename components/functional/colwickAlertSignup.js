@@ -6,6 +6,8 @@ import Alert from "react-bootstrap/Alert";
 import Button from "react-bootstrap/Button";
 import Form from "react-bootstrap/Form";
 import Stack from "react-bootstrap/Stack";
+import { alertStationFor, alertUnitOf } from "../../libs/alerts/alertDescriptions";
+import { ALERT_REQUEST_FAILED_SUFFIX, AlertRuleSummary } from "./alertsSignup";
 
 const INITIAL_FORM = {
   email: "",
@@ -20,6 +22,9 @@ export default function ColwickAlertSignup({ gaugeKey, gaugeName, forecastAvaila
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const measureType = alertStationFor(gaugeKey)?.measureType ?? "level";
+  const rule = { alertType: "gauge", gaugeKey, gaugeName, source: forecastAvailable ? formState.source : "live", direction: formState.direction, threshold: formState.threshold === "" ? Number.NaN : Number(formState.threshold) };
+  const unit = alertUnitOf(rule);
 
   function updateField(field, value) {
     setFormState((current) => ({ ...current, [field]: value }));
@@ -40,7 +45,7 @@ export default function ColwickAlertSignup({ gaugeKey, gaugeName, forecastAvaila
         body: JSON.stringify({
           email: formState.email,
           threshold: Number(formState.threshold),
-          source: formState.source,
+          source: rule.source,
           direction: formState.direction,
           gaugeKey,
         }),
@@ -52,10 +57,10 @@ export default function ColwickAlertSignup({ gaugeKey, gaugeName, forecastAvaila
         throw new Error(payload?.error?.message || "Unable to save alert right now.");
       }
 
-      setSuccessMessage(payload?.data?.message || `Check your email to confirm this ${gaugeName} alert.`);
+      setSuccessMessage(payload?.data?.message || `Check your email to confirm this ${gaugeName} alert. It is not active until you confirm it.`);
       setFormState((current) => ({ ...current, email: "" }));
     } catch (error) {
-      setErrorMessage(error.message || "Unable to save alert right now.");
+      setErrorMessage(`${error.message || "Unable to save alert right now."} ${ALERT_REQUEST_FAILED_SUFFIX}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -73,9 +78,9 @@ export default function ColwickAlertSignup({ gaugeKey, gaugeName, forecastAvaila
         <Form className="mt-3 text-start" onSubmit={handleSubmit}>
           <Stack gap={2}>
             <div className="small text-secondary">
-              Set a {gaugeName} alert by email. Forecast alerts are available for Colwick only.
+              Get an email when the {gaugeName} {measureType} crosses a threshold.{forecastAvailable ? " You can also use the Colwick forecast." : ""}
             </div>
-            {successMessage ? <Alert variant="success" className="mb-0">{successMessage}</Alert> : null}
+            {successMessage ? <Alert variant="info" className="mb-0" role="status">{successMessage}</Alert> : null}
             {errorMessage ? <Alert variant="danger" className="mb-0">{errorMessage}</Alert> : null}
 
             <Form.Group controlId={`alert-email-${gaugeKey}`}>
@@ -90,11 +95,11 @@ export default function ColwickAlertSignup({ gaugeKey, gaugeName, forecastAvaila
             </Form.Group>
 
             <Form.Group controlId={`alert-threshold-${gaugeKey}`}>
-              <Form.Label className="small text-uppercase text-secondary mb-1">Threshold (m)</Form.Label>
+              <Form.Label className="small text-uppercase text-secondary mb-1">Threshold ({unit})</Form.Label>
               <Form.Control
                 type="number"
                 min="0"
-                max="10"
+                max={measureType === "flow" ? undefined : "10"}
                 step="0.01"
                 value={formState.threshold}
                 onChange={(event) => updateField("threshold", event.target.value)}
@@ -105,18 +110,20 @@ export default function ColwickAlertSignup({ gaugeKey, gaugeName, forecastAvaila
             <Form.Group controlId={`alert-source-${gaugeKey}`}>
               <Form.Label className="small text-uppercase text-secondary mb-1">Alert type</Form.Label>
               <Form.Select value={formState.source} onChange={(event) => updateField("source", event.target.value)}>
-                <option value="live">Live level crossing</option>
+                <option value="live">Live {measureType} crossing</option>
                 {forecastAvailable ? <option value="forecast">Forecast crossing</option> : null}
               </Form.Select>
             </Form.Group>
 
             <Form.Group controlId={`alert-direction-${gaugeKey}`}>
-              <Form.Label className="small text-uppercase text-secondary mb-1">Trigger when level</Form.Label>
+              <Form.Label className="small text-uppercase text-secondary mb-1">Trigger when {measureType}</Form.Label>
               <Form.Select value={formState.direction} onChange={(event) => updateField("direction", event.target.value)}>
                 <option value="above">Rises to or above threshold</option>
                 <option value="below">Drops to or below threshold</option>
               </Form.Select>
             </Form.Group>
+
+            <AlertRuleSummary rule={rule} />
 
             <div className="d-grid">
               <Button type="submit" variant="primary" disabled={isSubmitting}>

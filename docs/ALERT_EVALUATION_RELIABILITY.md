@@ -149,6 +149,8 @@ thresholds, hysteresis, freshness rules, re-baselining or the delivery mechanism
 | A replaced, or concurrently used, confirmation link could still activate a rule, because the update matched on `alertKey` only. | Confirmation now matches the token hash and the pending status. |
 | Legacy water-quality evaluation ignored the run's injected clock. | It now uses the run's `now`. |
 
+Threshold-email payloads now also store `alertType`, `unit` and `observedLabel` (additive), and older payloads still render. If an `uncertain` delivery from before this release is retried after the email template changed, the provider may answer 409 for the changed body. That is classified `uncertain` and ends in `held_for_review`. It never produces a second email.
+
 ## Compatibility and rollback
 
 - Additive fields only: `stateRevision`, `pendingTransitionId`, `pendingSince`,

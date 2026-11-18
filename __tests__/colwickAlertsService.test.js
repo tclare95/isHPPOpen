@@ -172,7 +172,7 @@ describe("colwickAlertsService", () => {
       now: new Date("2026-03-08T12:00:00.000Z"),
     });
 
-    expect(result.message).toContain("manage your Colwick alerts");
+    expect(result.message).toContain("manage your alerts");
     expect(updateOne).toHaveBeenCalled();
     const [, update] = updateOne.mock.calls[0];
     expect(update.$set.email).toBe("user@example.com");

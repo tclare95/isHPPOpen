@@ -175,7 +175,7 @@ Editorial writes use the shared `libs/cache/revalidate.js` helper with `revalida
 
 10. **Operational alerts and health**
    - Public alert signup lives under `app/api/alerts/route.js`; it supports Trent gauge thresholds, Colwick forecasts, HPP open/closed changes, and CSO risk thresholds.
-   - Confirmation and unsubscribe flows live under `app/api/alerts/confirm/route.js` and `app/api/alerts/unsubscribe/route.js`.
+   - Confirmation and unsubscribe flows live under `app/api/alerts/confirm/route.js` and `app/api/alerts/unsubscribe/route.js`. Both redirect to `/alerts?result=<code>`. The page shows fixed copy for each code and never text from the URL. Rule wording shared by signup, management and emails lives in `libs/alerts/alertDescriptions.js`.
    - Email-based alert management access lives under `app/api/alerts/manage-link/route.js`, `app/api/alerts/manage/route.js`, and the user-facing `app/alerts/page.js`.
    - Alert persistence and threshold-evaluation logic live in `libs/services/colwickAlertsService.js`; its legacy export name remains for compatibility with the original Colwick implementation.
    - The S3 forecast fetch/parse logic is shared via `libs/services/forecastService.js`, so both the public forecast API and internal alert evaluation use the same source of truth.

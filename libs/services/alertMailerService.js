@@ -101,7 +101,7 @@ export function buildUnsubscribeUrl(token) {
 }
 
 /** Alert result codes shown on the Alerts Centre with fixed copy (never free text from the URL). */
-export const ALERT_RESULTS = Object.freeze(["confirmed", "already_active", "confirm_invalid", "confirm_error", "unsubscribed", "unsubscribe_invalid", "unsubscribe_error"]);
+export const ALERT_RESULTS = Object.freeze(["confirmed", "already_active", "already_paused", "confirm_invalid", "confirm_error", "unsubscribed", "unsubscribe_invalid", "unsubscribe_error"]);
 
 export function buildAlertsResultUrl(result) {
   const url = new URL("/alerts", `${getAlertsBaseUrl()}/`);

@@ -14,7 +14,7 @@ export async function GET(request) {
     const token = request.nextUrl.searchParams.get("token");
     const data = await confirmColwickAlertSubscription(token);
     logger.info("Confirmed alert subscription", { result: data.status });
-    return NextResponse.redirect(buildAlertsResultUrl(data.status === "already_active" ? "already_active" : "confirmed"));
+    return NextResponse.redirect(buildAlertsResultUrl(data.status === "already_active" || data.status === "already_paused" ? data.status : "confirmed"));
   } catch (error) {
     const { statusCode } = mapApiError(error);
     logger.error("Error in alerts confirm", error);

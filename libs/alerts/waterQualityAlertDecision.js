@@ -48,6 +48,17 @@ export function decideWaterQualityRule(rule, risk, version) {
   return { kind: "unchanged" };
 }
 
+/**
+ * Where an edited or resumed rule starts under the RDP assessment: enrolled without a transition, and kept quiet until
+ * the assessment rules its level out once when it already meets (or cannot rule out) that level, as for a version change.
+ */
+export function decideWaterQualityBaseline(rule, risk) {
+  const target = WQ_RISK_RANK[rule.riskLevel];
+  if (target === undefined) return { kind: "skip", reason: "invalid_rule" };
+  if (!risk || WQ_RISK_RANK[risk.lowest] === undefined || WQ_RISK_RANK[risk.highest] === undefined) return { kind: "skip", reason: "unavailable" };
+  return { kind: "baseline", suppressUntilClear: WQ_RISK_RANK[risk.highest] >= target };
+}
+
 /** Counts of what each rule would do, for the read-only shadow report. */
 export function summariseWaterQualityDecisions(rules, risk, version) {
   const counts = {};

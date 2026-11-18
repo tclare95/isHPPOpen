@@ -120,6 +120,7 @@ const ADMIN_ROUTES = [
 const NON_ADMIN_MUTATIONS = {
   "alerts POST": "public alert signup; double opt-in confirmation token",
   "alerts/manage DELETE": "subscriber management token (alerts workstream)",
+  "alerts/manage PATCH": "subscriber edit/pause/resume; same management token as DELETE",
   "alerts/manage-link POST": "public, rate-limited management-link email request",
   "auth/[...nextauth] POST": "NextAuth sign-in/sign-out protocol endpoint",
   "trentlockapi POST": "public Trent Lock level lookup used by /trentlock",

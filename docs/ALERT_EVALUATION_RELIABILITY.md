@@ -151,6 +151,46 @@ thresholds, hysteresis, freshness rules, re-baselining or the delivery mechanism
 
 Threshold-email payloads now also store `alertType`, `unit` and `observedLabel` (additive), and older payloads still render. If an `uncertain` delivery from before this release is retried after the email template changed, the provider may answer 409 for the changed body. That is classified `uncertain` and ends in `held_for_review`. It never produces a second email.
 
+## Subscriber controls (Wave B)
+
+A valid management link can now change, pause and resume its own confirmed alerts, as well as stop them
+(`PATCH /api/alerts/manage` with `action: "edit" | "pause" | "resume"`; spec:
+`openspec/changes/wave-b-product-operations/specs/alert-subscription-controls`). Tests:
+`__tests__/alertSubscriberControls.test.js` (service and evaluator) and `__tests__/alertSubscriberControlsUi.test.js`.
+
+- **What can change.** Gauge alerts: direction and threshold. HPP alerts: open/closed. CSO alerts: amber/red.
+  The alert type, gauge and live/forecast source are fixed; anything else is refused and the rule is left as it was.
+- **Who.** Every change is matched on the link's email address. An invalid, expired or other subscriber's link gets
+  a fixed 400/404 message with no subscriber details. Pending (unconfirmed) alerts cannot be edited, paused or resumed
+  (409), so none of these can activate one.
+- **Atomic.** Each change is one conditional update on the rule's current status (edit also on `stateRevision`) and
+  increments `stateRevision`, so a concurrent change, removal or evaluation either wins or makes the change fail with
+  409/404. Nothing is read-then-written. A removed rule is never brought back. A rule with a delivery in progress
+  (`pendingTransitionId`) is not edited or paused until that delivery finishes. Pause and resume are idempotent.
+- **Alert key.** `alertKey` is derived from the conditions, so an edit moves the same document to the new key. It keeps
+  its `unsubscribeToken`, so earlier unsubscribe links still stop it. Delivery records keep the old key. An edit onto
+  the conditions of another live or pending alert is refused (no duplicates). A removed record that already holds the
+  new key is moved to `<key>|superseded:<time>` with `supersededAt`, so the key stays unique; its delivery records are
+  not touched.
+- **Re-baselining.** An edit or resume sets `rebaseline: { reason: "edited" | "resumed", requestedAt }`, stores
+  `lastConditionState: "triggered"` and clears observation progress, transition state and `gaugeHold`. The next run
+  records the current condition **without a transition**: `triggered` when the new condition is already met (so it
+  notifies only after it clears and crosses again), otherwise `armed`; live gauges record a fresh marker from the
+  newest fresh reading, and the RDP CSO assessment enrols with `suppressUntilClear` unless it rules the level out.
+  It then removes `rebaseline` and sets `rebaselinedAt`. If evidence is unavailable the rule stays quiet and waits.
+  So an edit never notifies by itself, and nothing that happened while paused is sent after resuming.
+- **Paused.** `status: "paused"` with `pausedAt`. The evaluator loads only `status: "active"`, so paused rules are not
+  evaluated; every evaluator write already requires `status: "active"`. Resuming sets `resumedAt` and removes
+  `pausedAt`. Re-requesting a paused alert from the signup form keeps it paused (like an active one); its confirmation
+  link reports `already_paused` and does not resume it.
+- **Status view.** The management read adds `unit`, `pausedAt`, `restarting` and `evidence` per alert. `evidence` comes
+  from the latest finished `alertRuns` record: `unknown` when there is none, it failed or it started more than 45
+  minutes ago; `delayed` when that run listed one of the alert's sources in `sourceFailures` or the rule has a
+  `gaugeHold`; otherwise `current`. The page shows a caution for `delayed`/`unknown` and nothing for `current`: it
+  never presents delivery as assured.
+- **Rollback.** Older code never loads paused rules either. It ignores `rebaseline`; because an edited or resumed rule is
+  stored as `triggered`, it re-arms only after the condition clears, so rollback does not cause an edit notification.
+
 ## Compatibility and rollback
 
 - Additive fields only: `stateRevision`, `pendingTransitionId`, `pendingSince`,

@@ -7,6 +7,7 @@ import PropTypes from "prop-types";
 export const ALERT_RESULT_COPY = Object.freeze({
   confirmed: { variant: "success", text: "Alert confirmed. It is now active, and we will email you when its condition is met." },
   already_active: { variant: "info", text: "This alert was already active. Nothing has changed." },
+  already_paused: { variant: "info", text: "This alert is paused. Nothing has changed. To resume it, request a management link below." },
   confirm_invalid: { variant: "warning", text: "This confirmation link is invalid, has expired or has already been used, so nothing was activated. If you confirmed it earlier, the alert is still active: request a management link below to check. Otherwise, set the alert up again." },
   confirm_error: { variant: "danger", text: "We could not confirm your alert just now, so it is not active yet. Please try the link in your email again later." },
   unsubscribed: { variant: "secondary", text: "Alert stopped. You will not get further emails for it." },

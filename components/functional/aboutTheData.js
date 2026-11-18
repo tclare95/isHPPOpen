@@ -14,7 +14,7 @@ export default function AboutTheData({ membership, assessment = null }) {
       ) : (
         <li><strong>Activity chart:</strong> a measure of upstream overflow activity affecting HPP, not a count of overflows at HPP itself.</li>
       )}
-      <li><strong>Whole-catchment monitoring:</strong> outfalls at identical published coordinates count as one location. These counts are not used by the indication.</li>
+      <li><strong>Whole-catchment monitoring:</strong> outfalls at identical published coordinates count as one location.</li>
       <li><strong>River levels:</strong> Environment Agency real-time flood-monitoring data.</li>
       <li><strong>Map:</strong> &copy; OpenStreetMap contributors; river network and downstream routes from OpenRiversNetwork via River Data Platform.</li>
     </ul>

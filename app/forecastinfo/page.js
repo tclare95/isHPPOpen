@@ -252,7 +252,7 @@ export default function ForecastInfoPage() {
                   <div className="text-center py-3"><Spinner animation="border" role="status" size="sm" /></div>
                 ) : accuracyData?.accuracy_data?.length > 0 ? (
                   <>
-                    <p className="history-muted mb-3"><small>Last evaluated: {new Date(accuracyData.evaluation_time).toLocaleString()}</small></p>
+                    <p className="history-muted mb-3"><small>Typical error of recent forecasts at each horizon, in metres; a positive bias means forecasts ran high. Last evaluated: {new Date(accuracyData.evaluation_time).toLocaleString()}</small></p>
                     <Table variant="dark" striped bordered hover responsive size="sm">
                       <thead>
                         <tr>
@@ -377,8 +377,8 @@ export default function ForecastInfoPage() {
                   ) : (
                     <>
                       <p className="text-white-50 mb-3">
-                        Stability shows how consistent the forecast has been over the last 12 hours.
-                        Low stability means the model is confident; high stability means predictions have been changing.
+                        How much the forecast for each time has changed over the last 12 hours. Small changes mean
+                        recent runs agree; large changes mean the forecast is still moving.
                       </p>
 
                       <h6 className="text-info fw-bold">Prediction Evolution</h6>
@@ -482,8 +482,7 @@ export default function ForecastInfoPage() {
                         <Card.Header className="fw-bold">⚠️ Limitations</Card.Header>
                         <Card.Body>
                           <ul className="mb-0">
-                            <li>The forecast is a prediction and may not account for sudden changes</li>
-                            <li>Extreme weather events may cause larger variations</li>
+                            <li>Accuracy figures are averages: an individual forecast can be further out, especially in a flood.</li>
                           </ul>
                         </Card.Body>
                       </Card>

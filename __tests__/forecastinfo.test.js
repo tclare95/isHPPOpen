@@ -47,6 +47,12 @@ describe('ForecastInfoPage', () => {
     expect(screen.getByText('Forecast Stability')).toBeInTheDocument();
   });
 
+  it('says once, up front, that the forecast is a model estimate', () => {
+    render(<ForecastInfoPage />);
+
+    expect(screen.getByText(/It is an estimate and can be wrong/)).toBeInTheDocument();
+  });
+
   it('has no EA forecast selector and never charts /api/levels forecast_data', () => {
     mockResponses(buildResponses([{ forecast_date: '2026-11-13T11:00:00Z', forecast_reading: 9.9 }]));
     render(<ForecastInfoPage />);

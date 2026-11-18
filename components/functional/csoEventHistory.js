@@ -263,7 +263,7 @@ export default function CsoEventHistory({ selectedOutfallId = '', onSelectOutfal
   return (
     <section className="water-quality-panel mb-4" aria-labelledby="cso-history-heading" id="cso-history">
       <h2 id="cso-history-heading">Recent upstream spills</h2>
-      <p className="water-quality-muted">Recorded storm overflow events at monitored upstream outfalls, newest first. This history does not change the indication above.</p>
+      <p className="water-quality-muted">Recorded storm overflow events at monitored upstream outfalls, newest first.</p>
       <div className="d-flex flex-wrap gap-2 align-items-end mb-3">
         <ButtonGroup size="sm" aria-label="Spill history period">
           {HISTORY_WINDOWS.map((option) => (

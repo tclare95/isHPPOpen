@@ -13,10 +13,10 @@
 - [ ] Routine load is bounded and reuses available evidence rather than generating expensive production queries.
 
 ## Editorial management
-- [ ] Admins can find and edit past, current and future events without the existing upcoming-only view or arbitrary 99-item cap.
-- [ ] Creating an event never accidentally edits a same-named existing event; editing is identity-based.
-- [ ] The banner editor remains functional with correct scheduling, feedback and cache refresh.
-- [ ] Appropriate API/service/UI tests cover filtering/list navigation, identity, date handling and permissions.
+- [x] Admins can find and edit past, current and future events without the existing upcoming-only view or arbitrary 99-item cap.
+- [x] Creating an event never accidentally edits a same-named existing event; editing is identity-based.
+- [x] The banner editor remains functional with correct scheduling, feedback and cache refresh.
+- [x] Appropriate API/service/UI tests cover filtering/list navigation, identity, date handling and permissions.
 
 ## Direct engineering tasks — no new specification
 - [ ] Simplify repetitive or defensive public copy after Wave A, retaining important context.

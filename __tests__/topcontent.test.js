@@ -184,4 +184,73 @@ describe('TopContent', () => {
     expect(screen.getByText(/The river level is/)).toHaveTextContent('The river level is unavailable');
     expect(screen.getByText('Forecast and level data are unavailable right now.')).toBeInTheDocument();
   });
+  describe('partial chart data', () => {
+    const at = (minutes) => new Date(Date.now() - minutes * 60000).toISOString();
+    const levels = { data: { level_data: [{ reading_date: at(10), reading_level: 1.3 }] }, error: undefined, isPending: false };
+    const forecastMadeAgo = (minutes) => ({
+      data: { forecast_data: [{ forecast_date: at(-15), forecast_reading: 1.32 }], metadata: { forecast_time: at(minutes) } },
+      error: undefined,
+      isPending: false,
+    });
+    const accuracy = { data: { accuracy_data: [{ horizon_hours: 6, mae: 0.04 }] }, error: undefined, isPending: false };
+    const assessment = { data: undefined, error: undefined, isPending: false };
+
+    it('keeps the observed levels and says so when the forecast fails', () => {
+      mockResponses({
+        '/api/levels': levels,
+        '/api/s3forecast': { data: undefined, error: new Error('forecast unavailable'), isPending: false },
+        '/api/forecastaccuracy': accuracy,
+        '/api/waterquality/assessment': assessment,
+      });
+
+      renderWithGraphContext(<TopContent cachedEvents={[]} />);
+
+      expect(screen.getByTestId('forecast-chart')).toHaveTextContent('1:0:1');
+      expect(screen.getByText(/forecast is unavailable right now, so only observed levels are shown/)).toBeInTheDocument();
+      expect(screen.queryByText('Forecast and level data are unavailable right now.')).not.toBeInTheDocument();
+    });
+
+    it('keeps the chart when only the accuracy read fails, without a confidence band', () => {
+      mockResponses({
+        '/api/levels': levels,
+        '/api/s3forecast': forecastMadeAgo(20),
+        '/api/forecastaccuracy': { data: undefined, error: new Error('accuracy unavailable'), isPending: false },
+        '/api/waterquality/assessment': assessment,
+      });
+
+      renderWithGraphContext(<TopContent cachedEvents={[]} />);
+
+      expect(screen.getByTestId('forecast-chart')).toHaveTextContent('1:1:0');
+      expect(screen.getByText(/confidence band is unavailable right now/)).toBeInTheDocument();
+      expect(screen.queryByText(/may be out of date/)).not.toBeInTheDocument();
+    });
+
+    it('marks a forecast older than an hour as possibly out of date', () => {
+      mockResponses({
+        '/api/levels': levels,
+        '/api/s3forecast': forecastMadeAgo(180),
+        '/api/forecastaccuracy': accuracy,
+        '/api/waterquality/assessment': assessment,
+      });
+
+      renderWithGraphContext(<TopContent cachedEvents={[]} />);
+
+      expect(screen.getByTestId('forecast-chart')).toHaveTextContent('1:1:1');
+      expect(screen.getByText('This forecast was made 3 hours ago, so it may be out of date.')).toHaveAttribute('data-state', 'stale');
+    });
+
+    it('keeps the last loaded forecast, judged by its run time, when a refresh fails', () => {
+      mockResponses({
+        '/api/levels': levels,
+        '/api/s3forecast': { ...forecastMadeAgo(20), error: new Error('refresh failed') },
+        '/api/forecastaccuracy': accuracy,
+        '/api/waterquality/assessment': assessment,
+      });
+
+      renderWithGraphContext(<TopContent cachedEvents={[]} />);
+
+      expect(screen.getByTestId('forecast-chart')).toHaveTextContent('1:1:1');
+      expect(screen.queryByText(/forecast is unavailable/)).not.toBeInTheDocument();
+    });
+  });
 });

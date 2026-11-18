@@ -16,6 +16,8 @@ import StabilityChart from "../../components/functional/stabilityChart";
 import GraphContext from "../../libs/context/graphcontrol";
 import PageHeader from "../../components/layout/site/PageHeader";
 import StatusMessage from "../../components/layout/site/StatusMessage";
+import { SWR_15_MINUTES } from "../../libs/dataFreshness";
+import { describeForecast } from "../../libs/forecastDisplay";
 
 const formatMetric = (value, decimals = 3) => {
   if (value === null || value === undefined) return "N/A";
@@ -104,15 +106,19 @@ export default function ForecastInfoPage() {
   const [showStats, setShowStats] = useState(false);
   const [showStability, setShowStability] = useState(false);
 
-  const { data: levelData, isPending: levelPending } = useFetch("/api/levels");
-  const { data: s3Data, isPending: s3Pending } = useFetch("/api/s3forecast");
-  const { data: accuracyData, isPending: accuracyPending } = useFetch("/api/forecastaccuracy");
-  const { data: stabilityData, isPending: stabilityPending } = useFetch("/api/forecaststability");
+  // Same 15-minute refresh as the homepage chart, so the two pages never disagree for long.
+  const { data: levelData, isPending: levelPending } = useFetch("/api/levels", SWR_15_MINUTES);
+  const { data: s3Data, isPending: s3Pending } = useFetch("/api/s3forecast", SWR_15_MINUTES);
+  const { data: accuracyData, error: accuracyError, isPending: accuracyPending } = useFetch("/api/forecastaccuracy", SWR_15_MINUTES);
+  const { data: stabilityData, isPending: stabilityPending } = useFetch("/api/forecaststability", SWR_15_MINUTES);
 
   const { lowerBound, upperBound, updateBounds } = useContext(GraphContext);
   const isPending = levelPending || s3Pending;
 
-  const s3ForecastRows = Array.isArray(s3Data?.forecast_data) ? s3Data.forecast_data : [];
+  const forecast = describeForecast(s3Data);
+  const s3ForecastRows = forecast.rows;
+  // The levels route answers an outage with an empty fallback payload, which is not something to chart.
+  const levelRows = Array.isArray(levelData?.level_data) ? levelData.level_data : [];
   const firstS3Forecast = s3ForecastRows[0] || null;
   const lastS3Forecast = s3ForecastRows.length ? s3ForecastRows[s3ForecastRows.length - 1] : null;
   const forecastGeneratedAt = s3Data?.metadata?.forecast_time || firstS3Forecast?.forecast_time || null;
@@ -223,16 +229,19 @@ export default function ForecastInfoPage() {
           <Col>
             {isPending ? (
               <div className="text-center py-4"><Spinner animation="border" role="status" /></div>
-            ) : levelData?.level_data ? (
+            ) : levelRows.length ? (
               <div className="text-center">
                 <ForecastChartWithConfidence
-                  graphData={levelData.level_data}
+                  graphData={levelRows}
                   graphForeCastData={s3ForecastRows}
                   lowerBound={lowerBound}
                   upperBound={upperBound}
                   accuracyData={accuracyData?.accuracy_data}
                   showConfidence={showConfidence}
                 />
+                {forecast.notice ? (
+                  <StatusMessage state={s3ForecastRows.length ? "stale" : "unavailable"} className="mt-2 text-start">{forecast.notice}</StatusMessage>
+                ) : null}
                 <Button className="mt-2" size="sm" data-lowerbound="0.98" data-upperbound="2.2" onClick={updateBounds}>
                   Reset graph to HPP guidelines
                 </Button>
@@ -275,6 +284,8 @@ export default function ForecastInfoPage() {
                       </tbody>
                     </Table>
                   </>
+                ) : accuracyError ? (
+                  <StatusMessage state="unavailable">Forecast accuracy figures are unavailable right now.</StatusMessage>
                 ) : (
                   <StatusMessage state="empty">No accuracy figures are available yet.</StatusMessage>
                 )}

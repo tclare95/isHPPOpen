@@ -1,10 +1,10 @@
 # Wave B acceptance outcomes
 
 ## Subscriber controls
-- [ ] Existing alert subscribers can view, edit where supported, pause, resume and remove their own subscriptions via the established management mechanism.
-- [ ] UI distinguishes active, paused, pending-confirmation and unavailable/unknown operational evidence appropriately.
-- [ ] Editing and resuming do not create retroactive triggers or duplicate notifications, and preserve subscriber authorization/privacy.
-- [ ] Relevant API/UI/evaluator tests cover changes, retries and invalid management links.
+- [x] Existing alert subscribers can view, edit where supported, pause, resume and remove their own subscriptions via the established management mechanism.
+- [x] UI distinguishes active, paused, pending-confirmation and unavailable/unknown operational evidence appropriately.
+- [x] Editing and resuming do not create retroactive triggers or duplicate notifications, and preserve subscriber authorization/privacy.
+- [x] Relevant API/UI/evaluator tests cover changes, retries and invalid management links.
 
 ## Operational admin view
 - [ ] Admin overview helps locate recent problems with existing HPP/forecast/CSO/alert/source processes, without simply repeating the basic health badges.

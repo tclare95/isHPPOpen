@@ -154,6 +154,22 @@ describe("TrentDashboard", () => {
     expect(screen.queryByText("Updated")).not.toBeInTheDocument();
   });
 
+  test("a failed refresh keeps the last loaded readings with a notice instead of blanking the dashboard", () => {
+    mockUseFetch.mockReturnValue({ data: buildSnapshot(), error: new Error("refresh failed"), isPending: false });
+    render(<TrentDashboard />);
+
+    expect(screen.getByText(/could not be refreshed just now. Showing the last readings loaded/)).toHaveAttribute("data-state", "stale");
+    expect(screen.getByText("Gauge snapshots")).toBeInTheDocument();
+  });
+
+  test("a failed first load is an error, not an empty dashboard", () => {
+    mockUseFetch.mockReturnValue({ data: undefined, error: new Error("down"), isPending: false });
+    render(<TrentDashboard />);
+
+    expect(screen.getByRole("alert")).toHaveTextContent("could not be loaded right now");
+    expect(screen.queryByText("Gauge snapshots")).not.toBeInTheDocument();
+  });
+
   test("supports chart view changes, station toggles, and overview hiding", async () => {
     const user = userEvent.setup();
     render(<TrentDashboard initialViewMode="combined" />);

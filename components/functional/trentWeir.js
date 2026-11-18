@@ -3,6 +3,9 @@ import { Chart } from "react-google-charts";
 import { Badge, Button, Card, Col, Stack } from "react-bootstrap";
 import { getTrentStationKey } from "../../libs/trentWeirsConfig";
 import ColwickAlertSignup from "./colwickAlertSignup";
+import StatusMessage from "../layout/site/StatusMessage";
+import { formatReadingAge } from "../../libs/hpp/hppHomeStatus";
+import { OPERATIONAL_STALE_MS } from "../../libs/operationalHealth";
 
 function getDataPointsToShow(numDays) {
   if (numDays === 7) {
@@ -38,6 +41,19 @@ function formatChange(value, measureType, intervalLabel) {
   return `${intervalLabel}: ${prefix}${value.toFixed(1)} ${unit}`;
 }
 
+// When the latest reading was observed. One gauge can stop reporting while the others stay fresh, so the page-level
+// badge alone cannot show that a card's "current" reading is old.
+function ReadingTime({ dateTime, now }) {
+  const observedAt = dateTime ? new Date(dateTime) : null;
+  if (!now || !observedAt || Number.isNaN(observedAt.getTime())) return null;
+  const age = `Observed ${formatReadingAge(observedAt, now)} ago`;
+  return now.getTime() - observedAt.getTime() > OPERATIONAL_STALE_MS
+    ? <StatusMessage state="stale" className="small mt-2">{`${age}, so it may be out of date.`}</StatusMessage>
+    : <div className="small text-secondary mt-1">{`${age}.`}</div>;
+}
+
+ReadingTime.propTypes = { dateTime: PropTypes.string, now: PropTypes.instanceOf(Date) };
+
 function buildChartData(measureSnapshot, numDays, measureType) {
   const dataPointsToShow = getDataPointsToShow(numDays);
   const readings = measureSnapshot?.readings ?? [];
@@ -57,6 +73,7 @@ export default function TrentWeirBlock({
   numDays,
   isSelected,
   onSelect,
+  now,
 }) {
   const chartData = buildChartData(measureSnapshot, numDays, station.measureType);
   const selectionLabel = isSelected ? "Included in compare" : "Compare on chart";
@@ -76,6 +93,7 @@ export default function TrentWeirBlock({
           <div className="mb-3">
             <div className="text-secondary text-uppercase small">Current reading</div>
             <div className="fs-4 fw-semibold">{formatCurrentValue(measureSnapshot?.latestValue, station.measureType)}</div>
+            <ReadingTime dateTime={measureSnapshot?.readings?.[0]?.dateTime} now={now} />
             <div className="small text-secondary mt-2">{formatChange(measureSnapshot?.rateOfChangeHour, station.measureType, "1h change")}</div>
             <div className="small text-secondary">{formatChange(measureSnapshot?.rateOfChangeDay, station.measureType, "24h change")}</div>
           </div>
@@ -155,4 +173,5 @@ TrentWeirBlock.propTypes = {
   numDays: PropTypes.number.isRequired,
   isSelected: PropTypes.bool,
   onSelect: PropTypes.func,
+  now: PropTypes.instanceOf(Date),
 };

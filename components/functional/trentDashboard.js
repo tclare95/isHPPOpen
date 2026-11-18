@@ -1,5 +1,5 @@
 import PropTypes from "prop-types";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Alert from "react-bootstrap/Alert";
 import Badge from "react-bootstrap/Badge";
 import Button from "react-bootstrap/Button";
@@ -43,6 +43,12 @@ export default function TrentDashboard({ initialViewMode = "level" }) {
   const [selectedKeys, setSelectedKeys] = useState(getAllComparisonKeys);
   const [overviewHidden, setOverviewHidden] = useState(false);
   const { data, error, isPending } = useFetch("/api/trentweirs", SWR_15_MINUTES);
+  // Reading ages on the cards keep counting while the page is open.
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 60 * 1000);
+    return () => clearInterval(timer);
+  }, []);
   const selectedStations = useMemo(
     () => TRENT_CHART_STATIONS.filter((station) => selectedKeys.includes(getTrentStationKey(station))),
     [selectedKeys]
@@ -183,6 +189,7 @@ export default function TrentDashboard({ initialViewMode = "level" }) {
             numDays={numDays}
             isSelected={selectedKeys.includes(getTrentStationKey(station))}
             onSelect={station.comparisonEnabled ? handleStationToggle : undefined}
+            now={now}
           />
         ))}
       </Row>
@@ -235,7 +242,8 @@ export default function TrentDashboard({ initialViewMode = "level" }) {
     return <StatusMessage state="loading">Loading Trent gauges…</StatusMessage>;
   }
 
-  if (error) {
+  // A failed refresh keeps the last readings SWR loaded (each card shows its own age) instead of blanking the page.
+  if (error && !data?.stations?.length) {
     return <StatusMessage state="error">The Trent gauge readings could not be loaded right now. Try again shortly.</StatusMessage>;
   }
 
@@ -245,6 +253,9 @@ export default function TrentDashboard({ initialViewMode = "level" }) {
 
   return (
     <>
+      {error ? (
+        <StatusMessage state="stale" className="mb-3">The Trent gauge readings could not be refreshed just now. Showing the last readings loaded; check each reading&apos;s age.</StatusMessage>
+      ) : null}
       {controlsSection}
       {overviewHidden ? null : summarySection}
       {comparisonSection}

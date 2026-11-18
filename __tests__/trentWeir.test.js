@@ -55,4 +55,17 @@ describe("TrentWeirBlock", () => {
 
     expect(screen.getByText("No data available for this gauge right now.")).toBeInTheDocument();
   });
+  test("shows each reading's age and flags a gauge that has stopped reporting", () => {
+    const now = new Date("2026-03-08T15:00:00.000Z");
+    const snapshot = (dateTime) => ({ latestValue: 1.23, rateOfChangeHour: null, rateOfChangeDay: null, readings: [{ dateTime, value: 1.23 }] });
+    const { rerender } = render(<TrentWeirBlock station={station} numDays={1} isSelected={false} now={now} measureSnapshot={snapshot("2026-03-08T14:50:00.000Z")} />);
+    expect(screen.getByText("Observed 10 minutes ago.")).toBeInTheDocument();
+    expect(document.querySelector('[data-state="stale"]')).toBeNull();
+
+    rerender(<TrentWeirBlock station={station} numDays={1} isSelected={false} now={now} measureSnapshot={snapshot("2026-03-08T12:00:00.000Z")} />);
+    expect(screen.getByText("Observed 3 hours ago, so it may be out of date.")).toHaveAttribute("data-state", "stale");
+    // A series too short to reach back an hour or a day has no change, not "+0.0 cm".
+    expect(screen.getByText("1h change: unavailable")).toBeInTheDocument();
+    expect(screen.getByText("24h change: unavailable")).toBeInTheDocument();
+  });
 });

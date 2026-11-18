@@ -9,6 +9,7 @@ import Form from "react-bootstrap/Form";
 import useFetch from "../../../libs/useFetch";
 import { COLWICK_HISTORY } from "../../../libs/history/config";
 import { eventDateRange, eventDurationText } from "../../../libs/history/eventPresent";
+import { compareHref } from "../../../libs/history/eventCompare";
 import { eventsInPeriod } from "../../../libs/history/events";
 import { formatDate, formatDuration, formatLevel, monthName, shortMonthName } from "../../../libs/history/present";
 import { currentLondonMonth, monthBounds, yearBounds } from "../../../libs/history/ukCalendar";
@@ -64,6 +65,9 @@ function Spotlight({ events }) {
           </Link>
         ))}
       </div>
+      {top.length > 1 ? (
+        <p className="mt-3 mb-0"><Link href={compareHref(top[0].id, top[1].id)} className="history-back">Compare the two highest →</Link></p>
+      ) : null}
     </section>
   );
 }
@@ -108,6 +112,7 @@ export default function EventsExplorer() {
     <main className="history-page text-white">
       <Container className="py-4 py-lg-5">
         <PageHeader title="High-water events" lead={`Periods when the Colwick river level was at or above ${threshold}.`} />
+        <p className="mb-3"><Link href={compareHref()} className="history-cta">Compare two events</Link></p>
 
         {index.error ? <ErrorNotice error={index.error} what="high-water events" /> : null}
         {!index.error && !data ? <LoadingBlock label="Finding high-water events in Colwick history…" slow={slow} /> : null}

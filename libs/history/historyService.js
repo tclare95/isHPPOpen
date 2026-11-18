@@ -303,6 +303,30 @@ async function readingsBetween(from, to) {
 
 const neighbour = (event) => (event ? { id: event.id, firstAboveAt: isoOrNull(event.firstAboveAt), peak: event.peak.value } : null);
 
+// Chart window around an event: its neighbouring below/gap evidence plus `contextMs` either side,
+// trimmed to `maxMs` from just before the first reading at or above.
+function eventWindow(event, dataEnd, { contextMs, maxMs }) {
+  const lead = event.start.belowAt ?? event.start.gap?.from ?? event.firstAboveAt;
+  const tail = event.end.belowAt ?? event.end.gap?.to ?? event.lastAboveAt;
+  let from = Math.max(monthBounds(COLWICK_HISTORY.firstYear, 1).from, Math.min(lead, event.firstAboveAt - contextMs));
+  let to = Math.min(Date.parse(dataEnd), Math.max(tail, event.lastAboveAt + contextMs));
+  const trimmed = to - from > maxMs;
+  if (trimmed) {
+    from = Math.max(from, event.firstAboveAt - contextMs);
+    to = Math.min(to, from + maxMs);
+  }
+  return { from, to, trimmed };
+}
+
+// Positions among events identified in today's history: not a permanent record.
+const rankOf = (events, event) => ({
+  byPeak: events.filter((other) => other.peak.value > event.peak.value).length + 1,
+  byDuration: events.filter((other) => other.aboveMs > event.aboveMs).length + 1,
+  of: events.length,
+});
+
+const isInProgress = (event, currentMonthFrom) => event.lastAboveAt >= currentMonthFrom || Boolean(event.end.ongoing);
+
 /**
  * One event with its surrounding readings. `found: false` for an unknown id; `match: "moved"`
  * when the link's instant now falls inside an event that starts elsewhere (provider revision).
@@ -313,15 +337,7 @@ export async function getEventDetail(id) {
   const { event, index, match } = findEvent(events, id);
   if (!event) return { found: false, match, measurement: MEASUREMENT, rule: EVENTS_RULE, ...meta };
 
-  const lead = event.start.belowAt ?? event.start.gap?.from ?? event.firstAboveAt;
-  const tail = event.end.belowAt ?? event.end.gap?.to ?? event.lastAboveAt;
-  let from = Math.max(monthBounds(COLWICK_HISTORY.firstYear, 1).from, Math.min(lead, event.firstAboveAt - EVENT_CONTEXT_MS));
-  let to = Math.min(Date.parse(meta.dataEnd), Math.max(tail, event.lastAboveAt + EVENT_CONTEXT_MS));
-  const trimmed = to - from > EVENT_MAX_WINDOW_MS;
-  if (trimmed) {
-    from = Math.max(from, event.firstAboveAt - EVENT_CONTEXT_MS);
-    to = Math.min(to, from + EVENT_MAX_WINDOW_MS);
-  }
+  const { from, to, trimmed } = eventWindow(event, meta.dataEnd, { contextMs: EVENT_CONTEXT_MS, maxMs: EVENT_MAX_WINDOW_MS });
   const { readings, failed } = await readingsBetween(from, to);
   return {
     found: true,
@@ -330,17 +346,50 @@ export async function getEventDetail(id) {
     rule: EVENTS_RULE,
     ...meta,
     event: presentEvent(event),
-    // Positions among events identified in today's history: not a permanent record.
-    rank: {
-      byPeak: events.filter((other) => other.peak.value > event.peak.value).length + 1,
-      byDuration: events.filter((other) => other.aboveMs > event.aboveMs).length + 1,
-      of: events.length,
-    },
+    rank: rankOf(events, event),
     previous: neighbour(events[index - 1]),
     next: neighbour(events[index + 1]),
     window: { from: isoOrNull(from), to: isoOrNull(to), trimmed, monthsFailed: failed },
     readings,
-    inProgress: event.lastAboveAt >= currentMonthFrom || Boolean(event.end.ongoing),
+    inProgress: isInProgress(event, currentMonthFrom),
+  };
+}
+
+// --- Event comparison (Wave C / C1) --------------------------------------------------
+
+// Comparison charts carry two events' raw readings, so each gets a day of context and a
+// shorter cap than the detail page (the longest identified event is ~35 days).
+export const COMPARE_CONTEXT_MS = DAY_MS;
+export const COMPARE_MAX_WINDOW_MS = 60 * DAY_MS;
+
+/**
+ * Two events resolved with the detail page's semantics (exact id, else "moved" to the event now
+ * containing that instant, else not found), each with its own bounded readings window.
+ * Readings are only read when both resolve to two different events (`ready`); otherwise the
+ * caller asks for a replacement selection rather than comparing something else.
+ */
+export async function getEventComparison(ids) {
+  const now = Date.now();
+  const { events, meta, currentMonthFrom } = await computeEvents(now);
+  const resolved = ids.map((id) => ({ requested: id, ...findEvent(events, id) }));
+  const sameEvent = Boolean(resolved[0].event) && resolved[0].event === resolved[1].event;
+  const ready = !sameEvent && resolved.every((item) => item.event);
+  const slots = await Promise.all(resolved.map(async ({ requested, event, match }) => {
+    if (!event) return { requested, found: false, match };
+    const slot = { requested, found: true, match, event: presentEvent(event), rank: rankOf(events, event), inProgress: isInProgress(event, currentMonthFrom) };
+    if (!ready) return slot;
+    const { from, to, trimmed } = eventWindow(event, meta.dataEnd, { contextMs: COMPARE_CONTEXT_MS, maxMs: COMPARE_MAX_WINDOW_MS });
+    const { readings, failed } = await readingsBetween(from, to);
+    return { ...slot, window: { from: isoOrNull(from), to: isoOrNull(to), trimmed, monthsFailed: failed }, readings };
+  }));
+  return {
+    measurement: MEASUREMENT,
+    rule: EVENTS_RULE,
+    ...meta,
+    ready,
+    sameEvent,
+    events: slots,
+    inProgress: slots.some((slot) => slot.inProgress),
   };
 }
 

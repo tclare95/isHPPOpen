@@ -19,6 +19,6 @@
 - [x] Appropriate API/service/UI tests cover filtering/list navigation, identity, date handling and permissions.
 
 ## Direct engineering tasks — no new specification
-- [ ] Simplify repetitive or defensive public copy after Wave A, retaining important context.
-- [ ] Improve representative loading, empty, stale, partial and failure/retry states without fabricating all-clear values.
-- [ ] Run relevant tests, lint and build and record legitimate limits of local verification.
+- [x] Simplify repetitive or defensive public copy after Wave A, retaining important context.
+- [x] Improve representative loading, empty, stale, partial and failure/retry states without fabricating all-clear values.
+- [x] Run relevant tests, lint and build and record legitimate limits of local verification. (Combined branch: 105 suites, 1550 passed/1 skipped; lint 0 errors; build passes with placeholder env, as Vercel OIDC/Mongo are unavailable locally.)

@@ -15,7 +15,7 @@ export default function EventsArea() {
             <Row className="justify-content-center">
                 <Col>
                     <Button onClick={() => setOpen(!open)} aria-controls="toggle-events-area" aria-expanded={open}>
-                        Toggle Events
+                        {open ? "Hide upcoming events" : "Show upcoming events"}
                     </Button>
                 </Col>
             </Row>

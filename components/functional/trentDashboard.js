@@ -6,6 +6,7 @@ import Badge from "react-bootstrap/Badge";
 import Button from "react-bootstrap/Button";
 import ButtonGroup from "react-bootstrap/ButtonGroup";
 import Card from "react-bootstrap/Card";
+import StatusMessage from "../layout/site/StatusMessage";
 import Col from "react-bootstrap/Col";
 import Row from "react-bootstrap/Row";
 import Stack from "react-bootstrap/Stack";
@@ -88,7 +89,7 @@ export default function TrentDashboard({ initialViewMode = "level" }) {
   }
 
   const controlsSection = (
-    <Card bg="dark" text="light" border="secondary" className="shadow-sm mb-4">
+    <Card text="light" className="history-panel p-0 mb-4">
       <Card.Body className="py-3">
         <Row className="g-4 align-items-start mb-3">
           <Col lg={12}>
@@ -98,7 +99,7 @@ export default function TrentDashboard({ initialViewMode = "level" }) {
                 <Badge bg="secondary">{selectionCount} selected</Badge>
               </Stack>
               <div className="text-secondary small">Pick gauges here, then review the comparison workspace below.</div>
-              <div className="text-secondary small">Set email alerts for any gauge, HPP status, or water quality. <a className="text-info" href="/alerts">Open Alerts Centre</a><SourceHealthBadge health={data?.health} observedAge /></div>
+              <div className="text-secondary small">Email alerts are available for any gauge, HPP status or water quality. <a className="text-info" href="/alerts">Set up alerts</a><SourceHealthBadge health={data?.health} observedAge /></div>
             </div>
           </Col>
         </Row>
@@ -179,7 +180,7 @@ export default function TrentDashboard({ initialViewMode = "level" }) {
         <div>
           <h2 className="h4 mb-1">Gauge snapshots</h2>
           <p className="text-secondary mb-0">
-            Quick summaries for the current shortlist, with the level gauges ready to add into the comparison view.
+            The latest reading and recent trend at each gauge. Level gauges can be added to the comparison.
           </p>
         </div>
         <Badge bg="secondary">{TRENT_WEIR_BLOCKS.length} cards</Badge>
@@ -205,7 +206,7 @@ export default function TrentDashboard({ initialViewMode = "level" }) {
         <div>
           <h2 className="h4 mb-1">Comparison workspace</h2>
           <p className="text-secondary mb-0">
-            Use presets or toggles above to compare the gauges that matter for the day&apos;s paddling question.
+            The selected gauges over the chosen time window.
           </p>
         </div>
         <Badge bg="secondary">{selectionCount} gauges</Badge>
@@ -221,7 +222,7 @@ export default function TrentDashboard({ initialViewMode = "level" }) {
 
   const managementSection = (
     <section className="mb-4" id="trent-manage-alerts">
-      <Card bg="dark" text="light" border="secondary" className="shadow-sm">
+      <Card text="light" className="history-panel p-0">
         <Card.Body>
           <Stack direction="horizontal" className="justify-content-between align-items-center mb-3">
             <div>
@@ -242,15 +243,15 @@ export default function TrentDashboard({ initialViewMode = "level" }) {
   );
 
   if (isPending) {
-    return <Alert variant="secondary">Loading Trent dashboard…</Alert>;
+    return <StatusMessage state="loading">Loading Trent gauges…</StatusMessage>;
   }
 
   if (error) {
-    return <Alert variant="danger">Unable to load Trent dashboard data right now.</Alert>;
+    return <StatusMessage state="error">The Trent gauge readings could not be loaded right now. Try again shortly.</StatusMessage>;
   }
 
   if (!data?.stations?.length) {
-    return <Alert variant="warning">No Trent gauge data is available right now.</Alert>;
+    return <StatusMessage state="unavailable">No Trent gauge readings are available right now.</StatusMessage>;
   }
 
   return (

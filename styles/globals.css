@@ -36,10 +36,6 @@ a {
   color: #212529 !important;
 }
 
-.navHeader:hover {
-color: #8D918D;
-}
-
 
 .message-editor {
   background-color: #f3f3f3;
@@ -109,10 +105,7 @@ color: #8D918D;
     linear-gradient(180deg, #17232b 0%, #27343d 58%, #343a40 100%);
 }
 
-.water-quality-back { color: #a9dff8; }
-.water-quality-back:hover { color: #fff; }
 .water-quality-dashboard-link { width: auto; }
-.water-quality-intro { color: #d1d9de; }
 .water-quality-muted { color: #bdc8cf; }
 
 .water-quality-hero,
@@ -187,3 +180,7 @@ color: #8D918D;
   .water-quality-panel { padding: 1rem 0.85rem; }
   .water-quality-stat__value { font-size: 2rem; }
 }
+
+/* Site shell: the skip-link target needs no focus ring, and links inside running text are underlined so they can be found. */
+#content:focus { outline: none; }
+#content p a:not([class]), #content li a:not([class]) { color: #a9dff8; text-decoration: underline; }

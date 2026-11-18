@@ -3,7 +3,9 @@ import Badge from 'react-bootstrap/Badge';
 import Button from 'react-bootstrap/Button';
 import ButtonGroup from 'react-bootstrap/ButtonGroup';
 import Form from 'react-bootstrap/Form';
+import Link from 'next/link';
 import PropTypes from 'prop-types';
+import { outfallDetailPath } from '../../libs/csoOutfallLinks';
 import useFetch from '../../libs/useFetch';
 import StatusMessage from '../layout/site/StatusMessage';
 
@@ -40,12 +42,12 @@ const LIFECYCLE = {
   unresolved: { label: 'Unresolved', bg: 'warning', text: 'dark' },
 };
 
-function Time({ value }) {
+export function Time({ value }) {
   return value ? <time dateTime={value}>{formatTime(value)}</time> : 'Not available';
 }
 Time.propTypes = { value: PropTypes.string };
 
-function endText(event) {
+export function endText(event) {
   if (event.display === 'completed') return <Time value={event.endedAt} />;
   if (event.display === 'ongoing') return 'No end reported yet: still ongoing';
   return event.endNoLaterThan
@@ -53,7 +55,7 @@ function endText(event) {
     : 'Not reported by the provider';
 }
 
-function durationText(event) {
+export function durationText(event) {
   if (event.display === 'completed') return formatMinutes(event.durationMinutes);
   if (event.display === 'ongoing') return `${formatMinutes(event.elapsedMinutes)} so far`;
   return Number.isFinite(event.maxDurationMinutes) ? `Uncertain; at most ${formatMinutes(event.maxDurationMinutes)}` : 'Uncertain';
@@ -63,7 +65,7 @@ function outfallName(outfall, id) {
   return outfall?.receivingWatercourse ? `${outfall.receivingWatercourse} (${id})` : `Outfall ${id}`;
 }
 
-function EventBadges({ event }) {
+export function EventBadges({ event }) {
   const lifecycle = LIFECYCLE[event.display] ?? LIFECYCLE.unresolved;
   return (
     <span className="d-inline-flex flex-wrap gap-1">
@@ -103,7 +105,7 @@ function RevisionHistory({ revisions, truncated }) {
 }
 RevisionHistory.propTypes = { revisions: PropTypes.array.isRequired, truncated: PropTypes.bool };
 
-function EventDetail({ event, outfall, onShowOnMap, onShowRoute }) {
+export function EventDetail({ event, outfall, onShowOnMap, onShowRoute, showOutfallLink = true }) {
   const { data, error, isPending } = useFetch(`/api/waterquality/cso/events/${event.eventId}`, DETAIL_OPTIONS);
   const detail = data?.event ? data : null;
   const shown = detail?.event ?? event;
@@ -133,13 +135,14 @@ function EventDetail({ event, outfall, onShowOnMap, onShowRoute }) {
         </>
       ) : null}
       <div className="d-flex flex-wrap gap-2 mt-2">
+        {showOutfallLink && event.assetId ? <Link href={outfallDetailPath(event.assetId)} className="btn btn-sm btn-outline-light">Outfall details</Link> : null}
         {onShowOnMap && outfall?.coordinates ? <Button size="sm" variant="outline-info" onClick={() => onShowOnMap(event.outfallId)}>Show outfall on map</Button> : null}
         {onShowRoute && event.assetId ? <Button size="sm" variant="outline-info" onClick={() => onShowRoute(event.assetId)}>Show downstream route</Button> : null}
       </div>
     </div>
   );
 }
-EventDetail.propTypes = { event: PropTypes.object.isRequired, outfall: PropTypes.object, onShowOnMap: PropTypes.func, onShowRoute: PropTypes.func };
+EventDetail.propTypes = { event: PropTypes.object.isRequired, outfall: PropTypes.object, onShowOnMap: PropTypes.func, onShowRoute: PropTypes.func, showOutfallLink: PropTypes.bool };
 
 // One plain-language statement of what the list can and cannot support.
 export function evidenceMessages(history) {
@@ -280,6 +283,7 @@ export default function CsoEventHistory({ selectedOutfallId = '', onSelectOutfal
             </Form.Select>
           </Form.Group>
         ) : null}
+        {filter && outfalls.get(filter)?.assetId ? <Link href={outfallDetailPath(outfalls.get(filter).assetId)} className="btn btn-sm btn-outline-light">Outfall details</Link> : null}
       </div>
 
       {isPending && !data ? <StatusMessage state="loading" className="mb-2">Loading spill history…</StatusMessage> : null}

@@ -1,11 +1,13 @@
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import Badge from 'react-bootstrap/Badge';
 import Button from 'react-bootstrap/Button';
 import ButtonGroup from 'react-bootstrap/ButtonGroup';
 import Form from 'react-bootstrap/Form';
 import PropTypes from 'prop-types';
-import { membershipUnavailable } from '../../libs/csoMembershipText';
+import { membershipUnavailable, RELATIONSHIP_LABELS } from '../../libs/csoMembershipText';
+import { outfallDetailPath } from '../../libs/csoOutfallLinks';
 import { contributorsOf, ImpactPanel, impactReachStyle } from './csoImpactOverlay';
 import StatusMessage from '../layout/site/StatusMessage';
 
@@ -36,10 +38,7 @@ function formatDuration(minutes) {
 
 const STATUS_BADGE = { active: ['danger', 'Currently spilling'], recent: ['warning', 'Stopped recently'] };
 // RDP relationship categories outside the confirmed upstream membership (#114). Plotted only on request, always labelled.
-export const RELATIONSHIP_LABELS = {
-  candidate: 'Possibly upstream: river link not confirmed',
-  'catchment-only': 'In the catchment: river link unresolved',
-};
+export { RELATIONSHIP_LABELS };
 const isPossible = (location) => Boolean(RELATIONSHIP_LABELS[location?.relationship?.category]);
 const PLOTTED_STATES = ['active', 'recent'];
 
@@ -146,7 +145,8 @@ export default function WaterQualityMap({ locations = [], relatedLocations = nul
                     Spill start: {formatTimestamp(location.latestEventStart)}<br />
                     Spill end: {location.status === 'active' ? 'Ongoing' : formatTimestamp(location.latestEventEnd)}<br />
                     Duration: {formatDuration(location.eventDurationMinutes)}<br />
-                    <small>Last checked: {formatTimestamp(location.observedAt)}</small>
+                    <small>Last checked: {formatTimestamp(location.observedAt)}</small><br />
+                    <Link href={outfallDetailPath(location.assetId ?? location.id)}>Outfall details</Link>
                     {onShowHistory && !isPossible(location) ? <><br /><Button size="sm" variant="link" className="p-0" onClick={() => onShowHistory(location.id)}>Spill history for this outfall</Button></> : null}
                     {routeTarget(location) ? <><br /><Button size="sm" variant="link" className="p-0" onClick={() => showRoute(routeTarget(location))}>Show downstream route</Button></> : null}
                   </div>

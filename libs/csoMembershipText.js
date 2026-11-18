@@ -13,3 +13,9 @@ export function membershipSummary(membership) {
     providers: [...new Set((membership.catalogues ?? []).map((entry) => entry.providerLabel || entry.attribution).filter(Boolean))],
   };
 }
+
+// RDP relationship categories outside the confirmed upstream membership (#114). Always labelled, never the primary style.
+export const RELATIONSHIP_LABELS = {
+  candidate: 'Possibly upstream: river link not confirmed',
+  'catchment-only': 'In the catchment: river link unresolved',
+};

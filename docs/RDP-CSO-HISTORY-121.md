@@ -25,6 +25,9 @@ current-status map, the calibrated thresholds or alert evaluation. It ships behi
 The catalogue read, client, coalescing and identity mapping are shared with the #120 adapter
 (`libs/rdp/csoSource.js`).
 
+Each event, the outfall filter and each map marker link to that outfall's own page, `/waterquality/cso/{assetId}`
+(Wave C / C4); see [CSO-OUTFALL-DETAIL.md](CSO-OUTFALL-DETAIL.md).
+
 ## Which outfalls
 
 - **Membership** is the legacy summary's `CSO_IDs`, which is the same HPP upstream list the page already uses.

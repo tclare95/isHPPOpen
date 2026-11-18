@@ -27,9 +27,8 @@ describe("site navigation", () => {
     render(<SiteNav />);
     const nav = screen.getByRole("navigation", { name: "Main" });
     for (const [label, href] of Object.entries(MAJOR_AREAS)) {
-      expect(within(nav).getByRole("link", { name: label })).toHaveAttribute("href", href);
+      expect(within(nav).getByRole("link", { name: label, hidden: true })).toHaveAttribute("href", href);
     }
-    expect(within(nav).getByRole("link", { name: "Is HPP Open?" })).toHaveAttribute("href", "/");
   });
 
   test.each([
@@ -46,23 +45,28 @@ describe("site navigation", () => {
     pathname = path;
     render(<SiteNav />);
     const nav = screen.getByRole("navigation", { name: "Main" });
-    const current = within(nav).getAllByRole("link").filter((link) => link.getAttribute("aria-current") === "page");
+    const current = within(nav).getAllByRole("link", { hidden: true }).filter((link) => link.getAttribute("aria-current") === "page");
     expect(current).toHaveLength(1);
     expect(current[0]).toHaveTextContent(label);
   });
 
-  test("the mobile menu button toggles the collapsible menu", async () => {
+  test("the menu is one collapsed disclosure that opens, closes on a choice and on Escape", async () => {
     const user = userEvent.setup();
     render(<SiteNav />);
-    const toggle = screen.getByRole("button", { name: "Menu" });
-    expect(toggle).toHaveAttribute("aria-controls", "site-nav-menu");
+    const toggle = screen.getByRole("button", { name: /Menu/ });
+    const list = document.getElementById("site-menu-list");
+    expect(toggle).toHaveAttribute("aria-controls", "site-menu-list");
     expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(list).not.toBeVisible();
     await user.click(toggle);
     expect(toggle).toHaveAttribute("aria-expanded", "true");
-    expect(document.getElementById("site-nav-menu")).toHaveClass("show");
-    // Choosing a destination closes the menu so it never covers the page it opens.
+    expect(list).toBeVisible();
     await user.click(screen.getByRole("link", { name: "Water quality" }));
     expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await user.click(toggle);
+    await user.keyboard("{Escape}");
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(toggle).toHaveFocus();
   });
 
   test("offers a skip link to the page content", () => {

@@ -1,40 +1,42 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import Container from "react-bootstrap/Container";
-import Nav from "react-bootstrap/Nav";
-import Navbar from "react-bootstrap/Navbar";
 import { SITE_AREAS, activeAreaKey, isPublicPath } from "./siteNavigation";
 
-// Not sticky, so it never covers maps, chart tooltips or the history pickers' own sticky bar.
+// A quiet, collapsed "Menu" disclosure rather than a header bar. Not sticky, so it never covers maps or charts.
 export default function SiteNav() {
   const pathname = usePathname();
-  const [expanded, setExpanded] = useState(false);
+  const [open, setOpen] = useState(false);
+  const toggleRef = useRef(null);
   if (!isPublicPath(pathname)) return null;
   const active = activeAreaKey(pathname);
 
+  const close = () => setOpen(false);
+  const onKeyDown = (event) => {
+    if (event.key === "Escape" && open) {
+      close();
+      toggleRef.current?.focus();
+    }
+  };
+
   return (
-    <>
+    <div className="site-menu">
       <a href="#content" className="visually-hidden-focusable">Skip to content</a>
-      <Navbar as="nav" bg="dark" variant="dark" expand="lg" collapseOnSelect expanded={expanded} onToggle={setExpanded}
-        className="border-bottom border-secondary" aria-label="Main">
-        <Container>
-          <Navbar.Brand as={Link} href="/">Is HPP Open?</Navbar.Brand>
-          <Navbar.Toggle aria-controls="site-nav-menu" label="Menu" aria-expanded={expanded} />
-          <Navbar.Collapse id="site-nav-menu">
-            <Nav className="ms-auto">
-              {SITE_AREAS.map((area) => (
-                <Nav.Link key={area.key} as={Link} href={area.href} eventKey={area.key}
-                  active={active === area.key} aria-current={active === area.key ? "page" : undefined}>
-                  {area.label}
-                </Nav.Link>
-              ))}
-            </Nav>
-          </Navbar.Collapse>
-        </Container>
-      </Navbar>
-    </>
+      <nav aria-label="Main" className="container" onKeyDown={onKeyDown}>
+        <button ref={toggleRef} type="button" className="site-menu__toggle" aria-expanded={open} aria-controls="site-menu-list"
+          onClick={() => setOpen((value) => !value)}>
+          Menu <span aria-hidden="true">{open ? "▴" : "▾"}</span>
+        </button>
+        <ul id="site-menu-list" className="site-menu__list" hidden={!open}>
+          {SITE_AREAS.map((area) => (
+            <li key={area.key}>
+              <Link href={area.href} onClick={close} aria-current={active === area.key ? "page" : undefined}>{area.label}</Link>
+            </li>
+          ))}
+        </ul>
+      </nav>
+    </div>
   );
 }

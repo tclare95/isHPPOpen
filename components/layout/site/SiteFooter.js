@@ -10,7 +10,7 @@ export default function SiteFooter() {
   if (!isPublicPath(pathname)) return null;
 
   return (
-    <footer className="border-top border-secondary bg-dark text-light small py-4">
+    <footer className="site-footer border-top border-secondary text-light small py-4">
       <Container>
         <p className="history-muted mb-2">
           An independent site, not associated with the National Water Sports Centre (NWSC) Nottingham. Course status is a

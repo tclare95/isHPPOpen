@@ -206,8 +206,11 @@ const ForecastChartWithConfidence = ({
           color: '#FF6347',
           fillOpacity: 0.15,
         },
+        // Dark, transparent styling so the chart sits on the history-style panels instead of a white box.
+        backgroundColor: "transparent",
         legend: {
           position: "bottom",
+          textStyle: { color: "#c3cdd3" },
         },
         chartArea: {
           top: 10,
@@ -215,12 +218,14 @@ const ForecastChartWithConfidence = ({
           bottom: 50,
           left: 50,
           backgroundColor: {
-            stroke: "#ccc",
+            fill: "transparent",
+            stroke: "rgba(214, 224, 230, 0.25)",
             strokeWidth: 1,
           },
         },
         hAxis: {
           gridlines: {
+            color: "rgba(214, 224, 230, 0.1)",
             count: -1,
             units: {
               days: { format: ["E, d MMM", "d MMM"] },
@@ -230,16 +235,19 @@ const ForecastChartWithConfidence = ({
           viewWindowMode: "maximized",
           textStyle: {
             bold: false,
+            color: "#a7b4bc",
           },
         },
         vAxis: {
           baseline: "automatic",
           gridlines: {
+            color: "rgba(214, 224, 230, 0.1)",
             count: 5,
           },
           format: "0.00m",
           textStyle: {
             bold: false,
+            color: "#a7b4bc",
           },
           titleTextStyle: {
             italic: false,
@@ -256,12 +264,12 @@ const ForecastChartWithConfidence = ({
         colors: ["#1c91c0", "#6f9654", "#e2431e", "#FF6347"],
         annotations: {
           textStyle: {
-            color: '#000000',
+            color: '#f3f6f8',
             fontSize: 13
           },
           alwaysOutside: true,
           stem: {
-            color: '#000000',
+            color: '#f3f6f8',
             width: 6
           },
           style: 'line'

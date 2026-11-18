@@ -1,29 +1,15 @@
-import Col from "react-bootstrap/Col";
-import Row from "react-bootstrap/Row";
 import PropTypes from "prop-types";
 
-export default function Event (props) {
-        const start = new Date(props.startDate);
-        const end = new Date(props.endDate);
-        return(
-            <Row className=" border align-middle border-white p-4 m-3 bg-light text-dark rounded">
-                
-                <Col className="align-middle">
-                <h4 className="eventText">{props.name}</h4>
-                </Col>
-                <Col className="align-middle">
-                <h6 className="eventText"><span className="font-italic">Start Date:</span> {start.toDateString()}</h6>
-                </Col>
-                <Col className="align-middle">
-                <h6 className="eventText"><span className="font-italic">End Date:</span>  {end.toDateString()}</h6>
-                </Col>
-                <Col className="align-middle">
-                <p className="eventText">{props.eventDetails}</p>
-                </Col>
-
-                </Row>
-            
-        )
+export default function Event({ name, startDate, endDate, eventDetails }) {
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  return (
+    <div className="history-tile mt-3">
+      <h3 className="h6 mb-1">{name}</h3>
+      <p className="history-muted small mb-1">Start date: {start.toDateString()} · End date: {end.toDateString()}</p>
+      {eventDetails ? <p className="small mb-0">{eventDetails}</p> : null}
+    </div>
+  );
 }
 
 Event.propTypes = {

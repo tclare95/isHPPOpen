@@ -40,6 +40,8 @@ a {
 .accordion-button:not(.collapsed) { box-shadow: inset 0 -1px 0 rgba(130, 205, 239, 0.2); }
 .accordion-button:focus { box-shadow: 0 0 0 0.2rem rgba(124, 200, 239, 0.45); }
 .accordion-button::after { filter: invert(1) grayscale(1) brightness(2); }
+.accordion { --bs-accordion-border-color: rgba(130, 205, 239, 0.2); }
+.accordion-body { color: #eef3f5; background: #24323b; }
 
 
 .message-editor {
@@ -189,3 +191,14 @@ a {
 /* Site shell: the skip-link target needs no focus ring, and links inside running text are underlined so they can be found. */
 #content:focus { outline: none; }
 #content p a:not([class]), #content li a:not([class]) { color: #a9dff8; text-decoration: underline; }
+
+/* Site menu: one muted "Menu" line that opens a plain list; it shares the history page background. */
+.site-menu { background: #16222a; padding: 0.5rem 0 0; }
+.site-menu__toggle { padding: 0.25rem 0; color: #b4c1c9; background: none; border: 0; font-size: 0.95rem; }
+.site-menu__toggle:hover { color: #fff; }
+.site-menu__toggle:focus-visible { outline: 2px solid #7cc8ef; outline-offset: 2px; border-radius: 0.25rem; }
+.site-menu__list { display: flex; flex-wrap: wrap; gap: 0.25rem 1.25rem; margin: 0.25rem 0 0; padding: 0 0 0.5rem; list-style: none; }
+.site-menu__list a { display: inline-block; padding: 0.35rem 0; color: #a9dff8; }
+.site-menu__list a:hover { color: #fff; text-decoration: underline; }
+.site-menu__list a[aria-current="page"] { color: #fff; font-weight: 650; text-decoration: underline; text-underline-offset: 0.3em; }
+.site-footer { background: #16222a; }

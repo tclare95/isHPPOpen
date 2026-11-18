@@ -32,13 +32,18 @@ function formatRiverLevel(reading, isPending) {
   return formatLevelMetres(reading.level);
 }
 
+// The visible stale warning waits until a reading is hours old; the 30-minute freshness used for status
+// decisions (hppHomeStatus) is unchanged. Below this, only the plain age line is shown.
+export const STALE_NOTICE_AFTER_MS = 2 * 60 * 60 * 1000;
+
 function ReadingAge({ reading, freshness, currentTime }) {
   if (!reading) {
     return <StatusMessage state="unavailable" className="d-inline-block mb-2">The latest river level reading is unavailable right now.</StatusMessage>;
   }
 
   const age = `The river level reading is ${formatReadingAge(reading.observedAt, currentTime)} old`;
-  return freshness === "stale"
+  const ageMs = currentTime.getTime() - reading.observedAt.getTime();
+  return freshness === "stale" && ageMs >= STALE_NOTICE_AFTER_MS
     ? <StatusMessage state="stale" className="d-inline-block mb-2">{`${age}, so it may be out of date.`}</StatusMessage>
     : <p className="history-muted small mb-2">{`${age}.`}</p>;
 }
@@ -139,8 +144,7 @@ export default function TopContent(props) {
           </p>
         </Col>
       </Row>
-      <Row className="justify-content-center text-white mt-2" id="chart">
-        <Col className="justify-content-center text-center">
+      <section className="history-panel text-white text-center mt-3" id="chart" aria-label="River level and forecast chart">
           {renderForecastContent({
             isPending,
             forecastPending,
@@ -152,21 +156,21 @@ export default function TopContent(props) {
             accuracyData,
           })}
           <p className="mt-2 small">
-            <Link href="/forecastinfo">About this forecast</Link>
+            <Link href="/forecastinfo" className="text-info">About this forecast</Link>
           </p>
           <Button
-            className=" mt-2"
+            variant="outline-light"
+            size="sm"
             data-lowerbound="0.98"
             data-upperbound="2.2"
             onClick={updateBounds}
           >
             Reset graph to HPP guidelines
           </Button>
-          <p className="history-muted small mt-3">
+          <p className="history-muted small mt-3 mb-0">
             Need kit? <a href="https://www.flowkayaks.co.uk/" target="_blank" rel="noopener noreferrer">Flow Kayaks</a> is just over the river.
           </p>
-        </Col>
-      </Row>
+      </section>
     </div>
   );
 }

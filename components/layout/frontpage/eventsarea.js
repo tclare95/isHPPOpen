@@ -1,31 +1,21 @@
-import Row from "react-bootstrap/Row";
 import Collapse from "react-bootstrap/Collapse";
 import { useState } from "react";
 import Events from "../../functional/events";
-import Col from "react-bootstrap/Col";
 import Button from "react-bootstrap/Button";
 
 export default function EventsArea() {
     const [open, setOpen] = useState(false);
     return (
-        <div className="mt-4 text-white text-center justify-content-center">
-            <Row className="justify-content-center">
-                <h2>Upcoming Events</h2>
-            </Row>
-            <Row className="justify-content-center">
-                <Col>
-                    <Button onClick={() => setOpen(!open)} aria-controls="toggle-events-area" aria-expanded={open}>
-                        {open ? "Hide upcoming events" : "Show upcoming events"}
-                    </Button>
-                </Col>
-            </Row>
-            <Row className="justify-content-center">
-                <Collapse in={open}>
-                    <div id="toggle-events-area">
-                        <Events />
-                    </div>
-                </Collapse>
-            </Row>
-        </div>
+        <section className="history-panel text-white text-center" aria-labelledby="events-heading">
+            <h2 id="events-heading" className="h4">Upcoming events</h2>
+            <Button variant="outline-light" onClick={() => setOpen(!open)} aria-controls="toggle-events-area" aria-expanded={open}>
+                {open ? "Hide upcoming events" : "Show upcoming events"}
+            </Button>
+            <Collapse in={open}>
+                <div id="toggle-events-area" className="text-start">
+                    <Events />
+                </div>
+            </Collapse>
+        </section>
     );
 }

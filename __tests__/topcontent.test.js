@@ -101,8 +101,22 @@ describe('TopContent', () => {
     unmount();
 
     respond(150);
-    renderWithGraphContext(<TopContent cachedEvents={[]} />);
+    const second = renderWithGraphContext(<TopContent cachedEvents={[]} />);
     expect(screen.getByText(/reading is 2 hours old, so it may be out of date\./)).toBeInTheDocument();
+    second.unmount();
+
+    // Stale for decisions (over 30 minutes) but under the 2-hour display threshold: plain age line, no warning.
+    respond(60);
+    const third = renderWithGraphContext(<TopContent cachedEvents={[]} />);
+    expect(screen.getByText(/reading is 1 hour old\./)).toBeInTheDocument();
+    expect(screen.queryByText(/may be out of date/)).not.toBeInTheDocument();
+    expect(document.querySelector('[data-state="stale"]')).toBeNull();
+    third.unmount();
+
+    respond(180);
+    renderWithGraphContext(<TopContent cachedEvents={[]} />);
+    expect(screen.getAllByText(/may be out of date/)).toHaveLength(1);
+    expect(document.querySelectorAll('[data-state="stale"]')).toHaveLength(1);
   });
 
   it('renders shared fetch data in dependent child components', () => {

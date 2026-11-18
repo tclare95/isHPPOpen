@@ -60,8 +60,8 @@ export default function StatusArea() {
   // Checked before the pending state: a failed first request has no data and must not spin forever.
   if (statusError && !statusData) {
     return (
-      <div className="mt-4" id="stats">
-        <StatusMessage state="error">We couldn&apos;t load closure stats right now. Please try again shortly.</StatusMessage>
+      <div id="stats">
+        <StatusMessage state="error" className="mb-3">We couldn&apos;t load closure stats right now. Please try again shortly.</StatusMessage>
         <HistoricalConditions />
       </div>
     );
@@ -69,7 +69,7 @@ export default function StatusArea() {
 
   if (statusPending || !statusData) {
     return (
-      <div className="mt-4 text-white" id="stats">
+      <div className="text-white mb-3" id="stats">
         <StatusMessage state="loading">Loading HPP closure stats…</StatusMessage>
       </div>
     );
@@ -79,8 +79,8 @@ export default function StatusArea() {
   // The route's fallback payload (status store unreachable) is not an empty history.
   if (recordedStatus === "unavailable") {
     return (
-      <div className="mt-4 text-white text-center" id="stats">
-        <StatusMessage state="unavailable">HPP status and closure stats are unavailable right now. Please try again shortly.</StatusMessage>
+      <div className="text-white" id="stats">
+        <StatusMessage state="unavailable" className="mb-3">HPP status and closure stats are unavailable right now. Please try again shortly.</StatusMessage>
         <HistoricalConditions />
       </div>
     );
@@ -106,14 +106,12 @@ export default function StatusArea() {
   ].filter(({ closures }) => Number.isFinite(closures));
 
   return (
-    <div
-      className="mt-4 text-white text-center justify-content-center"
-      id="stats"
-    >
+    <>
+    <section className="history-panel text-white text-center" id="stats" aria-labelledby="stats-heading">
       <Row className="justify-content-center">
-        <h2>HPP closure stats</h2>
+        <h2 id="stats-heading" className="h4">HPP closure stats</h2>
         <p>
-          Current status: <span className="font-weight-bold">{currentStatus}</span><SourceHealthBadge health={statusData.health} />
+          Current status: <span className="fw-bold">{currentStatus}</span><SourceHealthBadge health={statusData.health} />
         </p>
         <p><Link className="text-info" href="/alerts">Email me when HPP opens or closes</Link></p>
         {statusData.isEmpty && (
@@ -132,7 +130,7 @@ export default function StatusArea() {
       {closureWindows.length > 0 && (
         <Row className="justify-content-center mt-4">
           <div className="text-center w-100">
-            <p className="font-weight-bold mb-1">HPP has been closed for:</p>
+            <p className="fw-bold mb-1">HPP has been closed for:</p>
             <p className="small mb-4">From HPP&apos;s recorded status changes.</p>
             {closureWindows.map(({ days, closures }) => {
               const roundedClosures = Math.max(0, Math.min(days, Math.round(closures)));
@@ -142,9 +140,9 @@ export default function StatusArea() {
               <Row className="justify-content-center mb-3" key={days}>
                 <div className="text-center w-100">
                   <p>
-                    <span className="font-weight-bold">{roundedClosures}</span>
+                    <span className="fw-bold">{roundedClosures}</span>
                     {` of the last ${days} days (`}
-                    <span className="font-weight-bold">{`${percentage}%`}</span>
+                    <span className="fw-bold">{`${percentage}%`}</span>
                     {`)`}
                   </p>
                   <ProgressBar
@@ -161,7 +159,8 @@ export default function StatusArea() {
           </div>
         </Row>
       )}
-      <HistoricalConditions />
-    </div>
+    </section>
+    <HistoricalConditions />
+    </>
   );
 }

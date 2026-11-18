@@ -7,7 +7,6 @@ import StatusMessage from "../layout/site/StatusMessage";
 import {
   HPP_THRESHOLD_METRES,
   formatLevelMetres,
-  formatReadingAge,
   getLatestLevelReading,
   getLevelFreshness,
   getRecordedHppStatus,
@@ -49,16 +48,9 @@ function StatusHeading({ children }) {
 
 StatusHeading.propTypes = { children: PropTypes.node };
 
-function EvidenceNote({ recordedStatus, reading, freshness, now }) {
-  if (reading && freshness === "stale") {
-    return (
-      <StatusMessage state="stale" className="small text-start d-inline-block mb-2">
-        This is the last recorded status. The latest river reading is {formatReadingAge(reading.observedAt, now)} old,
-        so it may be out of date.
-      </StatusMessage>
-    );
-  }
-
+// Only a fresh reading that disagrees with the recorded status gets a (muted) note here. Any stale-reading
+// warning is shown once, under the river level reading, not under the title.
+function EvidenceNote({ recordedStatus, reading, freshness }) {
   if (readingDisagreesWithStatus(recordedStatus, reading, freshness)) {
     const side = recordedStatus === "open" ? "at or above" : "below";
     return (
@@ -76,7 +68,6 @@ EvidenceNote.propTypes = {
   recordedStatus: PropTypes.string,
   reading: PropTypes.shape({ level: PropTypes.number, observedAt: PropTypes.instanceOf(Date) }),
   freshness: PropTypes.string,
-  now: PropTypes.instanceOf(Date),
 };
 
 // Shows the authoritative recorded HPP status from /api/hppstatus (#89).
@@ -122,7 +113,7 @@ export default function OpenTitle({ cachedEvents = [] }) {
 
   const reading = getLatestLevelReading(levelData);
   const freshness = getLevelFreshness(levelData, reading, now);
-  const note = <EvidenceNote recordedStatus={recordedStatus} reading={reading} freshness={freshness} now={now} />;
+  const note = <EvidenceNote recordedStatus={recordedStatus} reading={reading} freshness={freshness} />;
 
   if (recordedStatus === "closed") {
     const daysClosed = getDaysSince(statusData.effectiveLastOpenAt ?? statusData.effectiveLastOpenDate, now);

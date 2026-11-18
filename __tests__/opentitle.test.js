@@ -77,11 +77,12 @@ describe('OpenTitle', () => {
     expect(screen.getByText(/latest reading \(2\.19 m\) is below 2\.2 m/)).toBeInTheDocument();
   });
 
-  test('a stale reading marks the status as last recorded', async () => {
+  test('a stale reading adds no warning under the title (it is shown once, under the river level)', async () => {
     mockResponses({ levels: freshLevel(1.4, 180) });
     render(<OpenTitle cachedEvents={[]} />);
     expect(await heading()).toHaveTextContent('Open');
-    expect(screen.getByText(/last recorded status\. The latest river reading is 3 hours old/)).toBeInTheDocument();
+    expect(screen.queryByText(/out of date|last recorded status|hours? old/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
   });
 
   test('a missing or failed level read does not hide the recorded status', async () => {

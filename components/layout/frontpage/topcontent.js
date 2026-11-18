@@ -13,47 +13,8 @@ import PropTypes from "prop-types";
 import { SWR_15_MINUTES } from "../../../libs/dataFreshness";
 import StatusMessage from "../../layout/site/StatusMessage";
 import { describeForecast } from "../../../libs/forecastDisplay";
-import {
-  formatLevelMetres,
-  formatReadingAge,
-  getLatestLevelReading,
-  getLevelFreshness,
-} from "../../../libs/hpp/hppHomeStatus";
-
-// A loading, failed or empty level read is never shown as a number (no "0.00 m").
-function formatRiverLevel(reading, isPending) {
-  if (isPending) {
-    return "loading";
-  }
-
-  if (!reading) {
-    return "unavailable";
-  }
-
-  return formatLevelMetres(reading.level);
-}
-
-// The visible stale warning waits until a reading is hours old; the 30-minute freshness used for status
-// decisions (hppHomeStatus) is unchanged. Below this, only the plain age line is shown.
-export const STALE_NOTICE_AFTER_MS = 2 * 60 * 60 * 1000;
-
-function ReadingAge({ reading, freshness, currentTime }) {
-  if (!reading) {
-    return <StatusMessage state="unavailable" className="d-inline-block mb-2">The latest river level reading is unavailable right now.</StatusMessage>;
-  }
-
-  const age = `The river level reading is ${formatReadingAge(reading.observedAt, currentTime)} old`;
-  const ageMs = currentTime.getTime() - reading.observedAt.getTime();
-  return freshness === "stale" && ageMs >= STALE_NOTICE_AFTER_MS
-    ? <StatusMessage state="stale" className="d-inline-block mb-2">{`${age}, so it may be out of date.`}</StatusMessage>
-    : <p className="history-muted small mb-2">{`${age}.`}</p>;
-}
-
-ReadingAge.propTypes = {
-  reading: PropTypes.shape({ level: PropTypes.number, observedAt: PropTypes.instanceOf(Date) }),
-  freshness: PropTypes.string,
-  currentTime: PropTypes.instanceOf(Date).isRequired,
-};
+import { getLatestLevelReading } from "../../../libs/hpp/hppHomeStatus";
+import CurrentConditions from "./currentConditions";
 
 function renderForecastContent({
   isPending,
@@ -108,7 +69,6 @@ export default function TopContent(props) {
   const levelReadings = levelData?.level_data ?? [];
   const [currentTime, setCurrentTime] = useState(() => new Date());
   const reading = isPending ? null : getLatestLevelReading(levelData);
-  const freshness = getLevelFreshness(levelData, reading, currentTime);
   const { lowerBound, upperBound, updateBounds } = useContext(GraphContext);
   const forecast = describeForecast(s3Forecast, currentTime);
 
@@ -120,8 +80,6 @@ export default function TopContent(props) {
     return () => clearInterval(timer);
   }, []);
 
-  const riverLevelDisplay = formatRiverLevel(reading, isPending);
-
   return (
     <div className="text-white text-center">
       <Row className="justify-content-center">
@@ -130,31 +88,22 @@ export default function TopContent(props) {
           <OpenTitle cachedEvents={props.cachedEvents} eventsUnavailable={props.eventsUnavailable} />
         </Col>
       </Row>
-      <Row className="align-items-center">
-        <Col>
-          <h2 className="h3">
-            The river level is {riverLevelDisplay}
-          </h2>
-          <a href="#waterquality">
-            {!reading ? null : (
+      {/* The summary supersedes the old "The river level is …" headline and reading-age line. */}
+      <CurrentConditions cachedEvents={props.cachedEvents} eventsUnavailable={props.eventsUnavailable} />
+      {reading ? (
+        <Row className="justify-content-center">
+          <Col xs={12}>
+            <a href="#waterquality">
               <VomitFactor assessment={waterQualityAssessment?.current ?? null} isPending={assessmentPending} />
-            )}
-          </a>
-        </Col>
-      </Row>
-      <Row className="justify-content-center">
-        {isPending ? <StatusMessage state="loading" className="d-inline-block w-auto">Loading the latest river level…</StatusMessage> : null}
-        {reading ? <WeirLevels currentLevel={reading.level} /> : null}
-      </Row>
-      <Row className="justify-content-center">
-        <Col xs={12}>
-          {isPending ? null : <ReadingAge reading={reading} freshness={freshness} currentTime={currentTime} />}
-          <p>
-            HPP is generally open when the gauge is below 2.2 m. The chart shows recent levels and a 36-hour forecast.
-          </p>
-        </Col>
-      </Row>
+            </a>
+          </Col>
+          <Col xs={12}>
+            <WeirLevels currentLevel={reading.level} />
+          </Col>
+        </Row>
+      ) : null}
       <section className="history-panel text-white text-center mt-3" id="chart" aria-label="River level and forecast chart">
+          <p className="history-muted small">Recent Colwick levels and the 36-hour model forecast.</p>
           {renderForecastContent({
             isPending,
             forecastPending,

@@ -16,7 +16,7 @@ describe("CSO shadow diagnostic route", () => {
   });
 
   test("returns the read-only report for an authenticated session", async () => {
-    getServerSession.mockResolvedValue({ user: { email: "admin@example.com" } });
+    getServerSession.mockResolvedValue({ user: { id: "auth0|test-admin", email: "admin@example.com" } });
     const report = { comparedAt: "2026-11-12T12:00:00.000Z", summary: { members: 1, outcomes: { match: 1 } }, locations: [] };
     getCsoShadowReport.mockResolvedValue(report);
     const res = await route.GET();
@@ -26,7 +26,7 @@ describe("CSO shadow diagnostic route", () => {
   });
 
   test("maps a missing summary without leaking detail", async () => {
-    getServerSession.mockResolvedValue({ user: {} });
+    getServerSession.mockResolvedValue({ user: { id: "auth0|test-admin" } });
     getCsoShadowReport.mockRejectedValue(new HttpError(404, "No water quality summary available"));
     const res = await route.GET();
     expect(res.status).toBe(404);

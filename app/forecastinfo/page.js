@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useContext } from "react";
-import Link from "next/link";
 import Container from "react-bootstrap/Container";
 import Row from "react-bootstrap/Row";
 import Col from "react-bootstrap/Col";
@@ -15,6 +14,8 @@ import useFetch from "../../libs/useFetch";
 import ForecastChartWithConfidence from "../../components/functional/forecastChart";
 import StabilityChart from "../../components/functional/stabilityChart";
 import GraphContext from "../../libs/context/graphcontrol";
+import PageHeader from "../../components/layout/site/PageHeader";
+import StatusMessage from "../../components/layout/site/StatusMessage";
 
 const formatMetric = (value, decimals = 3) => {
   if (value === null || value === undefined) return "N/A";
@@ -190,14 +191,10 @@ export default function ForecastInfoPage() {
   });
 
   return (
-    <Container fluid className="bg-dark min-vh-100">
-      <Container className="text-white py-4">
-        <Row className="mb-4">
-          <Col className="text-center">
-            <h1>River Level Forecast</h1>
-            <Link href="/" className="text-info">← Back to Main Page</Link>
-          </Col>
-        </Row>
+    <Container fluid as="main" className="history-page text-white">
+      <Container className="py-4 py-lg-5">
+        <PageHeader title="River level forecast"
+          lead="A model prediction of the Colwick river level for the next 36 hours, shown with recent observed levels. It is an estimate and can be wrong, especially after sudden heavy rain." />
 
         <Row className="justify-content-center mb-3">
           <Col xs="auto">
@@ -215,7 +212,7 @@ export default function ForecastInfoPage() {
         {s3Data?.metadata && (
           <Row className="justify-content-center mb-3">
             <Col xs="auto">
-              <small className="text-muted">
+              <small className="history-muted">
                 Forecast generated: {new Date(s3Data.metadata.forecast_time).toLocaleString()}
               </small>
             </Col>
@@ -241,21 +238,21 @@ export default function ForecastInfoPage() {
                 </Button>
               </div>
             ) : (
-              <p className="text-center">No data available</p>
+              <StatusMessage state="unavailable">Observed river levels could not be loaded, so the forecast cannot be shown.</StatusMessage>
             )}
           </Col>
         </Row>
 
         <Row className="justify-content-center mb-4">
-          <Col md={10} lg={8}>
-            <Card bg="dark" border="info" text="white">
-              <Card.Header className="bg-info"><h5 className="mb-0">Forecast Accuracy</h5></Card.Header>
+          <Col>
+            <Card text="white" className="history-panel p-0">
+              <Card.Header><h2 className="h5 mb-0">Forecast Accuracy</h2></Card.Header>
               <Card.Body>
                 {accuracyPending ? (
                   <div className="text-center py-3"><Spinner animation="border" role="status" size="sm" /></div>
                 ) : accuracyData?.accuracy_data?.length > 0 ? (
                   <>
-                    <p className="text-muted mb-3"><small>Last evaluated: {new Date(accuracyData.evaluation_time).toLocaleString()}</small></p>
+                    <p className="history-muted mb-3"><small>Last evaluated: {new Date(accuracyData.evaluation_time).toLocaleString()}</small></p>
                     <Table variant="dark" striped bordered hover responsive size="sm">
                       <thead>
                         <tr>
@@ -279,7 +276,7 @@ export default function ForecastInfoPage() {
                     </Table>
                   </>
                 ) : (
-                  <p className="mb-0">No accuracy data available</p>
+                  <StatusMessage state="empty">No accuracy figures are available yet.</StatusMessage>
                 )}
               </Card.Body>
             </Card>
@@ -287,10 +284,14 @@ export default function ForecastInfoPage() {
         </Row>
 
         <Row className="justify-content-center mb-4">
-          <Col md={10} lg={8}>
-            <Card bg="dark" border="secondary" text="white">
-              <Card.Header className="d-flex justify-content-between align-items-center" style={{ cursor: "pointer" }} onClick={() => setShowStats(!showStats)}>
-                <h5 className="mb-0">Stats</h5><span>{showStats ? "▼" : "▶"}</span>
+          <Col>
+            <Card text="white" className="history-panel p-0">
+              <Card.Header>
+                <h2 className="h5 mb-0">
+                  <button type="button" className="w-100 d-flex justify-content-between align-items-center gap-2 p-0 bg-transparent border-0 text-reset text-start" aria-expanded={showStats} onClick={() => setShowStats(!showStats)}>
+                    <span>Stats</span><span aria-hidden="true">{showStats ? "▼" : "▶"}</span>
+                  </button>
+                </h2>
               </Card.Header>
               {showStats && (
                 <Card.Body>
@@ -356,14 +357,18 @@ export default function ForecastInfoPage() {
         </Row>
 
         <Row className="justify-content-center mb-4">
-          <Col md={10} lg={8}>
-            <Card bg="dark" border="info" text="white">
-              <Card.Header className="d-flex justify-content-between align-items-center" style={{ cursor: "pointer" }} onClick={() => setShowStability(!showStability)}>
-                <div className="d-flex align-items-center gap-2">
-                  <h5 className="mb-0">Forecast Stability</h5>
-                  <Badge bg={stabilitySummary.color}>{`${stabilitySummary.icon} ${stabilitySummary.label}`}</Badge>
-                </div>
-                <span>{showStability ? "▼" : "▶"}</span>
+          <Col>
+            <Card text="white" className="history-panel p-0">
+              <Card.Header>
+                <h2 className="h5 mb-0">
+                  <button type="button" className="w-100 d-flex justify-content-between align-items-center gap-2 p-0 bg-transparent border-0 text-reset text-start" aria-expanded={showStability} onClick={() => setShowStability(!showStability)}>
+                    <span className="d-flex align-items-center gap-2">
+                      <span>Forecast Stability</span>
+                      <Badge bg={stabilitySummary.color}>{`${stabilitySummary.icon} ${stabilitySummary.label}`}</Badge>
+                    </span>
+                    <span aria-hidden="true">{showStability ? "▼" : "▶"}</span>
+                  </button>
+                </h2>
               </Card.Header>
               {showStability && (
                 <Card.Body>

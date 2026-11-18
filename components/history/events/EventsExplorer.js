@@ -15,6 +15,7 @@ import { currentLondonMonth, monthBounds, yearBounds } from "../../../libs/histo
 import { ErrorNotice, HISTORY_SWR, LoadingBlock, useSlow } from "../StatusBlocks";
 import EventList from "./EventList";
 import EventTimeline from "./EventTimeline";
+import PageHeader from "../../layout/site/PageHeader";
 
 const threshold = `${COLWICK_HISTORY.thresholdMetres.toFixed(1)} m`;
 const SORTS = {
@@ -106,11 +107,7 @@ export default function EventsExplorer() {
   return (
     <main className="history-page text-white">
       <Container className="py-4 py-lg-5">
-        <header className="mb-4">
-          <Link href="/history" className="history-back">← River level history</Link>
-          <h1 className="display-6 fw-bold mt-3 mb-2">High-water events</h1>
-          <p className="lead history-intro mb-0">Periods when the Colwick river level was at or above {threshold}.</p>
-        </header>
+        <PageHeader title="High-water events" lead={`Periods when the Colwick river level was at or above ${threshold}.`} />
 
         {index.error ? <ErrorNotice error={index.error} what="high-water events" /> : null}
         {!index.error && !data ? <LoadingBlock label="Finding high-water events in Colwick history…" slow={slow} /> : null}

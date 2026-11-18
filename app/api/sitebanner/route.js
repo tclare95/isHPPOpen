@@ -2,7 +2,7 @@ import { getBanners, upsertBanner } from "../../../libs/services/siteBannerServi
 import { mapApiError } from "../../../libs/api/http";
 import {
   parseJsonObjectBody,
-  requireRouteSession,
+  requireRouteAdmin,
   sendRouteError,
   sendRouteSuccess,
 } from "../../../libs/api/httpApp";
@@ -27,7 +27,7 @@ export async function GET() {
 export async function POST(request) {
   const logger = createRequestLogger({ method: "POST" }, "api/sitebanner");
   try {
-    await requireRouteSession();
+    await requireRouteAdmin();
     const payload = await parseJsonObjectBody(request);
     const result = await upsertBanner(payload);
     await revalidateTagsSafe([CACHE_TAGS.SITE_BANNER, CACHE_TAGS.HOME_SNAPSHOT], {

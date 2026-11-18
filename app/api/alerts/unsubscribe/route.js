@@ -1,27 +1,23 @@
 import { NextResponse } from "next/server";
 import { mapApiError } from "../../../../libs/api/http";
 import { createRequestLogger } from "../../../../libs/api/logger";
-import { buildDashboardAlertStatusUrl } from "../../../../libs/services/alertMailerService";
+import { buildAlertsResultUrl } from "../../../../libs/services/alertMailerService";
 import { unsubscribeColwickAlertSubscription } from "../../../../libs/services/colwickAlertsService";
 
 export const dynamic = "force-dynamic";
 
+// Redirects to the Alerts Centre with a fixed result code; no subscription details are put in the URL.
 export async function GET(request) {
   const logger = createRequestLogger({ method: "GET" }, "api/alerts/unsubscribe");
 
   try {
     const token = request.nextUrl.searchParams.get("token");
-    const data = await unsubscribeColwickAlertSubscription(token);
-    logger.info("Unsubscribed Colwick alert subscription");
-    return NextResponse.redirect(buildDashboardAlertStatusUrl("unsubscribed", data.message));
+    await unsubscribeColwickAlertSubscription(token);
+    logger.info("Unsubscribed alert subscription");
+    return NextResponse.redirect(buildAlertsResultUrl("unsubscribed"));
   } catch (error) {
-    const { statusCode, message } = mapApiError(error);
+    const { statusCode } = mapApiError(error);
     logger.error("Error in alerts unsubscribe", error);
-
-    if (statusCode >= 400 && statusCode < 500) {
-      return NextResponse.redirect(buildDashboardAlertStatusUrl("error", message));
-    }
-
-    return NextResponse.redirect(buildDashboardAlertStatusUrl("error", "Unable to unsubscribe alert right now."));
+    return NextResponse.redirect(buildAlertsResultUrl(statusCode >= 400 && statusCode < 500 ? "unsubscribe_invalid" : "unsubscribe_error"));
   }
 }

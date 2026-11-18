@@ -1,5 +1,5 @@
 import { mapApiError } from "../../../../libs/api/http";
-import { requireRouteSession, sendRouteError, sendRouteSuccess } from "../../../../libs/api/httpApp";
+import { requireRouteAdmin, sendRouteError, sendRouteSuccess } from "../../../../libs/api/httpApp";
 import { getLatestLevelsSnapshot } from "../../../../libs/services/levelsService";
 import { getLatestForecastSnapshot } from "../../../../libs/services/forecastService";
 import { getHppStatusSnapshot } from "../../../../libs/services/hppStatusService";
@@ -18,7 +18,7 @@ const checks = [
 
 export async function GET() {
   try {
-    await requireRouteSession();
+    await requireRouteAdmin();
     const results = await Promise.all(checks.map(async ([name, check]) => {
       const startedAt = performance.now();
       try {

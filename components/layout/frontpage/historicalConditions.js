@@ -59,7 +59,7 @@ export default function HistoricalConditions() {
   }
 
   return (
-    <section className="history-panel history-home mt-4" aria-labelledby="historical-conditions">
+    <section className="history-panel history-home" aria-labelledby="historical-conditions">
       <div className="d-flex flex-wrap justify-content-between align-items-baseline gap-2 mb-2">
         <h3 id="historical-conditions" className="h5 mb-0">Historical river-level conditions</h3>
         <Link href="/history" className="text-info">Explore river history →</Link>

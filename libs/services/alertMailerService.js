@@ -88,6 +88,10 @@ function formatSource(source) {
   return source === "forecast" ? "forecast" : "live level";
 }
 
+/** Shown in every alert-related email: alerts inform, they do not authorise. */
+export const ALERT_SAFETY_NOTE = "Alerts are for information only. They are not a guarantee of river access or water safety, "
+  + "and delayed or unavailable source data can delay or prevent an alert. Always check conditions yourself.";
+
 export function buildConfirmationUrl(token) {
   return `${getAlertsBaseUrl()}/api/alerts/confirm?token=${encodeURIComponent(token)}`;
 }
@@ -96,15 +100,18 @@ export function buildUnsubscribeUrl(token) {
   return `${getAlertsBaseUrl()}/api/alerts/unsubscribe?token=${encodeURIComponent(token)}`;
 }
 
-export function buildDashboardAlertStatusUrl(status, message) {
-  const url = new URL("/trentweirs", `${getAlertsBaseUrl()}/`);
-  url.searchParams.set("alertStatus", status);
+/** Alert result codes shown on the Alerts Centre with fixed copy (never free text from the URL). */
+export const ALERT_RESULTS = Object.freeze(["confirmed", "already_active", "confirm_invalid", "confirm_error", "unsubscribed", "unsubscribe_invalid", "unsubscribe_error"]);
 
-  if (message) {
-    url.searchParams.set("alertMessage", message);
-  }
-
+export function buildAlertsResultUrl(result) {
+  const url = new URL("/alerts", `${getAlertsBaseUrl()}/`);
+  url.searchParams.set("result", ALERT_RESULTS.includes(result) ? result : "confirm_error");
   return url.toString();
+}
+
+/** The Alerts Centre, where anyone can request a management link for their own address. */
+export function buildAlertsCentreUrl() {
+  return `${getAlertsBaseUrl()}/alerts`;
 }
 
 export function buildManageAlertsUrl(token) {
@@ -128,11 +135,16 @@ export async function sendAlertConfirmationEmail({
     to: email,
     subject: `Confirm your ${gaugeName} alert`,
     text: [
-      `Please confirm your ${gaugeName} ${formatSource(source)} alert.`,
+      "Please confirm your email alert. It is not active until you do.",
       "",
       ruleDescription || `We will email you when ${gaugeName} ${formatDirection(direction)} ${threshold.toFixed(2)} m.`,
       "",
-      `Confirm alert: ${confirmationUrl}`,
+      `Confirm alert (link expires in 24 hours): ${confirmationUrl}`,
+      "",
+      "If you did not request this, ignore this email and no alert will be set up.",
+      "",
+      ALERT_SAFETY_NOTE,
+      "",
       `Unsubscribe: ${unsubscribeUrl}`,
     ].join("\n"),
   });
@@ -143,24 +155,33 @@ export async function sendManageAlertsAccessEmail({ email, manageToken }) {
 
   await sendEmail({
     to: email,
-    subject: "Manage your Colwick alerts",
+    subject: "Manage your river alerts",
     text: [
-      "Use the link below to view and manage your Colwick alerts.",
+      "Use the link below to review or stop the email alerts for this address.",
       "",
       `Manage alerts: ${manageUrl}`,
       "",
-      "For security, this link expires after 30 minutes.",
+      "For security, this link expires after 30 minutes. If you did not request it, you can ignore this email.",
     ].join("\n"),
   });
 }
 
+function formatObserved({ alertType, unit, observedValue, observedLabel }) {
+  if (typeof observedValue === "number") return `${observedValue.toFixed(2)} ${unit || "m"}`;
+  if (observedLabel) return alertType === "water_quality" ? `${observedLabel} risk` : `HPP reported ${observedLabel}`;
+  return "Unavailable";
+}
+
 export async function sendThresholdAlertEmail({
   email,
+  alertType,
   gaugeName,
   source,
+  unit,
   direction,
   threshold,
   observedValue,
+  observedLabel,
   observedAt,
   forecastRunAt,
   unsubscribeToken,
@@ -168,26 +189,30 @@ export async function sendThresholdAlertEmail({
   idempotencyKey,
 }) {
   const unsubscribeUrl = buildUnsubscribeUrl(unsubscribeToken);
-  const sourceLabel = formatSource(source);
-  const formattedObservedValue = typeof observedValue === "number"
-    ? `${observedValue.toFixed(2)} m`
-    : "Unavailable";
-  const triggerLine = source === "forecast"
+  const isGauge = threshold !== undefined && threshold !== null;
+  const unitLabel = unit || "m";
+  const headline = isGauge ? `${gaugeName} ${formatSource(source)} has met your alert rule.` : `Your ${gaugeName} alert has been triggered.`;
+  const timeLine = source === "forecast"
     ? `Forecast threshold crossed at: ${observedAt || "Unknown time"}`
-    : `Observed at: ${observedAt || "Unknown time"}`;
+    : `${isGauge ? "Observed at" : "Checked at"}: ${observedAt || "Unknown time"}`;
 
   await sendEmail({
     to: email,
-    subject: threshold !== undefined ? `${gaugeName} alert: ${direction === "below" ? "below" : "above"} ${Number(threshold).toFixed(2)} m` : `${gaugeName} alert`,
+    subject: isGauge ? `${gaugeName} alert: ${direction === "below" ? "below" : "above"} ${Number(threshold).toFixed(2)} ${unitLabel}` : `${gaugeName} alert`,
     text: [
-      `${gaugeName} ${sourceLabel} has triggered your alert.`,
+      headline,
       "",
-      ruleDescription || `Rule: alert when ${gaugeName} ${formatDirection(direction)} ${threshold.toFixed(2)} m`,
-      `Value: ${formattedObservedValue}`,
-      triggerLine,
+      ruleDescription || `Rule: alert when ${gaugeName} ${formatDirection(direction)} ${Number(threshold).toFixed(2)} ${unitLabel}`,
+      `${isGauge ? "Value" : "Status"}: ${formatObserved({ alertType, unit, observedValue, observedLabel })}`,
+      timeLine,
       ...(forecastRunAt ? [`Forecast generated at: ${forecastRunAt}`] : []),
       "",
-      `Unsubscribe: ${unsubscribeUrl}`,
+      "You will not get another email for this rule until the condition clears and is met again.",
+      "",
+      ALERT_SAFETY_NOTE,
+      "",
+      `Review your alerts: ${buildAlertsCentreUrl()}`,
+      `Unsubscribe from this alert: ${unsubscribeUrl}`,
     ].join("\n"),
     idempotencyKey,
   });

@@ -56,28 +56,52 @@ describe("Alerts API route handlers", () => {
   });
 
   test("confirm route activates an alert token", async () => {
-    confirmColwickAlertSubscription.mockResolvedValue({ message: "Colwick alert confirmed." });
+    confirmColwickAlertSubscription.mockResolvedValue({ status: "confirmed", message: "Alert confirmed." });
 
     const res = await confirmGET({
       nextUrl: new URL("http://localhost/api/alerts/confirm?token=abc123"),
     });
 
     expect(res.status).toBe(307);
-    expect(res.headers.Location).toContain("/trentweirs");
-    expect(res.headers.Location).toContain("alertStatus=confirmed");
+    expect(new URL(res.headers.Location).pathname).toBe("/alerts");
+    expect(new URL(res.headers.Location).searchParams.get("result")).toBe("confirmed");
     expect(confirmColwickAlertSubscription).toHaveBeenCalledWith("abc123");
   });
 
   test("unsubscribe route deactivates an alert token", async () => {
-    unsubscribeColwickAlertSubscription.mockResolvedValue({ message: "Colwick alert unsubscribed." });
+    unsubscribeColwickAlertSubscription.mockResolvedValue({ message: "Alert stopped." });
 
     const res = await unsubscribeGET({
       nextUrl: new URL("http://localhost/api/alerts/unsubscribe?token=bye123"),
     });
 
     expect(res.status).toBe(307);
-    expect(res.headers.Location).toContain("/trentweirs");
-    expect(res.headers.Location).toContain("alertStatus=unsubscribed");
+    expect(new URL(res.headers.Location).pathname).toBe("/alerts");
+    expect(new URL(res.headers.Location).searchParams.get("result")).toBe("unsubscribed");
     expect(unsubscribeColwickAlertSubscription).toHaveBeenCalledWith("bye123");
+  });
+
+  const resultOf = (res) => new URL(res.headers.Location).searchParams.get("result");
+  const confirm = () => confirmGET({ nextUrl: new URL("http://localhost/api/alerts/confirm?token=abc123") });
+  const unsubscribe = () => unsubscribeGET({ nextUrl: new URL("http://localhost/api/alerts/unsubscribe?token=bye123") });
+
+  test("confirm route reports an already-active alert without claiming a new activation", async () => {
+    confirmColwickAlertSubscription.mockResolvedValue({ status: "already_active", message: "This alert is already active." });
+    expect(resultOf(await confirm())).toBe("already_active");
+  });
+
+  test("confirm and unsubscribe failures never redirect as success, and carry no free text", async () => {
+    const { HttpError } = jest.requireActual("../../libs/api/http");
+    confirmColwickAlertSubscription.mockRejectedValue(new HttpError(404, "invalid"));
+    unsubscribeColwickAlertSubscription.mockRejectedValue(new HttpError(404, "invalid"));
+    const [invalidConfirm, invalidUnsubscribe] = [await confirm(), await unsubscribe()];
+    expect(resultOf(invalidConfirm)).toBe("confirm_invalid");
+    expect(resultOf(invalidUnsubscribe)).toBe("unsubscribe_invalid");
+    expect(invalidConfirm.headers.Location).not.toContain("invalid%20");
+
+    confirmColwickAlertSubscription.mockRejectedValue(new Error("database down"));
+    unsubscribeColwickAlertSubscription.mockRejectedValue(new Error("database down"));
+    expect(resultOf(await confirm())).toBe("confirm_error");
+    expect(resultOf(await unsubscribe())).toBe("unsubscribe_error");
   });
 });

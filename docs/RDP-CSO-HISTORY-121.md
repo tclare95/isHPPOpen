@@ -15,8 +15,9 @@ current-status map, the calibrated thresholds or alert evaluation. It ships behi
 | Event and revision reads (`getCsoEvent`, `getCsoEventRevisions`) | `libs/rdp/client.js` |
 | Contract validation (`parseCsoEvent`, `parseCsoRevisions`; catalogue `attribution`) | `libs/rdp/csoContract.js` |
 | History assembly, coverage, evidence conclusion, event detail | `libs/rdp/csoHistory.js` |
+| Server-side pages and continuation cursors (`paginateHistoryEvents`, `readHistoryCursor`) | `libs/rdp/csoHistoryPages.js` |
 | Flag and dispatch (`isCsoHistoryEnabled`, `getPublicCsoEventHistory`, `getPublicCsoEventDetail`) | `libs/services/waterQualityService.js` |
-| `GET /api/waterquality/cso/events?window=24h\|7d\|30d` | `app/api/waterquality/cso/events/route.js` |
+| `GET /api/waterquality/cso/events?window=24h\|48h\|7d\|30d[&outfall=ID][&cursor=…]` | `app/api/waterquality/cso/events/route.js` |
 | `GET /api/waterquality/cso/events/{eventId}` | `app/api/waterquality/cso/events/[eventId]/route.js` |
 | Section UI | `components/functional/csoEventHistory.js` |
 | Map link (focus an outfall; "Spill history for this outfall") | `components/functional/csoMap.js`, `csoMapFocus.js` |
@@ -55,8 +56,9 @@ makes one RDP request per rendered list item.
   uncertain maximum duration. An end is never estimated.
 - `pageIntegrity` must be `verified`, otherwise the page is a contract error. A 503 `ARCHIVE_INTEGRITY`,
   timeout or any other failure marks that outfall `failed`. Its events are missing and the page says so.
-- `nextCursor` is followed up to the page budget. Beyond that the outfall is `truncated` and the page says the
-  oldest events are missing.
+- `nextCursor` is followed up to the page budget. Beyond that the outfall is `truncated`. RDP returns events **oldest
+  first**, so a truncated read is missing that outfall's **most recent** events. `readThrough` is the latest start that
+  was read, and the page says the events after it are missing.
 - **Coverage** is computed per outfall up to RDP's `requestAsOf`. A gap that opens within RDP's 45-minute
   collection tolerance of that moment is the next poll not yet having run. It is reported as
   `awaitingNextCheck` and is not counted as missing data.
@@ -74,6 +76,56 @@ makes one RDP request per rendered list item.
 **30 days** is always offered. It is described as a full 30-day history only when every read outfall has at
 least 80% of the window collected (`evidence.coverage.sufficient`). Otherwise the page shows what was
 recorded and says coverage is insufficient.
+
+## Browsing older events (Wave A `cso-history-browsing`)
+
+The list is served **50 events per page, newest first** (start time, then event ID). "Older events", "Newer events" and
+"Newest events" move through the whole window. Each page is a separate server request. The browser holds only the opaque
+`page.nextCursor` values of the pages it has visited, and it never sees RDP credentials.
+
+**What RDP supports.** `GET /v1/cso/outfalls/{id}/events` is per outfall. It orders events by `startedAt` then `eventId`
+**ascending** and has a forward-only encrypted cursor (`CURSOR_STALE` if the served prefix changed). It allows at most
+366 days and 500 events per request. The set read (`/v1/cso/sets/{set}/activity`) covers at most 168 h and returns at most
+100 events per outfall, oldest first, with `truncated`. RDP has no newest-first order, no `before` cursor and no merged
+multi-outfall event listing. Its cursors therefore cannot page a merged, newest-first list directly.
+
+**Mechanism.**
+
+- Every page reads the same bounded, cached window reads as the first page: per-outfall reads (at most 20 outfalls,
+  or 40 for the RDP-membership 30-day view, 3 × 200 events each) or the one cached set read. A page request therefore never
+  does more RDP work than the first page, and with a warm cache it does none.
+- The cursor pins the window the first page read (`from`/`to`), the query (window, outfall, membership basis), the first
+  event listed and the last event served, and a count and SHA-256 digest of every `(eventId, startedAt)` served so far. This
+  is the same approach as RDP's own cursors.
+- Each continuation recomputes the served prefix. If an event already passed over had its start corrected, disappeared,
+  or was joined by a late report, the API answers **409** and the page offers "Back to the newest events". It never shows a
+  duplicate or skips an event. An ongoing event that ends keeps its start and place, so its new state simply appears.
+- Events that start after the first event listed are not mixed into older pages. They are counted in
+  `page.newerSinceStart` ("N newer events have been recorded since you started browsing").
+- A changed period or outfall restarts at the newest events. A cursor for another query is a 400. A cursor older than
+  6 hours, or one from another membership basis (`RDP_CSO_MEMBERSHIP` changed), is a **410** and the page restarts.
+- The RDP set read always answers for its own moving window, so the 24 h, 48 h and 7 d views in RDP-membership mode cannot
+  be pinned. When that window moves during a traversal, `page.windowMoved` is set and the page says older events that
+  ended before the new start are no longer listed.
+- `page.total` counts the events that were read. `page.totalIsLowerBound` ("of N or more") is set when any shown outfall was
+  truncated, failed or not read. The last page says either "End of the recorded events for this period" or, if the total is
+  a lower bound, that other events may exist. A page that fails to load says so and offers "Try again". There is never an
+  unending spinner.
+
+**RDP contract gap.** Paging is complete only within the bounded window reads. Events beyond an outfall's read budget (more
+than 600 in one window for one outfall, or more than 100 in a set read) and outfalls beyond the read limit cannot be reached
+by paging. They are reported, never assumed absent. Reaching them with bounded work per page needs, at minimum, one of these
+additions to RDP:
+
+1. `order=desc` (newest first) on `GET /v1/cso/outfalls/{id}/events`, with the same encrypted, stale-checked cursor. The
+   consumer could then merge the outfalls' newest events and carry their cursors, reading at most one page per outfall per
+   visitor page.
+2. A set-scoped event listing, such as `GET /v1/cso/sets/{set}/events?from=&to=&limit=&cursor=`, ordered by `startedAt`
+   descending then `eventId`. It would have one continuation, `CURSOR_STALE` semantics and per-page coverage. It would also
+   remove the per-outfall read limit for large memberships.
+
+This gap is to be raised as an RDP-owned OpenSpec change. Until RDP provides one of these, the site keeps the honest bounded
+behaviour described above rather than walking further pages without a bound.
 
 ## Revisions and corrections
 

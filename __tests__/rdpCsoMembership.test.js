@@ -9,7 +9,6 @@ import { __resetRdpCsoStateForTests } from "../libs/rdp/csoSource";
 import {
   HPP_MEMBERSHIP, MEMBERSHIP_30D_MAX_OUTFALLS, getMembershipEventDetail, getMembershipEventHistory, getRdpMembershipWaterQualitySnapshot,
 } from "../libs/rdp/csoMembership";
-import { CSO_HISTORY_MAX_EVENTS, limitHistoryEvents } from "../libs/rdp/csoHistory";
 import {
   getCsoMembershipMode, getPublicCsoEventDetail, getPublicCsoEventHistory, getPublicWaterQualitySnapshot,
 } from "../libs/services/waterQualityService";
@@ -412,7 +411,7 @@ describe("RDP membership event history", () => {
     process.env.RDP_CSO_MEMBERSHIP = "rdp";
     rdp = fakeClient({ set, activity: { 24: items(24) } });
     const history = await getPublicCsoEventHistory("24h");
-    expect(history).toMatchObject({ enabled: true, membership: { source: "rdp" }, eventTotals: { total: 1, returned: 1, truncated: false } });
+    expect(history).toMatchObject({ enabled: true, membership: { source: "rdp" }, page: { offset: 0, total: 1, returned: 1, hasOlder: false, nextCursor: null } });
     await expect(getPublicCsoEventHistory("24h", { outfall: "LEGACY1" })).rejects.toMatchObject({ statusCode: 400 });
   });
 
@@ -437,31 +436,7 @@ describe("RDP membership event history", () => {
   });
 });
 
-describe("history event limit", () => {
-  const history = (count) => ({
-    outfalls: [{ id: "A" }, { id: "B" }],
-    events: Array.from({ length: count }, (_, i) => ({ eventId: `e${i}`, outfallId: i % 10 === 0 ? "B" : "A" })),
-  });
-
-  test("caps the newest events and reports the total", () => {
-    const result = limitHistoryEvents(history(CSO_HISTORY_MAX_EVENTS + 50), undefined);
-    expect(result.events).toHaveLength(CSO_HISTORY_MAX_EVENTS);
-    expect(result.eventTotals).toEqual({ total: CSO_HISTORY_MAX_EVENTS + 50, returned: CSO_HISTORY_MAX_EVENTS, truncated: true });
-  });
-
-  test("an outfall filter is applied before the cap", () => {
-    const result = limitHistoryEvents(history(CSO_HISTORY_MAX_EVENTS + 50), "B");
-    expect(result.events.every((event) => event.outfallId === "B")).toBe(true);
-    expect(result.eventTotals).toEqual({ total: 30, returned: 30, truncated: false });
-    expect(result.outfallFilter).toBe("B");
-  });
-
-  test("an outfall outside the view is a 400", () => {
-    expect(() => limitHistoryEvents(history(1), "Z")).toThrow(expect.objectContaining({ statusCode: 400 }));
-  });
-});
-
-test("legacy-membership history is unchanged apart from the membership label and limit", async () => {
+test("legacy-membership history is unchanged apart from the membership label and paging", async () => {
   process.env.RDP_CSO_HISTORY = "on";
   rdp.getCsoEvents.mockResolvedValue(parseEventsPage());
   const result = await getPublicCsoEventHistory("24h");

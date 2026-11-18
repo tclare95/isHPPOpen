@@ -25,7 +25,7 @@ export function LoadingBlock({ label, slow }) {
     <div className="history-skeleton" role="status" aria-live="polite">
       <span className="spinner-border spinner-border-sm me-2" aria-hidden="true" />
       {label}
-      {slow ? <p className="history-muted small mb-0 mt-2">The first load of a period reads every 15-minute reading from the archive and can take up to a minute. Later visits are cached.</p> : null}
+      {slow ? <p className="history-muted small mb-0 mt-2">The first load of a period can take up to a minute. Later visits are quicker.</p> : null}
     </div>
   );
 }

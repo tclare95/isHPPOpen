@@ -343,18 +343,25 @@ export function isCsoHistoryEnabled(env = process.env) {
   return env.RDP_CSO_HISTORY === 'on';
 }
 
-export async function getPublicCsoEventHistory(windowKey, { outfall } = {}) {
+// One page of the history, newest first. `cursor` (from a previous page's `page.nextCursor`) continues the same traversal:
+// it re-reads the same bounded, cached window, never more, and is refused (409/410) rather than continued incoherently.
+export async function getPublicCsoEventHistory(windowKey, { outfall, cursor } = {}) {
   if (!isCsoHistoryEnabled()) return { enabled: false };
-  const { getCsoEventHistory, limitHistoryEvents } = await import('../rdp/csoHistory');
+  const { getCsoEventHistory } = await import('../rdp/csoHistory');
+  const { paginateHistoryEvents, readHistoryCursor } = await import('../rdp/csoHistoryPages');
+  const basis = resolveMembershipMode() === 'rdp' ? 'rdp' : 'legacy';
+  const now = new Date();
+  const continuation = cursor === undefined ? null : readHistoryCursor(cursor, { windowKey, outfall, basis, now });
+  const options = { window: continuation?.pinnedWindow ?? null };
   let history;
-  if (resolveMembershipMode() === 'rdp') {
+  if (basis === 'rdp') {
     const { getMembershipEventHistory } = await import('../rdp/csoMembership');
-    history = await getMembershipEventHistory(windowKey);
+    history = await getMembershipEventHistory(windowKey, now, options);
   } else {
-    history = await getCsoEventHistory(windowKey);
+    history = await getCsoEventHistory(windowKey, now, options);
     history = { ...history, membership: { source: 'legacy', basis: 'sewage-map-cso-ids', count: history.outfalls.length } };
   }
-  return { enabled: true, ...limitHistoryEvents(history, outfall) };
+  return { enabled: true, ...paginateHistoryEvents(history, { outfall, continuation, basis }) };
 }
 
 // ---- RDP_CSO_CATCHMENT (#114): optional whole-catchment monitoring section ----

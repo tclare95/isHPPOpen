@@ -41,7 +41,7 @@ describe('Site Banner API route handler', () => {
   });
 
   test('POST updates banner when authenticated', async () => {
-    getServerSession.mockResolvedValue({ user: { email: 'admin@test.com' } });
+    getServerSession.mockResolvedValue({ user: { id: 'auth0|test-admin', email: 'admin@test.com' } });
     upsertBanner.mockResolvedValue({ modifiedCount: 1, upsertedCount: 0 });
     const res = await POST(makeRequest({
       banner_title: 'Update',
@@ -58,7 +58,7 @@ describe('Site Banner API route handler', () => {
   });
 
   test('POST supports an open-ended banner when authenticated', async () => {
-    getServerSession.mockResolvedValue({ user: { email: 'admin@test.com' } });
+    getServerSession.mockResolvedValue({ user: { id: 'auth0|test-admin', email: 'admin@test.com' } });
     upsertBanner.mockResolvedValue({ modifiedCount: 1, upsertedCount: 0 });
     const res = await POST(makeRequest({
       banner_title: 'Update',
@@ -73,7 +73,7 @@ describe('Site Banner API route handler', () => {
   });
 
   test('POST supports a banner that starts immediately when authenticated', async () => {
-    getServerSession.mockResolvedValue({ user: { email: 'admin@test.com' } });
+    getServerSession.mockResolvedValue({ user: { id: 'auth0|test-admin', email: 'admin@test.com' } });
     upsertBanner.mockResolvedValue({ modifiedCount: 1, upsertedCount: 0 });
     const res = await POST(makeRequest({
       banner_title: 'Update',
@@ -88,7 +88,7 @@ describe('Site Banner API route handler', () => {
   });
 
   test('POST returns 400 on validation error', async () => {
-    getServerSession.mockResolvedValue({ user: { email: 'admin@test.com' } });
+    getServerSession.mockResolvedValue({ user: { id: 'auth0|test-admin', email: 'admin@test.com' } });
     upsertBanner.mockRejectedValue(new ValidationError('Validation failed'));
     const res = await POST(makeRequest({ invalid: 'data' }));
     const payload = await res.json();

@@ -1,14 +1,12 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import Card from "react-bootstrap/Card";
 import Col from "react-bootstrap/Col";
 import Container from "react-bootstrap/Container";
 import Row from "react-bootstrap/Row";
-import Stack from "react-bootstrap/Stack";
 import AlertManagementAccess from "../../components/functional/alertManagementAccess";
+import AlertResultNotice from "../../components/functional/alertResultNotice";
 import AlertsSignup from "../../components/functional/alertsSignup";
 import {
   AlertsManagementContent,
@@ -16,11 +14,28 @@ import {
 } from "../../components/functional/alertsManager";
 import { fetcher } from "../../libs/fetcher";
 import useFetch from "../../libs/useFetch";
+import PageHeader from "../../components/layout/site/PageHeader";
+
+function AlertsPageHeader() {
+  // Same centred column as the panels below, so the title lines up with the content.
+  return (
+    <Row className="justify-content-center">
+      <Col lg={8}>
+        <PageHeader title="Email alerts" lead="Set up an alert, or manage the alerts you already have." />
+      </Col>
+    </Row>
+  );
+}
+
+// Each management read replaces the link's token, so the first token must be read exactly once:
+// a focus/reconnect revalidation with it would fail and hide a working session behind an error.
+const MANAGE_FETCH_OPTIONS = { revalidateOnFocus: false, revalidateOnReconnect: false, revalidateIfStale: false, shouldRetryOnError: false };
 
 function AlertsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams?.get("token") || "";
+  const result = searchParams?.get("result") || "";
   const [requestToken] = useState(token);
   const [currentToken, setCurrentToken] = useState(token);
   const [busyAlertKey, setBusyAlertKey] = useState("");
@@ -30,7 +45,7 @@ function AlertsPageContent() {
     () => (requestToken ? `/api/alerts/manage?token=${encodeURIComponent(requestToken)}` : null),
     [requestToken]
   );
-  const { data, error, isPending, mutate } = useFetch(managePath);
+  const { data, error, isPending, mutate } = useFetch(managePath, MANAGE_FETCH_OPTIONS);
 
   useEffect(() => {
     const nextToken = data?.manageToken;
@@ -40,7 +55,7 @@ function AlertsPageContent() {
     }
 
     setCurrentToken(nextToken);
-    router.replace(`/alerts?token=${encodeURIComponent(nextToken)}`);
+    router.replace(`/alerts?token=${encodeURIComponent(nextToken)}`, { scroll: false });
   }, [currentToken, data?.manageToken, router]);
 
   async function handleRemoveAlert(alertKey) {
@@ -73,50 +88,26 @@ function AlertsPageContent() {
   }
 
   return (
-    <Container fluid className="bg-dark min-vh-100">
-      <Container className="text-white py-4">
-        <Row className="mb-4">
-          <Col className="text-center">
-            <h1>Alerts Centre</h1>
-            <Link href="/trentweirs" className="text-info">← Back to Trent Dashboard</Link>
-          </Col>
-        </Row>
+    <Container fluid as="main" className="history-page text-white">
+      <Container className="text-white py-4 py-lg-5">
+        <AlertsPageHeader />
 
-        <Row className="justify-content-center mb-4">
-          <Col lg={8}>
-            <Card bg="dark" text="light" border="secondary" className="shadow-sm">
-              <Card.Body>
-                <Card.Title className="mb-3">Create an alert</Card.Title>
-                <Card.Text className="text-secondary">Get confirmed email alerts for Trent gauges, HPP status, or CSO water-quality risk.</Card.Text>
-                <AlertsSignup />
-              </Card.Body>
-            </Card>
-          </Col>
-        </Row>
-        <Row className="justify-content-center mb-4">
-          <Col lg={8}>
-            <Card bg="dark" text="light" border="secondary" className="shadow-sm">
-              <Card.Body>
-                <Card.Title className="mb-3">Email me a management link</Card.Title>
-                <AlertManagementAccess />
-              </Card.Body>
-            </Card>
-          </Col>
-        </Row>
+        {result ? (
+          <Row className="justify-content-center">
+            <Col lg={8}>
+              <AlertResultNotice result={result} />
+            </Col>
+          </Row>
+        ) : null}
 
         {currentToken ? (
           <Row className="justify-content-center">
             <Col lg={8}>
-              <Card bg="dark" text="light" border="secondary" className="shadow-sm">
-                <Card.Body>
-                  <Stack direction="horizontal" className="justify-content-between align-items-center mb-3">
-                    <div>
-                      <Card.Title className="mb-1">Your current alerts</Card.Title>
-                      <Card.Text className="text-secondary mb-0">
-                        {data?.email ? `Signed in as ${data.email}` : "Use the link from your email to manage alerts."}
-                      </Card.Text>
-                    </div>
-                  </Stack>
+              <section className="history-panel" aria-labelledby="alerts-yours">
+                  <h2 id="alerts-yours" className="h5 mb-1">Your alerts</h2>
+                  <p className="history-muted">
+                    {data?.email ? `Alerts for ${data.email}. This link works for 30 minutes.` : error ? "This link could not be used." : "Loading the alerts for this link…"}
+                  </p>
 
                   <AlertsManagementFeedback successMessage={successMessage} errorMessage={errorMessage} />
                   <AlertsManagementContent
@@ -126,11 +117,28 @@ function AlertsPageContent() {
                     busyAlertKey={busyAlertKey}
                     onRemove={handleRemoveAlert}
                   />
-                </Card.Body>
-              </Card>
+              </section>
             </Col>
           </Row>
         ) : null}
+
+        <Row className="justify-content-center">
+          <Col lg={8}>
+            <section className="history-panel" aria-labelledby="alerts-create">
+                <h2 id="alerts-create" className="h5 mb-2">Create an alert</h2>
+                <p className="history-muted">Get an email when a Trent gauge, the Colwick forecast, HPP status or CSO water-quality risk meets a condition you choose.</p>
+                <AlertsSignup />
+            </section>
+          </Col>
+        </Row>
+        <Row className="justify-content-center">
+          <Col lg={8}>
+            <section className="history-panel" aria-labelledby="alerts-manage">
+                <h2 id="alerts-manage" className="h5 mb-2">Review or stop your alerts</h2>
+                <AlertManagementAccess />
+            </section>
+          </Col>
+        </Row>
       </Container>
     </Container>
   );
@@ -138,14 +146,9 @@ function AlertsPageContent() {
 
 function AlertsPageFallback() {
   return (
-    <Container fluid className="bg-dark min-vh-100">
-      <Container className="text-white py-4">
-        <Row className="mb-4">
-          <Col className="text-center">
-            <h1>Alerts Centre</h1>
-            <Link href="/trentweirs" className="text-info">← Back to Trent Dashboard</Link>
-          </Col>
-        </Row>
+    <Container fluid as="main" className="history-page text-white">
+      <Container className="text-white py-4 py-lg-5">
+        <AlertsPageHeader />
       </Container>
     </Container>
   );

@@ -191,13 +191,13 @@ describe("TrentDashboard", () => {
     expect(screen.getByRole("button", { name: "Email me a management link" })).toBeInTheDocument();
   });
 
-  test("renders dashboard feedback from confirmation redirects", () => {
+  test("never renders message text supplied by the URL", () => {
     mockUseSearchParams.mockReturnValue(
       new URLSearchParams("alertStatus=confirmed&alertMessage=Colwick%20alert%20confirmed.")
     );
 
     render(<TrentDashboard />);
 
-    expect(screen.getByText("Colwick alert confirmed.")).toBeInTheDocument();
+    expect(screen.queryByText("Colwick alert confirmed.")).not.toBeInTheDocument();
   });
 });

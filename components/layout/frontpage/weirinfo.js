@@ -1,7 +1,7 @@
+import Link from "next/link";
 import Row from "react-bootstrap/Row";
 import Accordion from "react-bootstrap/Accordion";
 import Card from "react-bootstrap/Card";
-import ListGroup from "react-bootstrap/ListGroup";
 import { useContext } from "react";
 import GraphContext from "../../../libs/context/graphcontrol";
 
@@ -51,52 +51,44 @@ export default function WeirInfo() {
   const { upperBound, lowerBound, updateBounds } = useContext(GraphContext);
 
   return (
-    <div className="mt-4 text-white text-center justify-content-center" id="weirs">
-      <Row className="justify-content-center mb-3">
-        <h2>Trent Weirs</h2>
-        <p>
-          When the Trent is at the correct level for a weir to work, it will be displayed below the level at the top of the page. Tap on the weir name below for more info about levels, directions, and general info.
-        </p>
-      </Row>
-      <Accordion className="mb-4">
+    <section className="history-panel text-white text-center" id="weirs" aria-labelledby="weirs-heading">
+      <h2 id="weirs-heading" className="h4">Trent weirs</h2>
+      <p className="history-muted">
+        Weirs that are at a working level are listed under the river level at the top of the page. Open a weir for its levels and location.
+      </p>
+      <p><Link href="/trentweirs" className="text-info">Compare Trent gauges →</Link></p>
+      <Accordion className="history-accordion text-start">
         {weirs.map((weir) => (
           <Accordion.Item eventKey={weir.eventKey} key={weir.eventKey}>
-            <Accordion.Header className="bg-dark text-white">
-              {weir.header}
-            </Accordion.Header>
-            <Accordion.Body className="bg-secondary">
-              <h6 className="font-weight-bold">{weir.header}</h6>
+            <Accordion.Header>{weir.header}</Accordion.Header>
+            <Accordion.Body>
               <p>{weir.description}</p>
-              <ListGroup variant="flush">
-                <ListGroup.Item className="bg-secondary text-white">
-                  <span className="font-weight-bold">Water Levels:</span> {weir.levels}
-                </ListGroup.Item>
-                <ListGroup.Item className="bg-secondary text-white">
-                  <span className="font-weight-bold">Location:</span> {weir.location}{" "}
-                  <a href={weir.mapLink} target="_blank" rel="noopener noreferrer">
-                    Google Maps Link
+              <ul className="list-unstyled mb-0">
+                <li className="mb-2"><span className="fw-semibold">Water levels:</span> {weir.levels}</li>
+                <li className="mb-2">
+                  <span className="fw-semibold">Location:</span> {weir.location}{" "}
+                  <a href={weir.mapLink} target="_blank" rel="noopener noreferrer" className="text-info">
+                    Google Maps link
                   </a>
-                </ListGroup.Item>
-                <ListGroup.Item className="bg-secondary text-white text-muted">
-                  Weirs can be dangerous! Always check them yourself before committing!
-                </ListGroup.Item>
-                <ListGroup.Item className="bg-secondary">
+                </li>
+                <li className="mb-2">Weirs can be dangerous. Always inspect a weir yourself before paddling it.</li>
+                <li>
                   <a
                     href="#chart"
                     role="button"
-                    className="btn btn-sm btn-primary m-1"
+                    className="btn btn-sm btn-outline-light"
                     data-lowerbound={weir.lowerBound}
                     data-upperbound={weir.upperBound}
                     onClick={updateBounds}
                   >
                     Show level guides on graph
                   </a>
-                </ListGroup.Item>
-              </ListGroup>
+                </li>
+              </ul>
             </Accordion.Body>
           </Accordion.Item>
         ))}
       </Accordion>
-    </div>
+    </section>
   );
 }
